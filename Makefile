@@ -7,10 +7,13 @@ VERSION ?= 0.0.0-dev0.$(GIT_SHA)
 
 KEYCLOAK_SOURCES := $(shell find infrastructure/mrmat-keycloak)
 KEYCLOAK_TARGET := dist/mrmat-keycloak-$(VERSION).tgz
+PROMETHEUS_SOURCES := $(shell find infrastructure/mrmat-prometheus)
+PROMETHEUS_TARGET := dist/mrmat-prometheus-$(VERSION).tgz
 
 all: infrastructure
 infrastructure: keycloak
 keycloak: $(KEYCLOAK_TARGET)
+prometheus: $(PROMETHEUS_TARGET)
 
 keycloak-install: $(KEYCLOAK_TARGET)
 	helm upgrade \
@@ -25,6 +28,23 @@ $(KEYCLOAK_TARGET): $(KEYCLOAK_SOURCES) dist
 		--version $(VERSION) \
 		--destination dist/ \
 		infrastructure/mrmat-keycloak
+
+prometheus-install: $(PROMETHEUS_TARGET)
+	helm upgrade \
+		mrmat-prometheus \
+		$(PROMETHEUS_TARGET) \
+		--install \
+		--create-namespace \
+		--namespace prometheus
+	helm test mrmat-prometheus --namespace prometheus
+	kubectl delete po -n prometheus mrmat-prometheus-test-connection
+
+$(PROMETHEUS_TARGET): $(PROMETHEUS_SOURCES) dist
+	helm dep update infrastructure/mrmat-prometheus --skip-refresh
+	helm package \
+		--version $(VERSION) \
+		--destination dist/ \
+		infrastructure/mrmat-prometheus
 
 dist:
 	mkdir -p dist
