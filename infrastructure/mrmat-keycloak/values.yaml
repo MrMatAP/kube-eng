@@ -1,0 +1,27 @@
+#
+# Default values for mrmat-keycloak
+
+adminPassword: admin
+
+serviceAccount:
+  name: mrmat-keycloak-sa
+
+pod:
+  name: mrmat-keycloak-pod
+  replicas: 1
+  repository: quay.io/keycloak/keycloak
+  imagePullPolicy: IfNotPresent
+  port: 8080
+
+service:
+  name: mrmat-keycloak-svc
+  port: 80
+
+httproute:
+  enabled: true
+  name: mrmat-keycloak-httproute
+  hostnames:
+  - mrmat-keycloak.local
+  parents:
+  - name: istio-ingress
+    namespace: edge

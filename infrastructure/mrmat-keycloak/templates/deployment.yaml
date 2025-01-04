@@ -1,0 +1,42 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mrmat-keycloak-deployment
+  labels:
+    app.kubernetes.io/name: mrmat-keycloak-deployment
+    app.kubernetes.io/part-of: {{ .Chart.Name }}
+spec:
+  replicas: {{ .Values.pod.replicas }}
+  selector:
+    matchLabels:
+      app: {{ .Values.pod.name }}
+      version: {{ .Chart.AppVersion }}
+  template:
+    metadata:
+      labels:
+        sidecar.istio.io/inject: "true"
+        app: {{ .Values.pod.name }}
+        version: {{ .Chart.AppVersion }}
+        app.kubernetes.io/name: {{ .Values.pod.name }}
+        app.kubernetes.io/part-of: {{ .Chart.Name }}
+    spec:
+      serviceAccountName: {{ .Values.serviceAccount.name }}
+      containers:
+      - name: keycloak
+        image: {{ .Values.pod.repository }}:{{ .Chart.AppVersion }}
+        args: ["start-dev"]
+        env:
+        - name: KEYCLOAK_ADMIN
+          value: "admin"
+        - name: KEYCLOAK_ADMIN_PASSWORD
+          value: {{ .Values.adminPassword }}
+        - name: KC_PROXY
+          value: "edge"
+        ports:
+        - name: http
+          containerPort: {{ .Values.pod.port }}
+          protocol: TCP
+        readinessProbe:
+          httpGet:
+            path: /realms/master
+            port: {{ .Values.pod.port }}
