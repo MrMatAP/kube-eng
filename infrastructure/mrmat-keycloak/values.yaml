@@ -1,7 +1,9 @@
 #
 # Default values for mrmat-keycloak
 
-adminPassword: admin
+kc_admin_user: admin
+kc_admin_password: admin
+kc_hostname: http://mrmat-keycloak.local/
 
 serviceAccount:
   name: mrmat-keycloak-sa
@@ -12,6 +14,7 @@ pod:
   repository: quay.io/keycloak/keycloak
   imagePullPolicy: IfNotPresent
   port: 8080
+  managementPort: 9000
 
 service:
   name: mrmat-keycloak-svc

@@ -14,11 +14,15 @@ spec:
   template:
     metadata:
       labels:
-        sidecar.istio.io/inject: "true"
         app: {{ .Values.pod.name }}
         version: {{ .Chart.AppVersion }}
         app.kubernetes.io/name: {{ .Values.pod.name }}
         app.kubernetes.io/part-of: {{ .Chart.Name }}
+        sidecar.istio.io/inject: "true"
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: {{ .Values.pod.managementPort | quote }}
+        prometheus.io/path: '/metrics'
     spec:
       serviceAccountName: {{ .Values.serviceAccount.name }}
       containers:
@@ -26,17 +30,48 @@ spec:
         image: {{ .Values.pod.repository }}:{{ .Chart.AppVersion }}
         args: ["start-dev"]
         env:
-        - name: KEYCLOAK_ADMIN
-          value: "admin"
-        - name: KEYCLOAK_ADMIN_PASSWORD
-          value: {{ .Values.adminPassword }}
-        - name: KC_PROXY
-          value: "edge"
+        - name: KC_HOSTNAME
+          value: {{ .Values.kc_hostname }}
+        - name: KC_HOSTNAME_BACKCHANNEL_DYNAMIC
+          value: "true"
+        - name: KC_HOSTNAME_DEBUG
+          value: "true"
+        - name: KC_HOSTNAME_STRICT
+          value: "false"
+        - name: KC_BOOTSTRAP_ADMIN_USERNAME
+          value: {{ .Values.kc_admin_user }}
+        - name: KC_BOOTSTRAP_ADMIN_PASSWORD
+          value: {{ .Values.kc_admin_password | quote }}
+        - name: KC_PROXY_HEADERS
+          value: "xforwarded"
+        - name: KC_FEATURES
+          value: "account:v3,account-api,admin:v2,admin-api,authorization,ciba,client-policies,device-flow,impersonation,opentelemetry,organization,par,passkeys,persistent-user-sessions,step-up-authentication,web-authn,hostname:v2,login:v2"
+        - name: KC_LOG
+          value: "console"
+        - name: KC_LOG_CONSOLE_COLOR
+          value: "true"
+        - name: KC_LOG_CONSOLE_LEVEL
+          value: "info"
+        - name: KC_HTTP_ENABLED
+          value: "true"
+        - name: KC_HEALTH_ENABLED
+          value: "true"
+        - name: KC_METRICS_ENABLED
+          value: "true"
+        - name: KC_MANAGEMENT_PORT
+          value: {{ .Values.pod.managementPort | quote }}
         ports:
         - name: http
           containerPort: {{ .Values.pod.port }}
           protocol: TCP
+        - name: management
+          containerPort: {{ .Values.pod.managementPort }}
+          protocol: TCP
         readinessProbe:
           httpGet:
-            path: /realms/master
-            port: {{ .Values.pod.port }}
+            path: /health/ready/
+            port: {{ .Values.pod.managementPort }}
+        livenessProbe:
+          httpGet:
+            path: /health/live/
+            port: {{ .Values.pod.managementPort }}

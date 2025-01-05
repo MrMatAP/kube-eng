@@ -22,7 +22,7 @@ spec:
   {{- end }}
   rules:
   - backendRefs:
-    - name: mrmat-prometheus-server
+    - name: mrmat-grafana
       port: 80
       weight: 1
     matches:
