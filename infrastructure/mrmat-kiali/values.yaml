@@ -1,0 +1,34 @@
+# Default values for mrmat-kiali
+
+#
+# Traffic Routing
+
+httproute:
+  enabled: true
+  name: mrmat-kiali-httproute
+  hostnames:
+  - kiali.local
+  parents:
+  - name: istio-ingress
+    namespace: edge
+
+#
+# Dependency overrides
+
+kiali:
+  istio_namespace: istio-system
+  auth:
+    strategy: openid
+    openid:
+      client_id: "mrmat-kiali"
+      disable_rbac: true
+      issuer_uri: http://mrmat-keycloak.local/realms/master
+
+
+#
+# Prometheus
+
+prometheus:
+  svc: mrmat-prometheus-feature-prometheus-server.prometheus
+grafana:
+  svc: mrmat-grafana.grafana

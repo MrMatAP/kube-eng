@@ -1,0 +1,19 @@
+{{- if .Values.httproute.enabled -}}
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: kiali-route
+  labels:
+    app.kubernetes.io/name: kiali-route
+    app.kubernetes.io/part-of: kiali
+spec:
+  parentRefs:
+  - name: {{ .Values.edge.gateway }}
+    namespace: {{ .Values.edge.namespace }}
+  hostnames:
+  - "{{ .Values.edge.hostname }}"
+  rules:
+  - backendRefs:
+    - name: kiali
+      port: 20001
+{{- end }}

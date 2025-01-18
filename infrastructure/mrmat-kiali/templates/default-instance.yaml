@@ -1,0 +1,46 @@
+apiVersion: kiali.io/v1alpha1
+kind: Kiali
+metadata:
+  labels:
+    app: kiali
+    version: v2.3.0
+    app.kubernetes.io/name: kiali-instance
+    app.kubernetes.io/part-of: kiali
+  name: kiali-instance
+spec:
+  istio_namespace: istio-system
+  auth:
+    strategy: anonymous
+  deployment:
+    namespace: istio-system
+    cluster_wide_access: true
+    additional_service_yaml:
+      externalName: "kiali.local"
+  probes:
+    liveness:
+      initial_delay_seconds: 5
+      period_seconds: 30
+    readiness:
+      initial_delay_seconds: 5
+      period_seconds: 30
+    startup:
+      failure_threshold: 6
+      initial_delay_seconds: 30
+      period_seconds: 10
+  external_services:
+    istio:
+      ingress_gateway_namespace: "edge"
+      egress_gateway_namespace: "edge"
+    prometheus:
+      url: "http://{{ .Values.prometheus.svc }}:80"
+    grafana:
+      internal_url: "http://{{ .Values.grafana.svc }}:80"
+      external_url: "http://grafana.local"
+      auth:
+        username: "admin"
+        password: "admin"
+        type: "basic"
+      dashboards:
+      - name: "Istio Mesh Dashboard"
+      - name: "Istio Performance Dashboard"
+      - name: "Istio Wasm Extension Dashboard"

@@ -1,0 +1,3 @@
+# MrMat :: Eng :: Kiali: Access the Kiali UI via {{ .Values.edge.hostname }}
+#
+# Kiali is deployed into istio-system, since it fails to connect to Istio otherwise

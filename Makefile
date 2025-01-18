@@ -13,12 +13,15 @@ PROMETHEUS_SOURCES := $(shell find infrastructure/mrmat-prometheus)
 PROMETHEUS_TARGET := dist/mrmat-prometheus-$(VERSION).tgz
 GRAFANA_SOURCES := $(shell find infrastructure/mrmat-grafana)
 GRAFANA_TARGET := dist/mrmat-grafana-$(VERSION).tgz
+KIALI_SOURCES := $(shell find infrastructure/mrmat-kiali)
+KIALI_TARGET := dist/mrmat-kiali-$(VERSION).tgz
 
 all: infrastructure
 infrastructure: keycloak prometheus grafana
 keycloak: $(KEYCLOAK_TARGET)
 prometheus: $(PROMETHEUS_TARGET)
 grafana: $(GRAFANA_TARGET)
+kiali: $(KIALI_TARGET)
 
 keycloak-install: $(KEYCLOAK_TARGET)
 	helm upgrade \
@@ -88,6 +91,13 @@ $(GRAFANA_TARGET): $(GRAFANA_SOURCES) dist
 		--version $(VERSION) \
 		--destination dist/ \
 		infrastructure/mrmat-grafana
+
+$(KIALI_TARGET): $(KIALI_SOURCES) dist
+	helm dep update infrastructure/mrmat-kiali --skip-refresh
+	helm package \
+		--version $(VERSION) \
+		--destination dist/ \
+		infrastructure/mrmat-kiali
 
 dist:
 	mkdir -p dist

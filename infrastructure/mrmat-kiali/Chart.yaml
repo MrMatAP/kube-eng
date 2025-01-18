@@ -1,0 +1,12 @@
+apiVersion: v2
+name: mrmat-kiali
+description: A Helm chart to install Kiali
+type: application
+version: 0.0.0
+# The upstream Kiali version and dependency
+appVersion: "2.3.0"
+dependencies:
+- name: kiali-server
+  version: 2.3.0
+  repository: https://kiali.org/helm-charts
+  alias: kiali
