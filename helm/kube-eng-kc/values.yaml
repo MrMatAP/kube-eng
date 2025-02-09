@@ -1,0 +1,27 @@
+#
+# Default values for Kube Eng :: Keycloak
+
+sa:
+  name: ke-kc-sa
+
+pod:
+  name: ke-kc
+  replicas: 1
+  repository: quay.io/keycloak/keycloak
+  imagePullPolicy: IfNotPresent
+  port: 8080
+  managementPort: 9000
+  admin_user: admin
+  admin_password: admin
+
+svc:
+  name: ke-kc-svc
+  port: 80
+  managementPort: 9000
+
+route:
+  name: ke-kc-httproute
+  hostname: ke-kc.local
+  parents:
+  - name: istio-ingress
+    namespace: edge

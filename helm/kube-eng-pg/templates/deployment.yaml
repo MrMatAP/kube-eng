@@ -1,23 +1,23 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: kube-eng-pg
+  name: {{ .Values.pod.name }}
   labels:
-    app.kubernetes.io/name: kube-eng-pg
-    app.kubernetes.io/part-of: {{ .Chart.Name }}
+    app.kubernetes.io/name: {{ .Values.pod.name }}
+    app.kubernetes.io/part-of: {{ .Release.Name }}
 spec:
   replicas: {{ .Values.pod.replicas }}
   selector:
     matchLabels:
-      app: {{ .Values.pod.name }}
-      version: {{ .Chart.AppVersion }}
+      app: {{ .Release.Name }}
+      version: {{ .Chart.Version }}
   template:
     metadata:
       labels:
-        app: {{ .Values.pod.name }}
-        version: {{ .Chart.AppVersion }}
+        app: {{ .Release.Name }}
+        version: {{ .Chart.Version }}
         app.kubernetes.io/name: {{ .Values.pod.name }}
-        app.kubernetes.io/part-of: {{ .Chart.Name }}
+        app.kubernetes.io/part-of: {{ .Release.Name }}
         sidecar.istio.io/inject: "true"
       annotations:
         prometheus.io/scrape: "false"
@@ -28,9 +28,9 @@ spec:
         image: {{ .Values.pod.repository }}:{{ .Chart.AppVersion }}
         env:
         - name: POSTGRES_USER
-          value: {{ .Values.admin_user }}
+          value: {{ .Values.pod.admin_user }}
         - name: POSTGRES_PASSWORD
-          value: {{ .Values.admin_password }}
+          value: {{ .Values.pod.admin_password }}
         - name: PGDATA
           value: /var/lib/postgresql/data/pgdata
         volumeMounts:

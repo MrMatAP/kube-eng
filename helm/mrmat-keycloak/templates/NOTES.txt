@@ -1,5 +1,0 @@
-# MrMat :: Keycloak installed
-
-Admin user:     {{ .Values.kc_admin_user }}
-Admin Password: {{ .Values.kc_admin_password }}
-

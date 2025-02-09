@@ -4,7 +4,7 @@ metadata:
   name: {{ .Values.svc.name }}
   labels:
     app: {{ .Release.Name }}
-    version: {{ .Chart.AppVersion }}
+    version: {{ .Chart.Version }}
     app.kubernetes.io/name: {{ .Values.svc.name }}
     app.kubernetes.io/part-of: {{ .Release.Name }}
 spec:
@@ -13,7 +13,11 @@ spec:
     app.kubernetes.io/name: {{ .Values.pod.name }}
     app.kubernetes.io/part-of: {{ .Release.Name }}
   ports:
-  - name: pg
-    port: 5432
+  - name: http
+    port: {{ .Values.svc.port }}
     protocol: TCP
-    targetPort: 5432
+    targetPort: {{ .Values.pod.port }}
+  - name: management
+    port: {{ .Values.svc.managementPort }}
+    protocol: TCP
+    targetPort: {{ .Values.pod.managementPort }}

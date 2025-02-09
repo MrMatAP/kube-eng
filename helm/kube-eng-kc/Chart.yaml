@@ -1,6 +1,6 @@
 apiVersion: v2
-name: mrmat-keycloak
-description: A Helm chart for Keycloak Authentication
+name: kube-eng-kc
+description: A Helm chart to install KeyCloak for Authentication and Authorisation
 type: application
 version: 0.0.0
 # The upstream Keycloak version

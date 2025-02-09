@@ -1,37 +1,37 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: mrmat-keycloak-deployment
+  name: {{ .Values.pod.name }}
   labels:
-    app.kubernetes.io/name: mrmat-keycloak-deployment
-    app.kubernetes.io/part-of: {{ .Chart.Name }}
+    app.kubernetes.io/name: {{ .Values.pod.name }}
+    app.kubernetes.io/part-of: {{ .Release.Name }}
 spec:
   replicas: {{ .Values.pod.replicas }}
   selector:
     matchLabels:
-      app: {{ .Values.pod.name }}
-      version: {{ .Chart.AppVersion }}
+      app: {{ .Release.Name }}
+      version: {{ .Chart.Version }}
   template:
     metadata:
       labels:
-        app: {{ .Values.pod.name }}
-        version: {{ .Chart.AppVersion }}
+        app: {{ .Release.Name }}
+        version: {{ .Chart.Version }}
         app.kubernetes.io/name: {{ .Values.pod.name }}
-        app.kubernetes.io/part-of: {{ .Chart.Name }}
+        app.kubernetes.io/part-of: {{ .Release.Name }}
         sidecar.istio.io/inject: "true"
       annotations:
         prometheus.io/scrape: "true"
         prometheus.io/port: {{ .Values.pod.managementPort | quote }}
         prometheus.io/path: '/metrics'
     spec:
-      serviceAccountName: {{ .Values.serviceAccount.name }}
+      serviceAccountName: {{ .Values.sa.name }}
       containers:
-      - name: keycloak
+      - name: kc
         image: {{ .Values.pod.repository }}:{{ .Chart.AppVersion }}
         args: ["start-dev"]
         env:
         - name: KC_HOSTNAME
-          value: {{ .Values.kc_hostname }}
+          value: "http://{{ .Values.route.hostname }}"
         - name: KC_HOSTNAME_BACKCHANNEL_DYNAMIC
           value: "true"
         - name: KC_HOSTNAME_DEBUG
@@ -39,9 +39,9 @@ spec:
         - name: KC_HOSTNAME_STRICT
           value: "false"
         - name: KC_BOOTSTRAP_ADMIN_USERNAME
-          value: {{ .Values.kc_admin_user }}
+          value: {{ .Values.pod.admin_user }}
         - name: KC_BOOTSTRAP_ADMIN_PASSWORD
-          value: {{ .Values.kc_admin_password | quote }}
+          value: {{ .Values.pod.admin_password | quote }}
         - name: KC_PROXY_HEADERS
           value: "xforwarded"
         - name: KC_FEATURES

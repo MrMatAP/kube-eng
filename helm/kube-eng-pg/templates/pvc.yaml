@@ -4,7 +4,7 @@ metadata:
   name: {{ .Values.pvc.name }}
   labels:
     app.kubernetes.io/name: {{ .Values.pvc.name }}
-    app.kubernetes.io/part-of: {{ .Chart.Name }}
+    app.kubernetes.io/part-of: {{ .Release.Name }}
 spec:
   storageClassName: {{ .Values.pvc.storageClass }}
   accessModes:

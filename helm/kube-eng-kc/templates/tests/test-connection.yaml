@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: Pod
 metadata:
-  name: mrmat-keycloak-test-connection
+  name: ke-kc-test-connection
   labels:
     sidecar.istio.io/inject: "false"
   annotations:
@@ -13,4 +13,4 @@ spec:
   - name: wget
     image: busybox
     command: ['wget']
-    args: ["http://mrmat-keycloak-svc:80/"]
+    args: ["http://{{ .Values.svc.name }}:{{ .Values.svc.port }}/"]

@@ -1,11 +1,11 @@
 #
 # Playbook for provisioning a local Kubernetes cluster for engineering
 ---
-- name: Create and maintain a Kubernetes cluster for local engineering
+- name: Postinstall Grafana
   hosts: localhost
   tasks:
 
-  - name: Register Grafana client
+  - name: Register Grafana client in Keycloak
     community.general.keycloak_client:
       auth_keycloak_url: http://mrmat-keycloak.local
       auth_realm: master

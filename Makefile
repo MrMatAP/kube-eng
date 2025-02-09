@@ -11,8 +11,8 @@ PROMETHEUS_SOURCES := $(shell find helm/mrmat-prometheus)
 PROMETHEUS_CHART := dist/mrmat-prometheus-$(VERSION).tgz
 POSTGRES_SOURCES := $(shell find helm/kube-eng-pg)
 POSTGRES_CHART := dist/kube-eng-pg-$(VERSION).tgz
-KEYCLOAK_SOURCES := $(shell find helm/mrmat-keycloak)
-KEYCLOAK_CHART := dist/mrmat-keycloak-$(VERSION).tgz
+KEYCLOAK_SOURCES := $(shell find helm/kube-eng-kc)
+KEYCLOAK_CHART := dist/kube-eng-kc-$(VERSION).tgz
 GRAFANA_SOURCES := $(shell find helm/mrmat-grafana)
 GRAFANA_CHART := dist/mrmat-grafana-$(VERSION).tgz
 KIALI_SOURCES := $(shell find helm/mrmat-kiali)
@@ -54,25 +54,28 @@ postgres-install: $(POSTGRES_CHART)
 		--wait \
 		--create-namespace \
 		--namespace ke-pg
+		--set pod.admin_password="$(shell cat $(ADMIN_PASSWORD))"
 
 postgres-uninstall:
 	helm uninstall kube-eng-pg --namespace ke-pg
 
 keycloak-install: $(KEYCLOAK_CHART) $(ADMIN_PASSWORD)
 	helm upgrade \
-		mrmat-keycloak \
+		kube-eng-kc \
 		$(KEYCLOAK_CHART) \
 		--install \
 		--wait \
 		--create-namespace \
-		--namespace keycloak \
-		--set kc_admin_password="$(shell cat $(ADMIN_PASSWORD))"
-	helm test mrmat-keycloak --namespace keycloak
-	kubectl delete po -n keycloak mrmat-keycloak-test-connection
-	ansible-playbook -e admin_password="$(shell cat $(ADMIN_PASSWORD))" ansible/keycloak_postinstall.yml
+		--namespace ke-kc \
+		--set pod.admin_password="$(shell cat $(ADMIN_PASSWORD))"
+	helm test kube-eng-kc --namespace ke-kc
+	kubectl delete po -n ke-kc ke-kc-test-connection
+	ansible-playbook \
+		-e admin_password="$(shell cat $(ADMIN_PASSWORD))" \
+		ansible/keycloak_postinstall.yml
 
 keycloak-uninstall:
-	helm uninstall mrmat-keycloak --namespace keycloak
+	helm uninstall kube-eng-kc --namespace ke-kc
 
 grafana-install: $(GRAFANA_CHART)
 	helm upgrade \
@@ -123,7 +126,7 @@ $(POSTGRES_CHART): $(POSTGRES_SOURCES) dist
 	helm package --version $(VERSION) --destination dist/ helm/kube-eng-pg
 
 $(KEYCLOAK_CHART): $(KEYCLOAK_SOURCES) dist
-	helm package --version $(VERSION) --destination dist/ helm/mrmat-keycloak
+	helm package --version $(VERSION) --destination dist/ helm/kube-eng-kc
 
 $(KIALI_CHART): $(KIALI_SOURCES) dist
 	helm dep update helm/mrmat-kiali --skip-refresh
