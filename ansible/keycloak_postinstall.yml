@@ -1,0 +1,13 @@
+#
+# Playbook for provisioning a local Kubernetes cluster for engineering
+---
+- name: Create and maintain a Kubernetes cluster for local engineering
+  hosts: localhost
+  roles:
+  - role: roles/create_keycloak_client
+    vars:
+      keycloak_admin_password: "{{ admin_password }}"
+      name: prometheus
+      description: "MrMat :: Prometheus"
+      root_url: "http://mrmat-prometheus.local/"
+

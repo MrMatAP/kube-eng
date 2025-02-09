@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ .Values.pvc.name }}
+  labels:
+    app.kubernetes.io/name: {{ .Values.pvc.name }}
+    app.kubernetes.io/part-of: {{ .Chart.Name }}
+spec:
+  storageClassName: {{ .Values.pvc.storageClass }}
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: {{ .Values.pvc.size }}

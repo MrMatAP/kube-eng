@@ -1,0 +1,26 @@
+#
+# Default values for kube-eng-postgres
+
+admin_user: postgres
+admin_password: admin
+
+pvc:
+  name: kube-eng-pg-pvc
+  storageClass: standard
+  size: 5Gi
+
+sa:
+  name: kube-eng-pg-sa
+
+pod:
+  name: kube-eng-pg
+  replicas: 1
+  repository: postgres
+  imagePullPolicy: IfNotPresent
+  port: 5432
+  admin_user: postgres
+  admin_password: admin
+
+svc:
+  name: kube-eng-pg-svc
+  port: 5432

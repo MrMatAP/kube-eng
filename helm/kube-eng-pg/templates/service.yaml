@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.svc.name }}
+  labels:
+    app: {{ .Chart.Name }}
+    version: {{ .Chart.AppVersion }}
+    app.kubernetes.io/name: {{ .Values.svc.name }}
+    app.kubernetes.io/part-of: {{ .Chart.Name }}
+spec:
+  type: ClusterIP
+  selector:
+    app: {{ .Values.pod.name }}
+    version: {{ .Chart.AppVersion }}
+  ports:
+  - name: pg
+    port: 5432
+    protocol: TCP
+    targetPort: 5432
