@@ -1,0 +1,4 @@
+#
+# Runtime requirements
+
+ansible==11.1.0     # GPL 3
