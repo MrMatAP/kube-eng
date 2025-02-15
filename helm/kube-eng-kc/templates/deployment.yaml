@@ -60,6 +60,18 @@ spec:
           value: "true"
         - name: KC_MANAGEMENT_PORT
           value: {{ .Values.pod.managementPort | quote }}
+        - name: KC_DB
+          value: {{ .Values.pod.db }}
+        - name: KC_DB_USERNAME
+          value: {{ .Values.pod.db_user }}
+        - name: KC_DB_PASSWORD
+          value: {{ .Values.pod.db_password }}
+        - name: KC_DB_URL_HOST
+          value: {{ .Values.pod.db_host }}
+        - name: KC_DB_URL_DATABASE
+          value: {{ .Values.pod.db_database }}
+        #- name: KC_DB_SCHEMA
+        #  value: {{ .Values.pod.db_schema }}
         ports:
         - name: http
           containerPort: {{ .Values.pod.port }}

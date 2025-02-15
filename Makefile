@@ -53,7 +53,7 @@ postgres-install: $(POSTGRES_CHART)
 		--install \
 		--wait \
 		--create-namespace \
-		--namespace ke-pg
+		--namespace ke-pg \
 		--set pod.admin_password="$(shell cat $(ADMIN_PASSWORD))"
 
 postgres-uninstall:
@@ -67,7 +67,8 @@ keycloak-install: $(KEYCLOAK_CHART) $(ADMIN_PASSWORD)
 		--wait \
 		--create-namespace \
 		--namespace ke-kc \
-		--set pod.admin_password="$(shell cat $(ADMIN_PASSWORD))"
+		--set pod.admin_password="$(shell cat $(ADMIN_PASSWORD))" \
+		--set pod.db_password="$(shell cat $(ADMIN_PASSWORD))"
 	helm test kube-eng-kc --namespace ke-kc
 	kubectl delete po -n ke-kc ke-kc-test-connection
 	ansible-playbook \

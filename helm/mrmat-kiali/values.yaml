@@ -7,28 +7,62 @@ httproute:
   enabled: true
   name: mrmat-kiali-httproute
   hostnames:
-  - kiali.local
+  - mrmat-kiali.local
   parents:
   - name: istio-ingress
     namespace: edge
 
 #
 # Dependency overrides
+#  auth:
+#    strategy: openid
+#    openid:
+#      client_id: "mrmat-kiali"
+#      disable_rbac: true
+#      issuer_uri: http://mrmat-keycloak.local/realms/master
 
 kiali:
+  watchNamespace: kiali
+  cr:
+    create: true
+    namespace: kiali
+    spec:
+      istio_namespace: istio-system
+      auth:
+        strategy: anonymous
+      external_services:
+        istio:
+          ingress_gateway_namespace: edge
+          egress_gateway_namespace: edge
+        prometheus:
+          internal_url: http://mrmat-prometheus-server.prometheus.svc.cluster.local
+          external_url: http://mrmat-prometheus.local
+        grafana:
+          enabled: true
+          internal_url: http://mrmat-grafana.grafana.svc.cluster.local
+          external_url: http://mrmat-grafana.local
+          auth:
+            username: kiali
+            token: ""
+          dashboards:
+          - name: 'Istio Mesh Dashboard'
+          - name: 'Istio Control Plane Dashboard'
+          - name: 'Istio Performance Dashboard'
+
+foo:
   istio_namespace: istio-system
-  auth:
-    strategy: openid
-    openid:
-      client_id: "mrmat-kiali"
-      disable_rbac: true
-      issuer_uri: http://mrmat-keycloak.local/realms/master
-
-
-#
-# Prometheus
-
-prometheus:
-  svc: mrmat-prometheus-feature-prometheus-server.prometheus
-grafana:
-  svc: mrmat-grafana.grafana
+  external_services:
+    grafana:
+      enabled: true
+      svc: mrmat-grafana.grafana.svc.cluster.local
+      internal_url: http://mrmat-grafana.grafana.svc.cluster.local
+      external_url: http://mrmat-grafana.local
+      auth:
+        username: kiali
+        token: ""
+      dashboards:
+      - name: 'Istio Mesh Dashboard'
+      - name: 'Istio Control Plane Dashboard'
+      - name: 'Istio Performance Dashboard'
+    prometheus:
+      svc: mrmat-prometheus-server.prometheus.svc.cluster.local

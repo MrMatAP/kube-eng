@@ -13,6 +13,12 @@ pod:
   managementPort: 9000
   admin_user: admin
   admin_password: admin
+  db: postgres
+  db_user: postgres
+  db_password: admin
+  db_host: ke-pg-svc.ke-pg.svc.cluster.local
+  db_database: postgres
+  db_schema: ke-kc
 
 svc:
   name: ke-kc-svc

@@ -7,5 +7,5 @@
     <exe-path>/usr/local/bin/bower</exe-path>
     <config-path />
   </component>
-  <component name="ProjectRootManager" version="2" project-jdk-name="Python 3.11 (the-cubers)" project-jdk-type="Python SDK" />
+  <component name="ProjectRootManager" version="2" project-jdk-name="Python 3.13 (kube-eng)" project-jdk-type="Python SDK" />
 </project>
