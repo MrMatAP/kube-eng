@@ -51,14 +51,18 @@ cloud-provider-mdns := $(VENVDIR)/bin/cloud-provider-mdns
 ansible-playbook := $(VENVDIR)/bin/ansible-playbook
 docker := /usr/local/bin/docker
 
-deps: $(admin-password-file) $(docker) $(istioctl) $(kind) $(cloud-provider-kind) $(cloud-provider-mdns) $(ansible)
+deps: $(admin-password-file) $(docker) $(istioctl) $(kind) $(cloud-provider-kind) $(cloud-provider-mdns) $(ansible-playbook)
 	@echo "All deps installed"
 
 $(admin-password-file):
 	@echo "$(shell openssl rand -base64 12)" > $@
 
-$(BINDIR) $(TMPDIR) $(VENVDIR) $(DISTDIR):
+$(BINDIR) $(TMPDIR) $(DISTDIR):
 	mkdir -p $@
+
+venv: 
+	python3 -mvenv $(VENVDIR)
+	$(VENVDIR)/bin/pip3 install -U pip
 
 $(docker):
 	@echo "You must install a container runtime. If it is not docker then adjust its path in the 'docker' variable of the Makefile"
@@ -75,12 +79,10 @@ $(cloud-provider-kind): | $(TMPDIR) $(BINDIR)
 	tar xfv $(TMPDIR)/cloud-provider-kind.tar.gz -C $(TMPDIR) cloud-provider-kind
 	mv $(TMPDIR)/cloud-provider-kind $@
 
-$(cloud-provider-mdns): | $(VENVDIR)
+$(cloud-provider-mdns): venv
 	$(VENVDIR)/bin/pip3 install -U git+https://github.com/MrMatAP/cloud-provider-mdns.git
 
-$(ansible-playbook): | $(VENVDIR)
-	python -mvenv $(VENVDIR)
-	$(VENVDIR)/bin/pip3 install -U pip
+$(ansible-playbook): venv
 	$(VENVDIR)/bin/pip3 install -r $(CURDIR)/requirements.txt
 
 #
