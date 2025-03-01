@@ -1,0 +1,31 @@
+#
+# This requires that both Istio and the Kubernetes Gateway APIs are installed in the cluster
+# istioctl install --set profile=minimal -y
+# kubectl apply -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.2.0/standard-install.yaml
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: istio-ingress
+  namespace: edge
+spec:
+  gatewayClassName: istio
+  listeners:
+  - name: http
+    port: 80
+    protocol: HTTP
+    allowedRoutes:
+      namespaces:
+        from: All
+  - name: https
+    port: 443
+    protocol: HTTP
+    allowedRoutes:
+      namespaces:
+        from: All
+  - name: postgres
+    port: 5432
+    protocol: TCP
+    allowedRoutes:
+      namespaces:
+        from: All

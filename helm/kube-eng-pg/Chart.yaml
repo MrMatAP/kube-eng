@@ -1,6 +1,0 @@
-apiVersion: v2
-name: kube-eng-pg
-description: A Helm chart to deploy PostgreSQL
-type: application
-version: 0.0.0
-appVersion: "17.2-alpine3.21"

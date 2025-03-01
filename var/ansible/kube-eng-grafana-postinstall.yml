@@ -1,0 +1,16 @@
+#
+# Preinstall Kube Eng :: Grafana
+---
+- name: Postinstall Grafana
+  hosts: localhost
+  tasks:
+  - name: "Configure Kube Eng :: Prometheus"
+    community.grafana.grafana_datasource:
+      grafana_url: "http://ke-grafana.local"
+      grafana_user: admin
+      grafana_password: "{{ admin_password }}"
+      name: prometheus
+      ds_type: prometheus
+      ds_url: "http://kube-eng-prometheus-server.kube-eng.svc.cluster.local"
+      is_default: true
+      state: present

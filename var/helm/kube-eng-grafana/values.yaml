@@ -1,0 +1,63 @@
+#
+# Default values for Kube Eng :: Grafana
+
+route:
+  enabled: true
+  name: kube-eng-grafana-httproute
+  hostname: ke-grafana.local
+  parents:
+  - name: istio-ingress
+    namespace: edge
+
+#
+# Dependency Chart overrides
+
+grafana:
+  extraLabels:
+    app: grafana
+    version: 8.8.2
+  podLabels:
+    sidecar.istio.io/inject: "true"
+  serviceAccount:
+    create: true
+    name: ke-grafana-sa
+    labels:
+      app.kubernetes.io/name: ke-grafana-sa
+      app.kubernetes.io/part-of: ke-grafana
+  service:
+    enabled: true
+    type: ClusterIP
+    appProtocol: http
+    labels:
+      app.kubernetes.io/part-of: ke-grafana
+  ingress:
+    enabled: false
+  persistence:
+    type: pvc
+    enabled: true
+    size: 3Gi
+  adminUser: admin
+  adminPassword: admin
+  envRenderSecret:
+    GF_AUTH_GENERIC_OAUTH_CLIENT_ID: ""
+    GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET: ""
+  grafana.ini:
+    server:
+      root_url: http://ke-grafana.local
+    auth.basic:
+      enabled: true
+    auth.generic_oauth:
+      enabled: true
+      name: Keycloak-OAuth
+      auth_url: http://ke-keycloak.local/realms/master/protocol/openid-connect/auth
+      token_url: http://kube-eng-keycloak-svc.kube-eng.svc.cluster.local/realms/master/protocol/openid-connect/token
+      api_url: http://kube-eng-keycloak-svc.kube-eng.svc.cluster.local/realms/master/protocol/openid-connect/userinfo
+      allow_sign_up: true
+      scopes: openid email profile offline_access roles
+      email_attribute_path: email
+      login_attribute_path: username
+      name_attribute_path: full_name
+      role_attribute_path: contains(resource_access.mrmat_grafana.roles.[*], "Admin") && 'Admin' || contains(resource_access.mrmat_grafana.roles.[*], "Editor") && 'Editor' || 'Viewer'
+
+
+

@@ -1,0 +1,48 @@
+#
+# Default values for Kube Eng :: Kiali
+
+route:
+  enabled: true
+  name: kube-eng-kiali-httproute
+  hostname: ke-kiali.local
+  parents:
+  - name: istio-ingress
+    namespace: edge
+
+#
+# Dependency overrides
+#  auth:
+#    strategy: openid
+#    openid:
+#      client_id: "mrmat-kiali"
+#      disable_rbac: true
+#      issuer_uri: http://mrmat-keycloak.local/realms/master
+
+kiali:
+  cr:
+    create: true
+    namespace: kube-eng
+    spec:
+      istio_namespace: istio-system
+      auth:
+        strategy: anonymous
+      external_services:
+        istio:
+          ingress_gateway_namespace: edge
+          egress_gateway_namespace: edge
+        prometheus:
+          internal_url: http://kube-eng-prometheus-server.kube-eng.svc.cluster.local
+          external_url: http://ke-prometheus.local
+          url: http://kube-eng-prometheus-server.kube-eng.svc.cluster.local
+        grafana:
+          enabled: true
+          internal_url: http://kube-eng-grafana.kube-eng.svc.cluster.local
+          external_url: http://ke-grafana.local
+          auth:
+            username: admin
+            password: "{{ admin_password }}"
+            type: basic
+          dashboards:
+          - name: 'Istio Mesh Dashboard'
+          - name: 'Istio Control Plane Dashboard'
+          - name: 'Istio Performance Dashboard'

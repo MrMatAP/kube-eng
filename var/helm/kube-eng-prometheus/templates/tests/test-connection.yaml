@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: kube-eng-prometheus-test
+  labels:
+    sidecar.istio.io/inject: "false"
+  annotations:
+    "helm.sh/hook": test
+    prometheus.io/scrape: "false"
+spec:
+  restartPolicy: Never
+  containers:
+  - name: wget
+    image: busybox
+    command: ['wget']
+    args: ["http://{{ .Release.Name }}-server.{{ .Release.Namespace }}.svc.cluster.local:80/"]

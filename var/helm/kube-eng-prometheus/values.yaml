@@ -1,0 +1,30 @@
+#
+# Default values for Kube Eng :: Prometheus
+
+route:
+  enabled: true
+  name: kube-eng-prometheus-httproute
+  hostname: ke-prometheus.local
+  parents:
+  - name: istio-ingress
+    namespace: edge
+
+#
+# Dependency Chart overrides
+
+prometheus:
+  serviceAccounts:
+    server:
+      create: true
+      name: kube-eng-prometheus-sa
+#  commonMetaLabels:
+#    app.kubernetes.io/part-of: mrmat-prometheus
+  server:
+    ingress:
+      enabled: false
+    persistentVolume:
+      size: 3Gi
+    podLabels:
+      sidecar.istio.io/inject: "true"
+    service:
+      enabled: true

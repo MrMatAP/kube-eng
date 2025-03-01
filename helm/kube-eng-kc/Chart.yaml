@@ -1,7 +1,0 @@
-apiVersion: v2
-name: kube-eng-kc
-description: A Helm chart to install KeyCloak for Authentication and Authorisation
-type: application
-version: 0.0.0
-# The upstream Keycloak version
-appVersion: "26.0.7"

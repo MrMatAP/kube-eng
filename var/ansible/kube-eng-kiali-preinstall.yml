@@ -1,0 +1,34 @@
+#
+# Preinstall Kube Eng :: Kiali
+---
+- name: Preinstall Kiali
+  hosts: localhost
+  tasks:
+
+  - name: Register Kiali client in Keycloak
+    community.general.keycloak_client:
+      auth_keycloak_url: http://ke-keycloak.local
+      auth_realm: master
+      auth_username: admin
+      auth_password: "{{ admin_password }}"
+      client_id: ke_kiali
+      name: ke-kiali
+      description: "Kube Eng :: Kiali"
+      enabled: true
+      protocol: openid-connect
+      public_client: false
+      client_authenticator_type: client-secret
+      secret: "{{ admin_password }}"
+      root_url: "http://ke-kiali.local/"
+      base_url: "http://ke-kiali.local/"
+      admin_url: "http://ke-kiali.local/"
+      redirect_uris:
+      - "http://ke-kiali.local/login/generic_oauth"
+      standard_flow_enabled: true
+      implicit_flow_enabled: false
+      direct_access_grants_enabled: true
+      default_client_scopes:
+      - email
+      - offline_access
+      - profile
+      - roles

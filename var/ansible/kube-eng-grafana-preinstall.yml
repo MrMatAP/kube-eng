@@ -1,0 +1,68 @@
+#
+# Preinstall Kube Eng :: Grafana
+---
+- name: Preinstall Grafana
+  hosts: localhost
+  tasks:
+
+  - name: Register Grafana client in Keycloak
+    community.general.keycloak_client:
+      auth_keycloak_url: http://ke-keycloak.local
+      auth_realm: master
+      auth_username: admin
+      auth_password: "{{ admin_password }}"
+      client_id: ke_grafana
+      name: ke-grafana
+      description: "Kube Eng :: Grafana"
+      enabled: true
+      protocol: openid-connect
+      public_client: false
+      client_authenticator_type: client-secret
+      secret: "{{ admin_password }}"
+      root_url: "http://ke-grafana.local/"
+      base_url: "http://ke-grafana.local/"
+      admin_url: "http://ke-grafana.local/"
+      redirect_uris:
+      - "http://ke-grafana.local/login/generic_oauth"
+      standard_flow_enabled: true
+      implicit_flow_enabled: false
+      direct_access_grants_enabled: true
+      default_client_scopes:
+      - email
+      - offline_access
+      - profile
+      - roles
+
+  - name: Register Grafana Viewer role
+    community.general.keycloak_role:
+      auth_keycloak_url: http://ke-keycloak.local
+      auth_realm: master
+      auth_username: admin
+      auth_password: "{{ admin_password }}"
+      name: Viewer
+      description: Grafana Viewers
+      client_id: ke_grafana
+      state: present
+
+  - name: Register Grafana Editor role
+    community.general.keycloak_role:
+      auth_keycloak_url: http://ke-keycloak.local
+      auth_realm: master
+      auth_username: admin
+      auth_password: "{{ admin_password }}"
+      name: Editor
+      description: Grafana Editors
+      client_id: ke_grafana
+      state: present
+
+  - name: Register Grafana Admin role
+    community.general.keycloak_role:
+      auth_keycloak_url: http://ke-keycloak.local
+      auth_realm: master
+      auth_username: admin
+      auth_password: "{{ admin_password }}"
+      name: Admin
+      description: Grafana Admins
+      client_id: ke_grafana
+      state: present
+
