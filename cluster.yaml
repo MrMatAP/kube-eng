@@ -1,0 +1,14 @@
+---
+tools:
+  kind: /opt/homebrew/bin/kind
+  istioctl: /opt/homebrew/bin/istioctl
+  kubectl: /opt/homebrew/bin/kubectl
+  docker: /usr/local/bin/docker
+
+cluster:
+  name: test-cluster
+  control_plane_nodes: 1
+  worker_nodes: 3
+  mesh: istio
+  istio_profile: minimal
+  gateway_api: true

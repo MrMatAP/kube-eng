@@ -1,0 +1,32 @@
+---
+- name: Create a cluster
+  hosts: localhost
+  tasks:
+  - name: Template the cluster configuration
+    ansible.builtin.import_role:
+      name: mrmat.kube_eng.cluster_configuration
+    vars:
+      control_plane_nodes: "{{ cluster.control_plane_nodes | int }}"
+      worker_nodes: "{{ cluster.worker_nodes | int }}"
+      config_file: "{{ distdir }}/kind-config.yaml"
+
+  - name: Create the cluster
+    mrmat.kube_eng.kind_cluster:
+      name: "{{ cluster.name }}"
+      config_file: "{{ distdir }}/kind-config.yaml"
+      tool_kind: "{{ tools.kind }}"
+      state: present
+
+  - name: Install Istio
+    when: "cluster.mesh == 'istio'"
+    mrmat.kube_eng.istio:
+      profile: "{{ cluster.istio_profile | default('minimal') }}"
+      tool_kubectl: "{{ tools.kubectl }}"
+      tool_istioctl: "{{ tools.istioctl }}"
+      state: present
+
+  - name: Install Gateway API
+    when: "cluster.gateway_api | bool == true"
+    kubernetes.core.k8s:
+      src: https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.2.1/standard-install.yaml
+      state: present

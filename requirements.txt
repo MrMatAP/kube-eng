@@ -3,3 +3,4 @@
 
 ansible==11.1.0             # GPL 3
 psycopg2-binary==2.9.10     # LGPL with exceptions
+kubernetes>=32.0.1          # Apache 2.0
