@@ -12,21 +12,43 @@
 
   - name: Create the cluster
     mrmat.kube_eng.kind_cluster:
-      name: "{{ cluster.name }}"
+      name: "{{ cluster_name }}"
       config_file: "{{ distdir }}/kind-config.yaml"
       tool_kind: "{{ tools.kind }}"
       state: present
 
   - name: Install Istio
     when: "cluster.mesh == 'istio'"
-    mrmat.kube_eng.istio:
-      profile: "{{ cluster.istio_profile | default('minimal') }}"
-      tool_kubectl: "{{ tools.kubectl }}"
-      tool_istioctl: "{{ tools.istioctl }}"
-      state: present
+    block:
+    - mrmat.kube_eng.istio:
+        profile: "{{ cluster.istio_profile | default('minimal') }}"
+        tool_kubectl: "{{ tools.kubectl }}"
+        tool_istioctl: "{{ tools.istioctl }}"
+        state: present
+    - name: Install Gateway API
+      when: "cluster.gateway_api | bool == true"
+      kubernetes.core.k8s:
+        src: https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.2.1/standard-install.yaml
+        state: present
 
-  - name: Install Gateway API
-    when: "cluster.gateway_api | bool == true"
-    kubernetes.core.k8s:
-      src: https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.2.1/standard-install.yaml
-      state: present
+  - name: Install Istio (Experimental)
+    when: "cluster.mesh == 'istio-experimental'"
+    block:
+    - mrmat.kube_eng.istio:
+        profile: "{{ cluster.istio_profile | default('minimal') }}"
+        tool_kubectl: "{{ tools.kubectl }}"
+        tool_istioctl: "{{ tools.istioctl }}"
+        state: present
+    - name: Install Gateway API (Experimental)
+      when: "cluster.gateway_api | bool == true"
+      kubernetes.core.k8s:
+        src: https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.2.1/experimental-install.yaml
+        state: present
+
+  - name: Install Edge
+    ansible.builtin.import_role:
+      name: mrmat.kube_eng.edge
+    vars:
+      kind: "{{ cluster.edge }}"
+      ns: "{{ cluster.edge_ns }}"
+      config_file: "{{ distdir }}/edge.yaml"

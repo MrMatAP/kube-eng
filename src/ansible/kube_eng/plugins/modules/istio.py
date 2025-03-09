@@ -17,6 +17,11 @@ options:
         type: str
         choices: ['default', 'demo', 'minimal', 'remote', 'ambient', 'empty', 'preview']
         default: minimal
+    alpha_gateway_api:
+        description: Enable support for the alpha gateway api
+        type: bool
+        required: false
+        default: false
     namespace:
         description: The namespace in which to install Istio
         required: false
@@ -48,6 +53,7 @@ EXAMPLES = r'''
   mrmat.kube_eng.istio:
     tool_kubectl: /path/to/kubectl
     tool_istioctl: /path/to/istioctl
+    alpha_gateway_api: true
     profile: demo
     state: present
   
@@ -72,6 +78,7 @@ def run_module():
     module_args = dict(
         profile=dict(type='str', required=False, choices=['default', 'minimal', 'remote', 'ambient', 'empty', 'preview'], default='minimal'),
         namespace=dict(type='str', required=False, default='istio-system'),
+        alpha_gateway_api=dict(type='bool', required=False, default=False),
         state=dict(type='str', required=False, default='present', choices=['present', 'absent']),
         tool_kubectl=dict(type='str', required=False, default='/opt/homebrew/bin/kubectl'),
         tool_istioctl=dict(type='str', required=False, default='/opt/homebrew/bin/istioctl'),
@@ -94,10 +101,11 @@ def run_module():
         return module.exit_json(**result)
 
     if rc == 1 and module.params['state'] == 'present':
-        rc, out, err = module.run_command(check_rc=True,
-                                          args=[module.params['tool_istioctl'],
-                                                'install', '-y',
-                                                '--set', f'profile={module.params["profile"]}'])
+        args = [module.params['tool_istioctl'], 'install', '-y',
+                '--set', f'profile={module.params["profile"]}']
+        if module.params['alpha_gateway_api']:
+            args.extend(['--set', f'values.pilot.env.PILOT_ENABLE_ALPHA_GATEWAY_API=true'])
+        rc, out, err = module.run_command(check_rc=True, args=args)
     elif rc == 0 and module.params['state'] == 'absent':
         rc, out, err = module.run_command(check_rc=True,
                                           args=[module.params['tool_istioctl'],

@@ -1,0 +1,28 @@
+# Edge for Istio with the Gateway API
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: edge-ingress
+  namespace: "{{ ns }}"
+spec:
+  gatewayClassName: istio
+  listeners:
+  - name: http
+    port: 80
+    protocol: HTTP
+    allowedRoutes:
+      namespaces:
+        from: All
+  - name: https
+    port: 443
+    protocol: HTTP
+    allowedRoutes:
+      namespaces:
+        from: All
+  - name: postgres
+    port: 5432
+    protocol: TCP
+    allowedRoutes:
+      namespaces:
+        from: All

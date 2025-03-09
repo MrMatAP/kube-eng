@@ -121,26 +121,13 @@ registry: deps
 # Cluster installation
 
 cluster: $(kind) $(COLLECTION)
-	ANSIBLE_PYTHON_INTERPRETER=$(VENVDIR)/bin/python3 $(ansible-playbook) -v -i $(ANSIBLEDIR)/inventory.yml -e distdir=$(DISTDIR) -e @$(CLUSTER_VARS) mrmat.kube_eng.create_cluster
+	ANSIBLE_PYTHON_INTERPRETER=$(VENVDIR)/bin/python3 $(ansible-playbook) -v -i $(ANSIBLEDIR)/inventory.yml -e distdir=$(DISTDIR) -e @$(CLUSTER_VARS) -e cluster_name=$(CLUSTER_NAME) mrmat.kube_eng.create_cluster
 
 cluster-destroy: $(kind) $(COLLECTION)
-	ANSIBLE_PYTHON_INTERPRETER=$(VENVDIR)/bin/python3 $(ansible-playbook) -v -i $(ANSIBLEDIR)/inventory.yml -e distdir=$(DISTDIR) -e @$(CLUSTER_VARS) mrmat.kube_eng.destroy_cluster
+	ANSIBLE_PYTHON_INTERPRETER=$(VENVDIR)/bin/python3 $(ansible-playbook) -v -i $(ANSIBLEDIR)/inventory.yml -e distdir=$(DISTDIR) -e @$(CLUSTER_VARS) -e cluster_name=$(CLUSTER_NAME) mrmat.kube_eng.destroy_cluster
 
-istio: cluster
-	istioctl install -y --set profile=minimal
-	kubectl apply -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.2.1/standard-install.yaml
-
-istio-alpha: cluster
-	istioctl install \
-		-y \
-		--set values.pilot.env.PILOT_ENABLE_ALPHA_GATEWAY_API=true \
-		--set profile=minimal
-	kubectl apply -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.2.1/experimental-install.yaml
-
-edge-gateway:
-	kubectl create ns edge
-	kubectl label ns edge istio-injection=enabled
-	kubectl apply -f var/gateway-api-edge.yaml
+#
+# Services
 
 prometheus: $(PROMETHEUS_CHART)
 	helm upgrade \
@@ -256,8 +243,3 @@ $(GRAFANA_CHART): $(GRAFANA_SOURCES) $(DISTDIR)
 $(KIALI_CHART): $(KIALI_SOURCES) $(DISTDIR)
 	helm dep update $(HELMDIR)/kube-eng-kiali --skip-refresh
 	helm package --version $(VERSION) --destination $(DISTDIR) $(HELMDIR)/kube-eng-kiali
-
-#
-# Utilities
-
-

@@ -1,4 +1,6 @@
 ---
+cluster_name: test-cluster
+
 tools:
   kind: /opt/homebrew/bin/kind
   istioctl: /opt/homebrew/bin/istioctl
@@ -6,9 +8,10 @@ tools:
   docker: /usr/local/bin/docker
 
 cluster:
-  name: test-cluster
   control_plane_nodes: 1
   worker_nodes: 3
-  mesh: istio
+  mesh: istio-experimental
   istio_profile: minimal
   gateway_api: true
+  edge: istio-gateway-api-experimental
+  edge_ns: edge

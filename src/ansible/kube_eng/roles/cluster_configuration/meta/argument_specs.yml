@@ -7,12 +7,12 @@ argument_specs:
       control_plane_nodes:
         description: Number of control plane nodes
         type: int
-        required: no
+        required: false
         default: 1
       worker_nodes:
         description: Number of worker nodes
         type: int
-        required: no
+        required: false
         default: 3
       config_file:
         description: Path to the configuration file to template

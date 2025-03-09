@@ -1,0 +1,23 @@
+#SPDX-License-Identifier: MIT-0
+---
+- name: Assert the edge namespace
+  kubernetes.core.k8s:
+    wait: true
+    state: present
+    definition:
+      apiVersion: v1
+      kind: Namespace
+      metadata:
+        name: "{{ ns }}"
+        labels:
+          istio-injection: enabled
+
+- name: Template the edge configuration
+  ansible.builtin.template:
+    src: "templates/{{ kind }}.yaml.j2"
+    dest: "{{ config_file }}"
+
+- name: Apply the edge
+  kubernetes.core.k8s:
+    src: "{{ config_file }}"
+    state: present
