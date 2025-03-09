@@ -1,1 +1,3 @@
-# MrMat :: Eng :: Prometheus installed
+# Kube Eng :: Prometheus installed
+
+Hostname:   {{ .Values.route.hostname }}

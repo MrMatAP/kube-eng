@@ -28,5 +28,5 @@ route:
   name: kube-eng-keycloak-httproute
   hostname: ke-keycloak.local
   parents:
-  - name: istio-ingress
+  - name: edge-ingress
     namespace: edge

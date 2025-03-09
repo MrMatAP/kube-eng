@@ -22,9 +22,8 @@ svc:
   name: kube-eng-postgres-svc
   port: 5432
 
-route:
-  name: kube-eng-postgres-route
-  hostname: ke-postgres.local
-  parents:
-  - name: istio-ingress
-    namespace: edge
+# An extra service to expose postgres as type Loadbalancer
+# We do this to avoid limitations for TCPServices being alpha in the Gateway API
+svc_ext:
+  name: kube-eng-postgres-ext-svc
+  port: 5432

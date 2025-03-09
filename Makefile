@@ -32,7 +32,7 @@ KIALI_SOURCES := $(shell find $(HELMDIR)/kube-eng-kiali)
 KIALI_CHART := $(DISTDIR)/kube-eng-kiali-$(VERSION).tgz
 COLLECTION_SOURCES :=$(shell find $(SRCDIR)/ansible/kube_eng)
 
-CHARTS := $(PROMETHEUS_CHART) $(POSTGRES_CHART )$(KEYCLOAK_CHART) $(GRAFANA_CHART) $(KIALI_CHART)
+CHARTS := $(PROMETHEUS_CHART) $(POSTGRES_CHART) $(KEYCLOAK_CHART) $(GRAFANA_CHART) $(KIALI_CHART)
 COLLECTION := $(DISTDIR)/mrmat-kube_eng-$(VERSION).tar.gz
 
 CLOUD_PROVIDER_KIND_URL := https://github.com/kubernetes-sigs/cloud-provider-kind/releases/download/v0.6.0/cloud-provider-kind_0.6.0_darwin_arm64.tar.gz
@@ -103,8 +103,6 @@ $(ansible-playbook) $(ansible-galaxy): $(VENVDIR)
 #
 # Artefacts
 
-collection: $(COLLECTION)
-
 $(COLLECTION): $(COLLECTION_SOURCES) | deps
 	rsync -zavuSH --delete --exclude galaxy.yml $(ANSIBLEDIR)/kube_eng $(TMPDIR)/
 	cat $(ANSIBLEDIR)/kube_eng/galaxy.yml | sed -e "s/version:.*/version: $(VERSION)/" > $(TMPDIR)/kube_eng/galaxy.yml
@@ -120,106 +118,26 @@ registry: deps
 #
 # Cluster installation
 
-cluster: $(kind) $(COLLECTION)
-	ANSIBLE_PYTHON_INTERPRETER=$(VENVDIR)/bin/python3 $(ansible-playbook) -v -i $(ANSIBLEDIR)/inventory.yml -e distdir=$(DISTDIR) -e @$(CLUSTER_VARS) -e cluster_name=$(CLUSTER_NAME) mrmat.kube_eng.create_cluster
+cluster: $(COLLECTION)
+	ANSIBLE_PYTHON_INTERPRETER=$(VENVDIR)/bin/python3 $(ansible-playbook) -v -i $(ANSIBLEDIR)/inventory.yml \
+		-e distdir=$(DISTDIR) -e @$(CLUSTER_VARS) -e cluster_name=$(CLUSTER_NAME) \
+		mrmat.kube_eng.create_cluster
 
-cluster-destroy: $(kind) $(COLLECTION)
+cluster-destroy: $(COLLECTION)
 	ANSIBLE_PYTHON_INTERPRETER=$(VENVDIR)/bin/python3 $(ansible-playbook) -v -i $(ANSIBLEDIR)/inventory.yml -e distdir=$(DISTDIR) -e @$(CLUSTER_VARS) -e cluster_name=$(CLUSTER_NAME) mrmat.kube_eng.destroy_cluster
 
 #
 # Services
 
-prometheus: $(PROMETHEUS_CHART)
-	helm upgrade \
-		kube-eng-prometheus \
-		$(PROMETHEUS_CHART) \
-		--install \
-		--wait \
-		--create-namespace \
-		--namespace $(NAMESPACE)
-	helm test kube-eng-prometheus --namespace $(NAMESPACE)
-	kubectl delete po -n $(NAMESPACE) kube-eng-prometheus-test
-
-prometheus-uninstall:
-	helm uninstall kube-eng-prometheus --namespace $(NAMESPACE)
-
-postgres: $(POSTGRES_CHART)
-	helm upgrade \
-		kube-eng-postgres \
-		$(POSTGRES_CHART) \
-		--install \
-		--wait \
-		--create-namespace \
-		--namespace $(NAMESPACE) \
-		--set pod.admin_password="$(shell cat $(admin-password))"
-
-postgres-uninstall:
-	helm uninstall kube-eng-postgres --namespace $(NAMESPACE)
-
-keycloak: $(KEYCLOAK_CHART) $(admin-password)
-	ansible-playbook \
-		-e admin_password="$(shell cat $(admin-password))" \
-		ansible/kube-eng-keycloak-preinstall.yml
-	helm upgrade \
-		kube-eng-keycloak \
-		$(KEYCLOAK_CHART) \
-		--install \
-		--wait \
-		--create-namespace \
-		--namespace $(NAMESPACE) \
-		--set pod.admin_password="$(shell cat $(admin-password))" \
-		--set pod.db_password="$(shell cat $(admin-password))"
-	helm test kube-eng-keycloak --namespace $(NAMESPACE)
-	kubectl delete po -n $(NAMESPACE) kube-eng-keycloak-test
-	ansible-playbook \
-		-e admin_password="$(shell cat $(admin-password))" \
-		ansible/kube-eng-keycloak-postinstall.yml
-
-keycloak-uninstall:
-	helm uninstall kube-eng-keycloak --namespace $(NAMESPACE)
-
-grafana: $(GRAFANA_CHART)
-	ansible-playbook \
-		-e admin_password="$(shell cat $(admin_password))" \
-		ansible/kube-eng-grafana-preinstall.yml
-	helm upgrade \
-		kube-eng-grafana \
-		$(GRAFANA_CHART) \
-		--install \
-		--wait \
-		--create-namespace \
-		--namespace $(NAMESPACE) \
-		--set grafana.envRenderSecret.GF_AUTH_GENERIC_OAUTH_CLIENT_ID=ke_grafana \
-		--set grafana.envRenderSecret.GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET="$(shell cat $(admin_password))" \
-		--set grafana.adminUser=admin \
-		--set grafana.adminPassword="$(shell cat $(admin_password))"
-	helm test kube-eng-grafana --namespace $(NAMESPACE)
-	kubectl delete po -n $(NAMESPACE) kube-eng-grafana-test
-	ansible-playbook \
-		-e admin_password="$(shell cat $(admin_password))" \
-		ansible/kube-eng-grafana-postinstall.yml
-
-grafana-uninstall:
-	helm uninstall kube-eng-grafana --namespace $(NAMESPACE)
-
-kiali: $(KIALI_CHART)
-	#ansible-playbook \
-	#	-e admin_password="$(shell cat $(ADMIN_PASSWORD))" \
-	#	ansible/kube-eng-kiali-preinstall.yml
-	#kubectl create secret generic -n $(NAMESPACE) kiali --from-literal="oidc-secret=$(shell cat $(ADMIN_PASSWORD))"
-	helm upgrade \
-		kube-eng-kiali \
-		$(KIALI_CHART) \
-		--install \
-		--wait \
-		--create-namespace \
-		--namespace $(NAMESPACE) \
-		--set kiali.cr.spec.external_services.grafana.auth.password="$(shell cat $(admin_password))"
-	helm test kube-eng-kiali --namespace $(NAMESPACE)
-	kubectl delete po -n $(NAMESPACE) kube-eng-kiali-test
-
-kiali-uninstall:
-	helm uninstall kube-eng-kiali --namespace $(NAMESPACE)
+services: $(COLLECTION) $(CHARTS)
+	ANSIBLE_PYTHON_INTERPRETER=$(VENVDIR)/bin/python3 $(ansible-playbook) -v -i $(ANSIBLEDIR)/inventory.yml \
+		-e distdir=$(DISTDIR) -e @$(CLUSTER_VARS) -e cluster_name=$(CLUSTER_NAME) -e admin_password="$(shell cat $(admin-password-file))" \
+		-e prometheus_chart=$(PROMETHEUS_CHART) \
+		-e postgres_chart=$(POSTGRES_CHART) \
+		-e keycloak_chart=$(KEYCLOAK_CHART) \
+		-e grafana_chart=$(GRAFANA_CHART) \
+		-e kiali_chart=$(KIALI_CHART) \
+		mrmat.kube_eng.create_services
 
 #
 # Charts

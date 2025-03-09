@@ -5,9 +5,8 @@ route:
   enabled: true
   name: kube-eng-prometheus-httproute
   hostname: ke-prometheus.local
-  parents:
-  - name: istio-ingress
-    namespace: edge
+  parent: edge-ingress
+  parent_ns: edge
 
 #
 # Dependency Chart overrides

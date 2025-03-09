@@ -1,0 +1,214 @@
+---
+- name: Create services in the cluster
+  hosts: localhost
+  tasks:
+  - name: Install Prometheus
+    when: "prometheus.enabled | bool == true"
+    kubernetes.core.helm:
+      name: prometheus
+      create_namespace: true
+      release_namespace: "{{ prometheus.ns }}"
+      chart_ref: "{{ prometheus_chart }}"
+      wait: true
+      values:
+        route:
+          hostname: "{{ prometheus.hostname }}"
+
+  - name: Install and configure PostgreSQL
+    when: "postgres.enabled | bool == true"
+    block:
+    - name: Deploy PostgreSQL
+      kubernetes.core.helm:
+        name: postgres
+        create_namespace: true
+        release_namespace: "{{ postgres.ns }}"
+        chart_ref: "{{ postgres_chart }}"
+        wait: true
+        values:
+          pod:
+            admin_password: "{{ admin_password }}"
+    - name: Get the IP address of the external PostgreSQL service
+      kubernetes.core.k8s_info:
+        kind: Service
+        name: kube-eng-postgres-ext-svc
+        namespace: "{{ postgres.ns }}"
+      register: pg_ext_svc
+
+  - name: Install KeyCloak
+    when: "keycloak.enabled | bool == true and postgres.enabled | bool == true"
+    block:
+    - name: Create a keycloak user in PostgreSQL
+      community.postgresql.postgresql_user:
+        login_host: "{{ pg_ext_svc.resources[0].status.loadBalancer.ingress[0].ip }}"
+        login_user: postgres
+        login_password: "{{ admin_password }}"
+        login_db: postgres
+        name: keycloak
+        password: "{{ admin_password }}"
+        comment: "Keycloak DB User"
+        state: present
+      environment:
+        PGOPTIONS: "-c password_encryption=scram-sha-256"
+    - name: Create a database for Keycloak in PostgreSQL
+      community.postgresql.postgresql_db:
+        login_host: "{{ pg_ext_svc.resources[0].status.loadBalancer.ingress[0].ip }}"
+        login_user: postgres
+        login_password: "{{ admin_password }}"
+        name: keycloak
+        owner: keycloak
+        comment: "Keycloak Database"
+        encoding: UTF-8
+        state: present
+    - name: Install Keycloak
+      kubernetes.core.helm:
+        name: keycloak
+        create_namespace: true
+        release_namespace: "{{ keycloak.ns }}"
+        chart_ref: "{{ keycloak_chart }}"
+        wait: true
+        values:
+          pod:
+            admin_password: "{{ admin_password }}"
+            db_password: "{{ admin_password }}"
+            db_host: "kube-eng-postgres-svc.{{ postgres.ns }}.svc.cluster.local"
+          route:
+            hostname: "{{ keycloak.hostname }}"
+
+  - name: Install Grafana
+    when: "grafana.enabled | bool == true and keycloak.enabled | bool == true"
+    block:
+    - name: Register Grafana in Keycloak
+      community.general.keycloak_client:
+        auth_keycloak_url: "http://{{ keycloak.hostname }}"
+        auth_realm: master
+        auth_username: admin
+        auth_password: "{{ admin_password }}"
+        client_id: "{{ grafana.client_id }}"
+        name: "{{ grafana.client_id }}"
+        description: "Kube Eng :: Grafana"
+        enabled: true
+        protocol: openid-connect
+        public_client: false
+        client_authenticator_type: client-secret
+        secret: "{{ admin_password }}"
+        root_url: "http:/{{ grafana.hostname }}/"
+        base_url: "http://{{ grafana.hostname }}/"
+        admin_url: "http://{{ grafana.hostname }}/"
+        redirect_uris:
+        - "http://{{ grafana.hostname }}/login/generic_oauth"
+        standard_flow_enabled: true
+        implicit_flow_enabled: false
+        direct_access_grants_enabled: true
+        default_client_scopes:
+        - email
+        - offline_access
+        - profile
+        - roles
+    - name: Register Grafana Viewer role
+      community.general.keycloak_role:
+        auth_keycloak_url: "http://{{ keycloak.hostname }}"
+        auth_realm: master
+        auth_username: admin
+        auth_password: "{{ admin_password }}"
+        name: Viewer
+        description: Grafana Viewers
+        client_id: "{{ grafana.client_id }}"
+        state: present
+    - name: Register Grafana Editor role
+      community.general.keycloak_role:
+        auth_keycloak_url: "http://{{ keycloak.hostname }}"
+        auth_realm: master
+        auth_username: admin
+        auth_password: "{{ admin_password }}"
+        name: Editor
+        description: Grafana Editors
+        client_id: "{{ grafana.client_id }}"
+        state: present
+    - name: Register Grafana Admin role
+      community.general.keycloak_role:
+        auth_keycloak_url: "http://{{ keycloak.hostname }}"
+        auth_realm: master
+        auth_username: admin
+        auth_password: "{{ admin_password }}"
+        name: Admin
+        description: Grafana Admins
+        client_id: "{{ grafana.client_id }}"
+        state: present
+    - name: Install Grafana
+      kubernetes.core.helm:
+        name: grafana
+        create_namespace: true
+        release_namespace: "{{ grafana.ns }}"
+        chart_ref: "{{ grafana_chart }}"
+        wait: true
+        values:
+          route:
+            hostname: "{{ grafana.hostname }}"
+          grafana:
+            adminUser: "{{ grafana.admin_user }}"
+            adminPassword: "{{ admin_password }}"
+            envRenderSecret:
+              GF_AUTH_GENERIC_OAUTH_CLIENT_ID: "{{ grafana.client_id }}"
+              GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET: "{{ admin_password }}"
+            grafana.ini:
+              server:
+                root_url: "http://{{ grafana.hostname }}"
+                auth.generic_oauth:
+                  auth_url: "http://{{ keycloak.hostname }}/realms/master/protocol/openid-connect/auth"
+                  token_url: "http://kube-eng-keycloak-svc.{{ keycloak.ns }}.svc.cluster.local/realms/master/protocol/openid-connect/token"
+                  api_url: "http://kube-eng-keycloak-svc.{{ keycloak.ns }}.svc.cluster.local/realms/master/protocol/openid-connect/userinfo"
+    - name: Configure Prometheus datasource
+      community.grafana.grafana_datasource:
+        grafana_url: "http://{{ grafana.hostname }}"
+        grafana_user: "{{ grafana.admin_user }}"
+        grafana_password: "{{ admin_password }}"
+        name: prometheus
+        ds_type: prometheus
+        ds_url: "http://prometheus-server.{{ prometheus.ns }}.svc.cluster.local"
+        is_default: true
+        state: present
+    - name: Import Istio Control Plane Dashboard
+      community.grafana.grafana_dashboard:
+        grafana_url: "http://{{ grafana.hostname }}"
+        grafana_user: "{{ grafana.admin_user }}"
+        grafana_password: "{{ admin_password }}"
+        dashboard_id: 7645
+        state: present
+    - name: Import Ztunnel Dashboard
+      community.grafana.grafana_dashboard:
+        grafana_url: "http://{{ grafana.hostname }}"
+        grafana_user: "{{ grafana.admin_user }}"
+        grafana_password: "{{ admin_password }}"
+        dashboard_id: 21306
+        state: present
+
+  - name: Install Kiali
+    when: "kiali.enabled | bool == true"
+    block:
+    - name: Deploy Kiali
+      kubernetes.core.helm:
+        name: kiali
+        create_namespace: true
+        release_namespace: "{{ kiali.ns }}"
+        chart_ref: "{{ kiali_chart }}"
+        wait: true
+        values:
+          route:
+            hostname: "{{ kiali.hostname }}"
+          kiali:
+            external_services:
+              istio:
+                ingress_gateway_namespace: "{{ cluster.edge_ns }}"
+                egress_gateway_namespace: "{{ cluster.edge_ns }}"
+              prometheus:
+                internal_url: "http://prometheus-server.{{ prometheus.ns }}.svc.cluster.local"
+                external_url: "http://{{ prometheus.hostname }}"
+                url: "http://prometheus-server.{{ prometheus.ns }}.svc.cluster.local"
+              grafana:
+                enabled: "{{ grafana.enabled | bool }}"
+                internal_url: "http://grafana.{{ grafana.ns }}.svc.cluster.local"
+                external_url: "http://{{ grafana.hostname }}"
+                auth:
+                  username: "{{ grafana.admin_user }}"
+                  password: "{{ admin_password }}"
+                  type: basic

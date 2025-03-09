@@ -15,3 +15,29 @@ cluster:
   gateway_api: true
   edge: istio-gateway-api-experimental
   edge_ns: edge
+
+prometheus:
+  enabled: true
+  ns: prometheus
+  hostname: prometheus.local
+
+postgres:
+  enabled: true
+  ns: postgres
+
+keycloak:
+  enabled: true
+  ns: keycloak
+  hostname: keycloak.local
+
+grafana:
+  enabled: true
+  ns: grafana
+  hostname: grafana.local
+  client_id: grafana
+  admin_user: admin
+
+kiali:
+  enabled: true
+  ns: istio-system
+  hostname: kiali.local

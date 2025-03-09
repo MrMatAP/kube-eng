@@ -4,10 +4,9 @@
 route:
   enabled: true
   name: kube-eng-grafana-httproute
-  hostname: ke-grafana.local
-  parents:
-  - name: istio-ingress
-    namespace: edge
+  hostname: grafana.local
+  parent: edge-ingress
+  parent_ns: edge
 
 #
 # Dependency Chart overrides

@@ -11,12 +11,10 @@ spec:
   hostnames:
   - {{ .Values.route.hostname }}
   parentRefs:
-  {{- range .Values.route.parents }}
   - group: gateway.networking.k8s.io
     kind: Gateway
-    name: {{ .name }}
-    namespace: {{ .namespace }}
-  {{- end }}
+    name: {{ .Values.route.parent }}
+    namespace: {{ .Values.route.parent_ns }}
   rules:
   - backendRefs:
     - kind: Service
