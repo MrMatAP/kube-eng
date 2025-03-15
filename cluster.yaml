@@ -7,6 +7,9 @@ tools:
   kubectl: /opt/homebrew/bin/kubectl
   docker: /usr/local/bin/docker
 
+host:
+  forwarder: 8.8.8.8
+
 cluster:
   control_plane_nodes: 1
   worker_nodes: 3

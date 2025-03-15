@@ -8,8 +8,8 @@ VERSION ?= 0.0.0-dev0.$(GIT_SHA)
 SRCDIR := $(CURDIR)/src
 DISTDIR := $(CURDIR)/.dist
 TMPDIR := $(CURDIR)/.tmp
-
 BINDIR := $(CURDIR)/bin
+ETCDIR := $(CURDIR)/etc
 VENVDIR := $(CURDIR)/.venv
 ANSIBLEDIR := $(SRCDIR)/ansible
 HELMDIR := $(SRCDIR)/helm
@@ -60,6 +60,7 @@ cloud-provider-kind := $(BINDIR)/cloud-provider-kind
 cloud-provider-mdns := $(VENVDIR)/bin/cloud-provider-mdns
 ansible-galaxy := $(VENVDIR)/bin/ansible-galaxy
 ansible-playbook := $(VENVDIR)/bin/ansible-playbook
+bind := /opt/homebrew/bin/named
 docker := /usr/local/bin/docker
 
 deps: $(admin-password-file) $(docker) $(istioctl) $(kubectl) $(kind) $(cloud-provider-kind) $(cloud-provider-mdns) $(ansible-playbook) $(ansible-galaxy)
@@ -68,7 +69,7 @@ deps: $(admin-password-file) $(docker) $(istioctl) $(kubectl) $(kind) $(cloud-pr
 $(admin-password-file):
 	@echo "$(shell openssl rand -base64 12)" > $@
 
-$(BINDIR) $(TMPDIR) $(DISTDIR):
+$(BINDIR) $(TMPDIR) $(DISTDIR) $(ETCDIR):
 	mkdir -p $@
 
 $(VENVDIR):
@@ -87,6 +88,9 @@ $(istioctl):
 
 $(kubectl):
 	brew install kubectl
+
+$(bind):
+	brew install bind
 
 $(cloud-provider-kind): | $(TMPDIR) $(BINDIR)
 	curl -Lo $(TMPDIR)/cloud-provider-kind.tar.gz $(CLOUD_PROVIDER_KIND_URL)
@@ -109,17 +113,23 @@ $(COLLECTION): $(COLLECTION_SOURCES) | deps
 	$(ansible-galaxy) collection install --force $(COLLECTION)
 
 #
-# Airgap Registry
+# Host services
 
 registry: deps
 	$(ansible-playbook) -i $(ANSIBLEDIR)/inventory.yml -$(ANSIBLEDIR)/kube-eng-registry.yml
+
+host-infra: $(COLLECTION)
+	ANSIBLE_PYTHON_INTERPRETER=$(VENVDIR)/bin/python3 $(ansible-playbook) -v -i $(ANSIBLEDIR)/inventory.yml \
+		-e distdir=$(DISTDIR) -e @$(CLUSTER_VARS) -e cluster_name=$(CLUSTER_NAME) -e admin_password="$(shell cat $(admin-password-file))" \
+		mrmat.kube_eng.create_host_infra
+
 
 #
 # Cluster installation
 
 cluster: $(COLLECTION)
 	ANSIBLE_PYTHON_INTERPRETER=$(VENVDIR)/bin/python3 $(ansible-playbook) -v -i $(ANSIBLEDIR)/inventory.yml \
-		-e distdir=$(DISTDIR) -e @$(CLUSTER_VARS) -e cluster_name=$(CLUSTER_NAME) \
+		-e distdir=$(DISTDIR) -e @$(CLUSTER_VARS) -e cluster_name=$(CLUSTER_NAME) -e admin_password="$(shell cat $(admin-password-file))" \
 		mrmat.kube_eng.create_cluster
 
 cluster-destroy: $(COLLECTION)

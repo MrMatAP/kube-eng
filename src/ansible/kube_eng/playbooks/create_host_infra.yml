@@ -1,0 +1,13 @@
+# Create and configure all the host infrastructure
+---
+- name: Configure the local resolver
+  hosts: localhost
+  tasks:
+  - name: Template the resolver configuration
+    ansible.builtin.import_role:
+      name: mrmat.kube_eng.resolver_configuration
+    vars:
+      resolver_dir: "{{ distdir }}/resolver"
+      forwarder: "{{ host.forwarder }}"
+      domain: "{{ cluster_name }}.k8s"
+      resolver_key: "{{ admin_password }}"

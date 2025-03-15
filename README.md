@@ -21,3 +21,8 @@ You should then be able to:
 * Open [Prometheus](http://prometheus.local/)
 * Open [Keycloak](http://keylocal.local/)
 * Open [Grafana](http://grafana.local/)
+
+## Limitations
+
+* The `kube_eng.playbooks.create_host_infra.yml` playbook templates the configuration of a BIND resolver to which we   
+  intend to send DNS updates to. MacOS panics when sending a DDNS update to it.
