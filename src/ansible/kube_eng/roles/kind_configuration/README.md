@@ -1,7 +1,7 @@
 Role Name
 =========
 
-mrmat.kube_eng.cluster_configuration
+mrmat.kube_eng.kind_configuration
 
 Requirements
 ------------
@@ -32,7 +32,7 @@ Example Playbook
   tasks:
     - name: Template the cluster configuration
       ansible.builtin.import_role:
-      name: mrmat.kube_eng.cluster_configuration
+        name: mrmat.kube_eng.kind_configuration
       vars:
       control_plane_nodes: "{{ cluster.control_plane_nodes | int }}"
       worker_nodes: "{{ cluster.worker_nodes | int }}"
