@@ -16,7 +16,6 @@ HELMDIR := $(SRCDIR)/helm
 
 CLUSTER_VARS := $(CURDIR)/cluster.yaml
 CLUSTER_NAME := $(shell hostname -s)
-CLUSTER_CONFIG := $(CURDIR)/var/kind-large.yaml
 NAMESPACE := kube-eng
 
 
