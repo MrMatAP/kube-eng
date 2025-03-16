@@ -22,6 +22,11 @@ options:
         type: bool
         required: false
         default: false
+    tracing:
+        description: Enable support for tracing
+        type: bool
+        required: false
+        default: false
     namespace:
         description: The namespace in which to install Istio
         required: false
@@ -79,6 +84,7 @@ def run_module():
         profile=dict(type='str', required=False, choices=['default', 'minimal', 'remote', 'ambient', 'empty', 'preview'], default='minimal'),
         namespace=dict(type='str', required=False, default='istio-system'),
         alpha_gateway_api=dict(type='bool', required=False, default=False),
+        tracing=dict(type='bool', required=False, default=False),
         state=dict(type='str', required=False, default='present', choices=['present', 'absent']),
         tool_kubectl=dict(type='str', required=False, default='/opt/homebrew/bin/kubectl'),
         tool_istioctl=dict(type='str', required=False, default='/opt/homebrew/bin/istioctl'),
@@ -105,6 +111,9 @@ def run_module():
                 '--set', f'profile={module.params["profile"]}']
         if module.params['alpha_gateway_api']:
             args.extend(['--set', f'values.pilot.env.PILOT_ENABLE_ALPHA_GATEWAY_API=true'])
+        if module.params['tracing']:
+            args.extend(['--set', 'meshConfig.enableTracing=true',
+                         '--set', 'meshConfig.defaultConfig.tracing={}'])
         rc, out, err = module.run_command(check_rc=True, args=args)
     elif rc == 0 and module.params['state'] == 'absent':
         rc, out, err = module.run_command(check_rc=True,
