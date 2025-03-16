@@ -1,0 +1,11 @@
+apiVersion: v2
+name: kube-eng-jaeger
+description: A Helm chart to install Jaeger
+type: application
+version: 0.0.0
+# The upstream Jaeger version and dependency
+appVersion: 1.53.0
+dependencies:
+- name: jaeger
+  version: 3.4.0
+  repository: https://jaegertracing.github.io/helm-charts

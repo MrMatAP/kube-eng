@@ -27,11 +27,13 @@ KEYCLOAK_SOURCES := $(shell find $(HELMDIR)/kube-eng-keycloak)
 KEYCLOAK_CHART := $(DISTDIR)/kube-eng-keycloak-$(VERSION).tgz
 GRAFANA_SOURCES := $(shell find $(HELMDIR)/kube-eng-grafana)
 GRAFANA_CHART := $(DISTDIR)/kube-eng-grafana-$(VERSION).tgz
+JAEGER_CHART := $(DISTDIR)/kube-eng-jaeger-$(VERSION).tgz
+JAEGER_SOURCES := $(shell find $(HELMDIR)/kube-eng-jaeger)
 KIALI_SOURCES := $(shell find $(HELMDIR)/kube-eng-kiali)
 KIALI_CHART := $(DISTDIR)/kube-eng-kiali-$(VERSION).tgz
 COLLECTION_SOURCES :=$(shell find $(SRCDIR)/ansible/kube_eng)
 
-CHARTS := $(PROMETHEUS_CHART) $(POSTGRES_CHART) $(KEYCLOAK_CHART) $(GRAFANA_CHART) $(KIALI_CHART)
+CHARTS := $(PROMETHEUS_CHART) $(POSTGRES_CHART) $(KEYCLOAK_CHART) $(GRAFANA_CHART) $(JAEGER_CHART) $(KIALI_CHART)
 COLLECTION := $(DISTDIR)/mrmat-kube_eng-$(VERSION).tar.gz
 
 CLOUD_PROVIDER_KIND_URL := https://github.com/kubernetes-sigs/cloud-provider-kind/releases/download/v0.6.0/cloud-provider-kind_0.6.0_darwin_arm64.tar.gz
@@ -44,6 +46,7 @@ ANSIBLE_PLAYBOOK_EXEC = ANSIBLE_PYTHON_INTERPRETER=$(VENVDIR)/bin/python3 $(ansi
 							-e postgres_chart=$(POSTGRES_CHART) \
 							-e keycloak_chart=$(KEYCLOAK_CHART) \
 							-e grafana_chart=$(GRAFANA_CHART) \
+							-e jaeger_chart=$(JAEGER_CHART) \
 							-e kiali_chart=$(KIALI_CHART)
 
 
@@ -162,6 +165,10 @@ $(KEYCLOAK_CHART): $(KEYCLOAK_SOURCES) $(DISTDIR)
 $(GRAFANA_CHART): $(GRAFANA_SOURCES) $(DISTDIR)
 	helm dep update $(HELMDIR)/kube-eng-grafana --skip-refresh
 	helm package --version $(VERSION) --destination $(DISTDIR) $(HELMDIR)/kube-eng-grafana
+
+$(JAEGER_CHART): $(JAEGER_SOURCES) $(DISTDIR)
+	helm dep update $(HELMDIR)/kube-eng-jaeger --skip-refresh
+	helm package --version $(VERSION) --destination $(DISTDIR) $(HELMDIR)/kube-eng-jaeger
 
 $(KIALI_CHART): $(KIALI_SOURCES) $(DISTDIR)
 	helm dep update $(HELMDIR)/kube-eng-kiali --skip-refresh

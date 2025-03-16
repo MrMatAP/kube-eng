@@ -29,3 +29,19 @@ You should then be able to:
   intend to send DNS updates to. MacOS panics when sending a DDNS update to it.
 * It would be useful if the airgap-registry is a pull-through so we do not have to declare the
   container images to preheat. But the bare registry:2 from dockerhub can only have one upstream and the harbor registry uses a lot of resources.
+* When enabling istio-injection on the stack namespaces then jaeger doesn't start up properly and kiali complains about missing connectivity to istio
+
+  Here is an ansible role to precreate the namespace with istio injection:
+
+  ```yaml
+  - name: Create Prometheus namespace
+    kubernetes.core.k8s:
+      state: present
+      definition:
+        apiVersion: v1
+        kind: Namespace
+        metadata:
+          name: "{{ stack.prometheus.ns }}"
+          labels:
+            istio-injection: enabled
+  ```

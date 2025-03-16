@@ -4,35 +4,37 @@
   tasks:
   - name: Install Prometheus
     when: "stack.prometheus.enabled | bool == true"
-    kubernetes.core.helm:
-      name: prometheus
-      create_namespace: true
-      release_namespace: "{{ stack.prometheus.ns }}"
-      chart_ref: "{{ prometheus_chart }}"
-      wait: true
-      values:
-        route:
-          hostname: "{{ stack.prometheus.hostname }}"
-        prometheus:
-          configmapReload:
-            prometheus:
+    block:
+    - name: Deploy Prometheus
+      kubernetes.core.helm:
+        name: prometheus
+        create_namespace: true
+        release_namespace: "{{ stack.prometheus.ns }}"
+        chart_ref: "{{ prometheus_chart }}"
+        wait: true
+        values:
+          route:
+            hostname: "{{ stack.prometheus.hostname }}"
+          prometheus:
+            configmapReload:
+              prometheus:
+                image:
+                  repository: "{{ host.registry.name }}:5000/prometheus-operator/prometheus-config-reloader"
+            server:
               image:
-                repository: "{{ host.registry.name }}:5000/prometheus-operator/prometheus-config-reloader"
-          server:
-            image:
-              repository: "{{ host.registry.name }}:5000/prometheus/prometheus"
-          alertmanager:
-            image:
-              repository: "{{ host.registry.name }}:5000/prometheus/alertmanager"
-          prometheus-node-exporter:
-            global:
-              imageRegistry: "{{ host.registry.name }}:5000"
-          kube-state-metrics:
-            global:
-              imageRegistry: "{{ host.registry.name }}:5000"
-          prometheus-pushgateway:
-            image:
-              repository: "{{ host.registry.name }}:5000/prometheus/pushgateway"
+                repository: "{{ host.registry.name }}:5000/prometheus/prometheus"
+            alertmanager:
+              image:
+                repository: "{{ host.registry.name }}:5000/prometheus/alertmanager"
+            prometheus-node-exporter:
+              global:
+                imageRegistry: "{{ host.registry.name }}:5000"
+            kube-state-metrics:
+              global:
+                imageRegistry: "{{ host.registry.name }}:5000"
+            prometheus-pushgateway:
+              image:
+                repository: "{{ host.registry.name }}:5000/prometheus/pushgateway"
 
   - name: Install and configure PostgreSQL
     when: "stack.postgres.enabled | bool == true"
@@ -204,6 +206,23 @@
         grafana_password: "{{ admin_password }}"
         dashboard_id: 21306
         state: present
+
+  - name: Install Jaeger
+    when: "stack.jaeger.enabled | bool == true"
+    block:
+    - name: Deploy Jaeger
+      kubernetes.core.helm:
+        name: jaeger
+        create_namespace: true
+        release_namespace: "{{ stack.jaeger.ns }}"
+        chart_ref: "{{ jaeger_chart }}"
+        wait: true
+        values:
+          route:
+            hostname: "{{ stack.jaeger.hostname }}"
+          jaeger:
+            global:
+              imageRegistry: "{{ host.registry.name }}:5000"
 
   - name: Install Kiali
     when: "stack.kiali.enabled | bool == true"

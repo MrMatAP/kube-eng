@@ -10,6 +10,7 @@ prometheus_chart: ""
 postgres_chart: ""
 keycloak_chart: ""
 grafana_chart: ""
+jaeger_chart: ""
 kiali_chart: ""
 
 cluster:
@@ -107,6 +108,31 @@ stack:
     hostname: grafana.local
     client_id: grafana
     admin_user: admin
+  jaeger:
+    enabled: true
+    preheat_images:
+    - registry: docker.io
+      repository: jaegertracing
+      image: jaeger-query
+      tag: 1.53.0
+    - registry: docker.io
+      repository: jaegertracing
+      image: jaeger-agent
+      tag: 1.53.0
+    - registry: docker.io
+      repository: jaegertracing
+      image: jaeger-collector
+      tag: 1.53.0
+    - registry: docker.io
+      repository: jaegertracing
+      image: jaeger-cassandra-schema
+      tag: 1.53.0
+    - registry: docker.io
+      repository: library
+      image: cassandra
+      tag: 3.11.6
+    ns: jaeger
+    hostname: jaeger.local
   kiali:
     enabled: true
     preheat_images:
