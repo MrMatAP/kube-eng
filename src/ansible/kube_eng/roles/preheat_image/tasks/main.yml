@@ -1,0 +1,26 @@
+#SPDX-License-Identifier: MIT-0
+---
+- name: Check whether we have the image in the registry
+  ansible.builtin.uri:
+    url: "http://{{ airgap_registry }}/v2/{{ repository }}/{{ image }}/manifests/{{ tag }}"
+    method: HEAD
+    status_code: [200, 404]
+  register: image_status
+
+- name: Transfer the image
+  when: image_status.status != 200
+  block:
+  - name: Pull the image into docker
+    community.docker.docker_image_pull:
+      name: "{{ registry }}/{{ repository }}/{{ image }}:{{ tag }}"
+
+  - name: Re-tag the image to the airtagged repository
+    community.docker.docker_image_tag:
+      name: "{{ registry }}/{{ repository }}/{{ image }}:{{ tag }}"
+      repository:
+      - "{{ airgap_registry }}/{{ repository }}/{{ image }}:{{ tag }}"
+
+  - name: Push the image into the airtagged repository
+    community.docker.docker_image_push:
+      name: "{{ airgap_registry }}/{{ repository }}/{{ image }}"
+      tag: "{{ tag }}"

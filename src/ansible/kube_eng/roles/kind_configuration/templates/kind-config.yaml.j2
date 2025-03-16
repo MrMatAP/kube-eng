@@ -10,10 +10,10 @@ nodes:
 {% endfor %}
 containerdConfigPatches:
 - |-
-  [plugins."io.containerd.grpc.v1.cri".registry.configs."mrmat-registry:5000".tls]
+  [plugins."io.containerd.grpc.v1.cri".registry.configs."{{ airgap_registry_name }}:5000".tls]
   ca_file = ""
   cert_file = ""
   key_file = ""
   insecure_skip_verify = true
-  [plugins."io.containerd.grpc.v1.cri".registry.mirrors."mrmat-registry:5000"]
-  endpoint = ["http://mrmat-registry:5000"]
+  [plugins."io.containerd.grpc.v1.cri".registry.mirrors."{{ airgap_registry_name }}:5000"]
+  endpoint = ["http://{{ airgap_registry_name }}:5000"]

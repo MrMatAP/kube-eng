@@ -8,13 +8,14 @@
     vars:
       control_plane_nodes: "{{ cluster.control_plane_nodes | int }}"
       worker_nodes: "{{ cluster.worker_nodes | int }}"
-      config_file: "{{ distdir }}/kind-config.yaml"
+      config_file: "{{ dist_dir }}/kind-config.yaml"
+      airgap_registry_name: "{{ host.registry.name }}"
 
   - name: Create the cluster
     mrmat.kube_eng.kind_cluster:
       name: "{{ cluster_name }}"
-      config_file: "{{ distdir }}/kind-config.yaml"
-      tool_kind: "{{ tools.kind }}"
+      config_file: "{{ dist_dir }}/kind-config.yaml"
+      tool_kind: "{{ host.tools.kind }}"
       state: present
 
   - name: Install Istio
@@ -22,8 +23,8 @@
     block:
     - mrmat.kube_eng.istio:
         profile: "{{ cluster.istio_profile | default('minimal') }}"
-        tool_kubectl: "{{ tools.kubectl }}"
-        tool_istioctl: "{{ tools.istioctl }}"
+        tool_kubectl: "{{ host.tools.kubectl }}"
+        tool_istioctl: "{{ host.tools.istioctl }}"
         state: present
     - name: Install Gateway API
       when: "cluster.gateway_api | bool == true"
@@ -36,8 +37,8 @@
     block:
     - mrmat.kube_eng.istio:
         profile: "{{ cluster.istio_profile | default('minimal') }}"
-        tool_kubectl: "{{ tools.kubectl }}"
-        tool_istioctl: "{{ tools.istioctl }}"
+        tool_kubectl: "{{ host.tools.kubectl }}"
+        tool_istioctl: "{{ host.tools.istioctl }}"
         state: present
     - name: Install Gateway API (Experimental)
       when: "cluster.gateway_api | bool == true"
@@ -51,4 +52,4 @@
     vars:
       kind: "{{ cluster.edge }}"
       ns: "{{ cluster.edge_ns }}"
-      config_file: "{{ distdir }}/edge.yaml"
+      config_file: "{{ dist_dir }}/edge.yaml"

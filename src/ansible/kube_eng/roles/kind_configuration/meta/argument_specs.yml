@@ -18,3 +18,7 @@ argument_specs:
         description: Path to the configuration file to template
         type: str
         required: true
+      airgap_registry_name:
+        description: Name of the airgap registry
+        type: str
+        required: true

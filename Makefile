@@ -35,6 +35,16 @@ CHARTS := $(PROMETHEUS_CHART) $(POSTGRES_CHART) $(KEYCLOAK_CHART) $(GRAFANA_CHAR
 COLLECTION := $(DISTDIR)/mrmat-kube_eng-$(VERSION).tar.gz
 
 CLOUD_PROVIDER_KIND_URL := https://github.com/kubernetes-sigs/cloud-provider-kind/releases/download/v0.6.0/cloud-provider-kind_0.6.0_darwin_arm64.tar.gz
+ANSIBLE_PLAYBOOK_EXEC = ANSIBLE_PYTHON_INTERPRETER=$(VENVDIR)/bin/python3 $(ansible-playbook) -v -i $(ANSIBLEDIR)/inventory.yml \
+							-e @$(CLUSTER_VARS) \
+							-e dist_dir=$(DISTDIR) \
+							-e admin_password="$(shell cat $(admin-password-file))" \
+							-e cluster_name=$(CLUSTER_NAME) \
+							-e prometheus_chart=$(PROMETHEUS_CHART) \
+							-e postgres_chart=$(POSTGRES_CHART) \
+							-e keycloak_chart=$(KEYCLOAK_CHART) \
+							-e grafana_chart=$(GRAFANA_CHART) \
+							-e kiali_chart=$(KIALI_CHART)
 
 
 .PHONY: clean dist all collection
@@ -119,34 +129,20 @@ registry: deps
 	$(ansible-playbook) -i $(ANSIBLEDIR)/inventory.yml -$(ANSIBLEDIR)/kube-eng-registry.yml
 
 host-infra: $(COLLECTION)
-	ANSIBLE_PYTHON_INTERPRETER=$(VENVDIR)/bin/python3 $(ansible-playbook) -v -i $(ANSIBLEDIR)/inventory.yml \
-		-e distdir=$(DISTDIR) -e @$(CLUSTER_VARS) -e cluster_name=$(CLUSTER_NAME) -e admin_password="$(shell cat $(admin-password-file))" \
-		mrmat.kube_eng.create_host_infra
-
-
+	$(ANSIBLE_PLAYBOOK_EXEC) mrmat.kube_eng.create_host_infra
 #
 # Cluster installation
 
 cluster: $(COLLECTION)
-	ANSIBLE_PYTHON_INTERPRETER=$(VENVDIR)/bin/python3 $(ansible-playbook) -v -i $(ANSIBLEDIR)/inventory.yml \
-		-e distdir=$(DISTDIR) -e @$(CLUSTER_VARS) -e cluster_name=$(CLUSTER_NAME) -e admin_password="$(shell cat $(admin-password-file))" \
-		mrmat.kube_eng.create_cluster
+	$(ANSIBLE_PLAYBOOK_EXEC) mrmat.kube_eng.create_cluster
 
 cluster-destroy: $(COLLECTION)
-	ANSIBLE_PYTHON_INTERPRETER=$(VENVDIR)/bin/python3 $(ansible-playbook) -v -i $(ANSIBLEDIR)/inventory.yml -e distdir=$(DISTDIR) -e @$(CLUSTER_VARS) -e cluster_name=$(CLUSTER_NAME) mrmat.kube_eng.destroy_cluster
-
+	$(ANSIBLE_PLAYBOOK_EXEC) mrmat.kube_eng.destroy_cluster
 #
-# Services
+# Stack
 
-services: $(COLLECTION) $(CHARTS)
-	ANSIBLE_PYTHON_INTERPRETER=$(VENVDIR)/bin/python3 $(ansible-playbook) -v -i $(ANSIBLEDIR)/inventory.yml \
-		-e distdir=$(DISTDIR) -e @$(CLUSTER_VARS) -e cluster_name=$(CLUSTER_NAME) -e admin_password="$(shell cat $(admin-password-file))" \
-		-e prometheus_chart=$(PROMETHEUS_CHART) \
-		-e postgres_chart=$(POSTGRES_CHART) \
-		-e keycloak_chart=$(KEYCLOAK_CHART) \
-		-e grafana_chart=$(GRAFANA_CHART) \
-		-e kiali_chart=$(KIALI_CHART) \
-		mrmat.kube_eng.create_services
+stack: $(COLLECTION) $(CHARTS)
+	$(ANSIBLE_PLAYBOOK_EXEC) mrmat.kube_eng.create_stack
 
 #
 # Charts

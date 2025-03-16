@@ -1,0 +1,4 @@
+#SPDX-License-Identifier: MIT-0
+---
+# defaults file for preheat_image
+airgap_registry: "localhost:5001"
