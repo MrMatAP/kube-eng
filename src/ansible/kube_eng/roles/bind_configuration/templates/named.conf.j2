@@ -1,0 +1,101 @@
+//
+// BIND configuration for a local nameserver
+
+options {
+    directory "{{ resolver_dir }}";
+    key-directory "{{ resolver_dir }}/keys";
+    managed-keys-directory "{{ resolver_dir }}/keys";
+    dump-file "{{ resolver_dir }}/named.dump";
+    memstatistics-file "{{ resolver_dir }}/named.memstats";
+    recursing-file "{{ resolver_dir }}/named.recursing";
+    statistics-file "{{ resolver_dir }}/named.stats";
+    secroots-file "{{ resolver_dir }}/named.secroots";
+    session-keyfile "{{ resolver_dir }}/keys/session.key";
+
+    listen-on { 127.0.0.1; };
+    listen-on-v6 { ::1; };
+
+    dnssec-validation auto;
+    auth-nxdomain no;
+    allow-new-zones no;
+    notify no;
+    recursion yes;
+    allow-query { localhost; };
+    allow-query-cache { localhost; };
+    allow-recursion { localhost; };
+    allow-transfer { localhost; };
+    allow-update-forwarding { none; };
+    check-names master fail;
+    check-names slave warn;
+    check-names response warn;
+    check-integrity yes;
+    check-dup-records warn;
+    check-mx warn;
+    check-mx-cname warn;
+    check-srv-cname warn;
+    check-sibling yes;
+    check-spf warn;
+    check-wildcard yes;
+    version "Your mom";
+    hostname "Your mom";
+    server-id "Your mom";
+
+    serial-update-method increment;
+    flush-zones-on-shutdown yes;
+
+    zone-statistics full;
+    memstatistics yes;
+    querylog no;
+
+    minimal-responses no;
+
+    forwarders {
+        {{ forwarder }};
+    };
+
+};
+
+include "{{ resolver_dir }}/keys/resolver.key";
+
+controls {
+    inet 127.0.0.1 port 953 allow { localhost; } keys { "resolver-key"; };
+};
+
+statistics-channels {
+    inet 127.0.0.1 port 8053 allow { localhost; };
+};
+
+logging {
+    channel "_updates_log" {
+        file "{{ resolver_dir }}/logs/updates.log" versions 3 size 5m;
+        print-time yes;
+        print-category yes;
+        print-severity yes;
+        severity debug;
+    };
+    category "update" { "_updates_log"; };
+
+    channel "_queries_log" {
+        file "{{ resolver_dir }}/logs/queries.log" versions 3 size 5m;
+        print-time yes;
+        print-category yes;
+        print-severity yes;
+    };
+    category "queries" { "_queries_log"; };
+    category "query-errors" { "_queries_log"; };
+
+    channel "_default_log" {
+        file "{{ resolver_dir }}/logs/bind.log" versions 3 size 5m;
+        print-time yes;
+        print-category yes;
+        print-severity yes;
+    };
+    category "default" { "_default_log"; };
+};
+
+zone "{{ domain }}." {
+    type primary;
+    file "{{ resolver_dir }}/zones/db.{{ domain }}";
+    dnssec-policy default;
+    allow-update { key resolver-key; };
+};

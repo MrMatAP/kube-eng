@@ -1,0 +1,21 @@
+# Argument requirements. See https://docs.ansible.com/ansible/latest/dev_guide/developing_program_flow_modules.html#argument-spec
+---
+argument_specs:
+  main:
+    short_description: Manage the cluster edge
+    options:
+      kind:
+        description: The kind of edge to manage
+        type: str
+        required: false
+        choices: ['istio', 'istio-gateway-api', 'istio-gateway-api-experimental', 'nginx']
+        default: 'gateway-api'
+      ns:
+        description: The namespace to host the edge
+        type: str
+        required: false
+        default: edge
+      config_file:
+        description: Path to the config file to template and apply
+        type: str
+        required: true

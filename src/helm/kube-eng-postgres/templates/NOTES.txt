@@ -1,0 +1,4 @@
+# Kube-Eng :: PostgreSQL installed
+
+Admin user:     {{ .Values.pod.admin_user }}
+Admin Password: {{ .Values.pod.admin_password }}

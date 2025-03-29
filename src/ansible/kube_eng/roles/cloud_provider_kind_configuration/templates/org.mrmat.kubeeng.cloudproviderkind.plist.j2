@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>org.mrmat.kubeeng.cloudproviderkind</string>
+	<key>ProgramArguments</key>
+	<array>
+        <string>{{ cloud_provider_kind_dir }}/bin/cloud-provider-kind</string>
+        <string>-enable-log-dumping</string>
+		<string>-logs-dir</string>
+		<string>{{ cloud_provider_kind_dir }}/logs</string>
+	</array>
+    <key>WorkingDirectory</key>
+    <string>{{ cloud_provider_kind_dir }}</string>
+    <key>StandardErrorPath</key>
+    <string>{{ cloud_provider_kind_dir }}/logs/cloud-provider-kind.log</string>
+    <key>StandardOutPath</key>
+    <string>{{ cloud_provider_kind_dir }}/logs/cloud-provider-kind.log</string>
+    <key>KeepAlive</key>
+    <true/>
+    <key>ProcessType</key>
+    <string>Background</string>
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/bin:/sbin:/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin</string>
+    </dict>
+</dict>
+</plist>

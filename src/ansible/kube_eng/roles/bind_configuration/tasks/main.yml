@@ -1,0 +1,31 @@
+#SPDX-License-Identifier: MIT-0
+---
+- name: Create directories for the resolver
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+  loop:
+  - "{{ resolver_dir }}"
+  - "{{ resolver_dir }}/keys"
+  - "{{ resolver_dir }}/logs"
+  - "{{ resolver_dir }}/zones"
+
+- name: Template the resolver configuration
+  ansible.builtin.template:
+    src: templates/named.conf.j2
+    dest: "{{ resolver_dir }}/named.conf"
+
+- name: Template the local zone
+  ansible.builtin.template:
+    src: templates/db.zone.j2
+    dest: "{{ resolver_dir }}/zones/db.{{ domain }}"
+
+- name: Template the resolver key configuration
+  ansible.builtin.template:
+    src: templates/resolver.key.j2
+    dest: "{{ resolver_dir }}/keys/resolver.key"
+
+- name: Template the resolver launchd.plist
+  ansible.builtin.template:
+    src: templates/org.mrmat.kubeeng.resolver.plist.j2
+    dest: "{{ resolver_dir }}/org.mrmat.kubeeng.resolver.plist"

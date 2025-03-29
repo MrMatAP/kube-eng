@@ -1,0 +1,149 @@
+#
+# Main configuration file for your cluster
+# Top-level variables with an underscore in them are overridden by the Makefile
+# Variables within a dictionary must be edited straight in the cluster configuration file
+---
+dist_dir: ""
+admin_password: ""
+cluster_name: ""
+prometheus_chart: ""
+postgres_chart: ""
+keycloak_chart: ""
+grafana_chart: ""
+jaeger_chart: ""
+kiali_chart: ""
+cloud_provider_mdns: ""
+user_id: ""
+
+cluster:
+  control_plane_nodes: 1
+  worker_nodes: 3
+  mesh: istio-experimental
+  istio_profile: minimal
+  gateway_api: true
+  edge: istio-gateway-api-experimental
+  edge_ns: edge
+
+host:
+  tools:
+    kind: /opt/homebrew/bin/kind
+    istioctl: /opt/homebrew/bin/istioctl
+    kubectl: /opt/homebrew/bin/kubectl
+    docker: /usr/local/bin/docker
+    named: /opt/homebrew/sbin/named
+  cloud_provider_kind:
+    url: https://github.com/kubernetes-sigs/cloud-provider-kind/releases/download/v0.6.0/cloud-provider-kind_0.6.0_darwin_arm64.tar.gz
+  resolver:
+    forwarder: 8.8.8.8
+  registry:
+    name: airgap-registry
+    port: 5001
+
+stack:
+  prometheus:
+    enabled: true
+    preheat_images:
+    - registry: quay.io
+      repository: prometheus-operator
+      image: prometheus-config-reloader
+      tag: v0.78.2
+    - registry: quay.io
+      repository: prometheus
+      image: prometheus
+      tag: v3.0.1
+    - registry: quay.io
+      repository: prometheus
+      image: node-exporter
+      tag: v1.8.2
+    - registry: quay.io
+      repository: brancz
+      image: kube-rbac-proxy
+      tag: v0.18.1
+    - registry: quay.io
+      repository: prometheus
+      image: pushgateway
+      tag: v1.10.0
+    - registry: registry.k8s.io
+      repository: kube-state-metrics
+      image: kube-state-metrics
+      tag: v2.14.0
+    - registry: quay.io
+      repository: prometheus
+      image: alertmanager
+      tag: v0.27.0
+    ns: prometheus
+    hostname: prometheus.local
+  postgres:
+    enabled: true
+    preheat_images:
+    - registry: docker.io
+      repository: library
+      image: postgres
+      tag: 17.2-alpine3.21
+    ns: postgres
+  keycloak:
+    enabled: true
+    preheat_images:
+    - registry: quay.io
+      repository: keycloak
+      image: keycloak
+      tag: 26.0.7
+    ns: keycloak
+    hostname: keycloak.local
+  grafana:
+    enabled: true
+    preheat_images:
+    - registry: docker.io
+      repository: library
+      image: busybox
+      tag: 1.31.1
+    - registry: docker.io
+      repository: curlimages
+      image: curl
+      tag: 7.85.0
+    - registry: quay.io
+      repository: kiwigrid
+      image: k8s-sidecar
+      tag: 1.28.0
+    - registry: docker.io
+      repository: grafana
+      image: grafana
+      tag: 11.4.0
+    ns: grafana
+    hostname: grafana.local
+    client_id: grafana
+    admin_user: admin
+  jaeger:
+    enabled: true
+    preheat_images:
+    - registry: docker.io
+      repository: jaegertracing
+      image: jaeger-query
+      tag: 1.53.0
+    - registry: docker.io
+      repository: jaegertracing
+      image: jaeger-agent
+      tag: 1.53.0
+    - registry: docker.io
+      repository: jaegertracing
+      image: jaeger-collector
+      tag: 1.53.0
+    - registry: docker.io
+      repository: jaegertracing
+      image: jaeger-cassandra-schema
+      tag: 1.53.0
+    - registry: docker.io
+      repository: library
+      image: cassandra
+      tag: 3.11.6
+    ns: jaeger
+    hostname: jaeger.local
+  kiali:
+    enabled: true
+    preheat_images:
+    - registry: quay.io
+      repository: kiali
+      image: kiali
+      tag: v2.6.0
+    ns: istio-system
+    hostname: kiali.local

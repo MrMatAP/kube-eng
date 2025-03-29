@@ -1,0 +1,11 @@
+apiVersion: v2
+name: kube-eng-prometheus
+description: A Helm chart for Prometheus
+type: application
+version: 0.0.0
+# The upstream Prometheus version and dependency
+appVersion: "26.0.1"
+dependencies:
+- name: prometheus
+  version: 26.0.1
+  repository: https://prometheus-community.github.io/helm-charts

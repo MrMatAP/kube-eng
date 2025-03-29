@@ -1,0 +1,18 @@
+# Argument requirements. See https://docs.ansible.com/ansible/latest/dev_guide/developing_program_flow_modules.html#argument-spec
+---
+argument_specs:
+  main:
+    short_description: Template the cloud-provider-mdns configuration
+    options:
+      cloud_provider_mdns_executable:
+        description: Path to the cloud-provider-mdns executable
+        type: str
+        required: true
+      cloud_provider_mdns_dir:
+        description: Path to the directory in which cloud-provider-mdns operates
+        type: str
+        required: true
+      cloud_provider_mdns_user:
+        description: Username to run cloud-provider-mdns with
+        type: str
+        required: true

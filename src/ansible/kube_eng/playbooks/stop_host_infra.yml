@@ -1,0 +1,28 @@
+---
+- name: Stop the host infrastructure
+  hosts: localhost
+  tasks:
+  - name: Stop the resolver
+    community.general.launchd:
+      name: org.mrmat.kubeeng.resolver
+      plist: org.mrmat.kubeeng.resolver.plist
+      enabled: false
+      state: unloaded
+    become: true
+
+  - name: Stop cloud-provider-kind
+    community.general.launchd:
+      name: org.mrmat.kubeeng.cloudproviderkind
+      plist: org.mrmat.kubeeng.cloudproviderkind.plist
+      enabled: false
+      state: unloaded
+    become: true
+
+  - name: Stop cloud-provider-mdns
+    community.general.launchd:
+      name: org.mrmat.kubeeng.cloudprovidermdns
+      plist: org.mrmat.kubeeng.cloudprovidermdns.plist
+      enabled: false
+      state: unloaded
+    become: true
+

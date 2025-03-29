@@ -1,0 +1,27 @@
+# Argument requirements. See https://docs.ansible.com/ansible/latest/dev_guide/developing_program_flow_modules.html#argument-spec
+---
+argument_specs:
+  main:
+    short_description: Template the resolver configuration
+    options:
+      resolver_executable:
+        description: Path to the BIND executable
+        type: str
+        required: true
+      resolver_dir:
+        description: Path to the directory in which the resolver operates
+        type: str
+        required: true
+      forwarder:
+        description: IP address where to forward DNS queries to
+        type: str
+        required: false
+        default: 8.8.8.8
+      domain:
+        description: Name of the domain to authoritatively host (exclude the dot at the end)
+        type: str
+        required: true
+      resolver_key:
+        description: The DDNS update key used to dynamically update the local authoritative domain
+        type: str
+        required: false

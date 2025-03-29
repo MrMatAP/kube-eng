@@ -1,0 +1,5 @@
+# Kube-Eng :: Keycloak installed
+
+Admin user:     {{ .Values.pod.admin_user }}
+Admin Password: {{ .Values.pod.admin_password }}
+Hostname:       {{ .Values.route.hostname }}

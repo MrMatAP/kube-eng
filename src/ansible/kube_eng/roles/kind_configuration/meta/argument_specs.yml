@@ -1,0 +1,24 @@
+# Argument requirements. See https://docs.ansible.com/ansible/latest/dev_guide/developing_program_flow_modules.html#argument-spec
+---
+argument_specs:
+  main:
+    short_description: Template the kube-eng cluster configuration
+    options:
+      control_plane_nodes:
+        description: Number of control plane nodes
+        type: int
+        required: false
+        default: 1
+      worker_nodes:
+        description: Number of worker nodes
+        type: int
+        required: false
+        default: 3
+      config_file:
+        description: Path to the configuration file to template
+        type: str
+        required: true
+      airgap_registry_name:
+        description: Name of the airgap registry
+        type: str
+        required: true

@@ -1,0 +1,3 @@
+# Kube-Eng :: Kiali installed
+
+Hostname:   {{ .Values.route.hostname }}

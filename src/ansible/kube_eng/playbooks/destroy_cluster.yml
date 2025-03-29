@@ -1,0 +1,9 @@
+---
+- name: Destroy a cluster
+  hosts: localhost
+  tasks:
+  - name: Destroy the cluster
+    mrmat.kube_eng.kind_cluster:
+      name: "{{ cluster_name }}"
+      tool_kind: "{{ host.tools.kind }}"
+      state: absent

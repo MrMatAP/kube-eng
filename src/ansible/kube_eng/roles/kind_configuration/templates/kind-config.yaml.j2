@@ -1,0 +1,19 @@
+---
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+nodes:
+{% for cp in range(0, control_plane_nodes | int) %}
+- role: control-plane
+{% endfor %}
+{% for worker in range(0, worker_nodes | int) %}
+- role: worker
+{% endfor %}
+containerdConfigPatches:
+- |-
+  [plugins."io.containerd.grpc.v1.cri".registry.configs."{{ airgap_registry_name }}:5000".tls]
+  ca_file = ""
+  cert_file = ""
+  key_file = ""
+  insecure_skip_verify = true
+  [plugins."io.containerd.grpc.v1.cri".registry.mirrors."{{ airgap_registry_name }}:5000"]
+  endpoint = ["http://{{ airgap_registry_name }}:5000"]

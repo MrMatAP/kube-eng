@@ -1,0 +1,32 @@
+#
+# Default values for Kube Eng :: Keycloak
+
+sa:
+  name: kube-eng-keycloak-sa
+
+pod:
+  name: kube-eng-keycloak
+  replicas: 1
+  repository: quay.io/keycloak/keycloak
+  imagePullPolicy: IfNotPresent
+  port: 8080
+  managementPort: 9000
+  admin_user: admin
+  admin_password: admin
+  db: postgres
+  db_user: keycloak
+  db_password: admin
+  db_host: kube-eng-postgres-svc.kube-eng.svc.cluster.local
+  db_database: keycloak
+
+svc:
+  name: kube-eng-keycloak-svc
+  port: 80
+  managementPort: 9000
+
+route:
+  name: kube-eng-keycloak-httproute
+  hostname: ke-keycloak.local
+  parents:
+  - name: edge-ingress
+    namespace: edge

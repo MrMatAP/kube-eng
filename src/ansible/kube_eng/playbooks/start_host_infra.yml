@@ -1,0 +1,51 @@
+---
+- name: Start the host infrastructure
+  hosts: localhost
+  tasks:
+  - name: Copy the resolver launch configuration to its directory
+    ansible.builtin.copy:
+      src: "{{ dist_dir }}/resolver/org.mrmat.kubeeng.resolver.plist"
+      dest: /Library/LaunchDaemons/org.mrmat.kubeeng.resolver.plist
+      owner: root
+      group: wheel
+      mode: 0644
+    become: true
+
+  - name: Start the resolver
+    community.general.launchd:
+      name: org.mrmat.kubeeng.resolver
+      enabled: true
+      state: started
+    become: true
+
+  - name: Copy the cloud-provider-kind launch configuration to its directory
+    ansible.builtin.copy:
+      src: "{{ dist_dir }}/cloud-provider-kind/org.mrmat.kubeeng.cloudproviderkind.plist"
+      dest: /Library/LaunchDaemons/org.mrmat.kubeeng.cloudproviderkind.plist
+      owner: root
+      group: wheel
+      mode: 0644
+    become: true
+
+  - name: Start cloud-provider-kind
+    community.general.launchd:
+      name: org.mrmat.kubeeng.cloudproviderkind
+      enabled: true
+      state: started
+    become: true
+
+  - name: Copy the cloud-provider-mdns launch configuration to its directory
+    ansible.builtin.copy:
+      src: "{{ dist_dir }}/cloud-provider-mdns/org.mrmat.kubeeng.cloudprovidermdns.plist"
+      dest: /Library/LaunchDaemons/org.mrmat.kubeeng.cloudprovidermdns.plist
+      owner: root
+      group: wheel
+      mode: 0644
+    become: true
+
+  - name: Start cloud-provider-mdns
+    community.general.launchd:
+      name: org.mrmat.kubeeng.cloudprovidermdns
+      enabled: true
+      state: started
+    become: true
