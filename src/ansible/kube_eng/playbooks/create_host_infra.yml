@@ -13,6 +13,13 @@
       domain: "{{ cluster_name }}.k8s"
       resolver_key: "{{ admin_password }}"
 
+  - name: Template the cloud-provider-kind configuration
+    ansible.builtin.import_role:
+      name: mrmat.kube_eng.cloud_provider_kind_configuration
+    vars:
+      cloud_provider_kind_url: "{{ host.cloud_provider_kind.url }}"
+      cloud_provider_kind_dir: "{{ dist_dir }}/cloud-provider-kind"
+
   - name: Create an airgapped registry volume
     community.docker.docker_volume:
       name: airgap-registry-volume

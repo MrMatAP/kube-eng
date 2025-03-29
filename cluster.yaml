@@ -29,6 +29,8 @@ host:
     kubectl: /opt/homebrew/bin/kubectl
     docker: /usr/local/bin/docker
     named: /opt/homebrew/sbin/named
+  cloud_provider_kind:
+    url: https://github.com/kubernetes-sigs/cloud-provider-kind/releases/download/v0.6.0/cloud-provider-kind_0.6.0_darwin_arm64.tar.gz
   resolver:
     forwarder: 8.8.8.8
   registry:

@@ -17,3 +17,19 @@
       enabled: true
       state: started
     become: true
+
+  - name: Copy the cloud-provider-kind launch configuration to its directory
+    ansible.builtin.copy:
+      src: "{{ dist_dir }}/cloud-provider-kind/org.mrmat.kubeeng.cloudproviderkind.plist"
+      dest: /Library/LaunchDaemons/org.mrmat.kubeeng.cloudproviderkind.plist
+      owner: root
+      group: wheel
+      mode: 0644
+    become: true
+
+  - name: Start cloud-provider-kind
+    community.general.launchd:
+      name: org.mrmat.kubeeng.cloudproviderkind
+      enabled: true
+      state: started
+    become: true

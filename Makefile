@@ -36,7 +36,6 @@ COLLECTION_SOURCES :=$(shell find $(SRCDIR)/ansible/kube_eng)
 CHARTS := $(PROMETHEUS_CHART) $(POSTGRES_CHART) $(KEYCLOAK_CHART) $(GRAFANA_CHART) $(JAEGER_CHART) $(KIALI_CHART)
 COLLECTION := $(DISTDIR)/mrmat-kube_eng-$(VERSION).tar.gz
 
-CLOUD_PROVIDER_KIND_URL := https://github.com/kubernetes-sigs/cloud-provider-kind/releases/download/v0.6.0/cloud-provider-kind_0.6.0_darwin_arm64.tar.gz
 ANSIBLE_PLAYBOOK_EXEC = ANSIBLE_PYTHON_INTERPRETER=$(VENVDIR)/bin/python3 $(ansible-playbook) -v -i $(ANSIBLEDIR)/inventory.yml \
 							-e @$(CLUSTER_VARS) \
 							-e dist_dir=$(DISTDIR) \
@@ -69,14 +68,14 @@ admin-password-file := $(CURDIR)/.admin-password
 kind := /opt/homebrew/bin/kind
 istioctl := /opt/homebrew/bin/istioctl
 kubectl := /opt/homebrew/bin/kubectl
-cloud-provider-kind := $(BINDIR)/cloud-provider-kind
 cloud-provider-mdns := $(VENVDIR)/bin/cloud-provider-mdns
 ansible-galaxy := $(VENVDIR)/bin/ansible-galaxy
 ansible-playbook := $(VENVDIR)/bin/ansible-playbook
 bind := /opt/homebrew/bin/named
 docker := /usr/local/bin/docker
+gtar := /opt/homebrew/bin/gtar
 
-deps: $(admin-password-file) $(docker) $(istioctl) $(kubectl) $(kind) $(cloud-provider-kind) $(cloud-provider-mdns) $(ansible-playbook) $(ansible-galaxy)
+deps: $(admin-password-file) $(docker) $(istioctl) $(kubectl) $(kind) $(cloud-provider-mdns) $(ansible-playbook) $(ansible-galaxy) $(gtar)
 	@echo "All deps installed"
 
 $(admin-password-file):
@@ -105,10 +104,8 @@ $(kubectl):
 $(bind):
 	brew install bind
 
-$(cloud-provider-kind): | $(TMPDIR) $(BINDIR)
-	curl -Lo $(TMPDIR)/cloud-provider-kind.tar.gz $(CLOUD_PROVIDER_KIND_URL)
-	tar xfv $(TMPDIR)/cloud-provider-kind.tar.gz -C $(TMPDIR) cloud-provider-kind
-	mv $(TMPDIR)/cloud-provider-kind $@
+$(gtar):
+	brew install gnu-tar
 
 $(cloud-provider-mdns): $(VENVDIR)
 	$(VENVDIR)/bin/pip3 install -U git+https://github.com/MrMatAP/cloud-provider-mdns.git
@@ -127,9 +124,6 @@ $(COLLECTION): $(COLLECTION_SOURCES) | deps
 
 #
 # Host infrastructure
-
-registry: deps
-	$(ansible-playbook) -i $(ANSIBLEDIR)/inventory.yml -$(ANSIBLEDIR)/kube-eng-registry.yml
 
 host-infra: $(COLLECTION)
 	$(ANSIBLE_PLAYBOOK_EXEC) mrmat.kube_eng.create_host_infra
