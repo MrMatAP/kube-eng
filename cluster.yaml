@@ -12,6 +12,8 @@ keycloak_chart: ""
 grafana_chart: ""
 jaeger_chart: ""
 kiali_chart: ""
+cloud_provider_mdns: ""
+user_id: ""
 
 cluster:
   control_plane_nodes: 1

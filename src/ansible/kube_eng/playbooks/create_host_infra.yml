@@ -20,6 +20,14 @@
       cloud_provider_kind_url: "{{ host.cloud_provider_kind.url }}"
       cloud_provider_kind_dir: "{{ dist_dir }}/cloud-provider-kind"
 
+  - name: Template the cloud-provider-mdns configuration
+    ansible.builtin.import_role:
+      name: mrmat.kube_eng.cloud_provider_mdns_configuration
+    vars:
+      cloud_provider_mdns_executable: "{{ cloud_provider_mdns }}"
+      cloud_provider_mdns_dir: "{{ dist_dir }}/cloud-provider-mdns"
+      cloud_provider_mdns_user: "{{ user_id }}"
+
   - name: Create an airgapped registry volume
     community.docker.docker_volume:
       name: airgap-registry-volume

@@ -40,6 +40,8 @@ ANSIBLE_PLAYBOOK_EXEC = ANSIBLE_PYTHON_INTERPRETER=$(VENVDIR)/bin/python3 $(ansi
 							-e @$(CLUSTER_VARS) \
 							-e dist_dir=$(DISTDIR) \
 							-e admin_password="$(shell cat $(admin-password-file))" \
+							-e cloud_provider_mdns=$(cloud-provider-mdns) \
+							-e user_id="$(shell whoami)" \
 							-e cluster_name=$(CLUSTER_NAME) \
 							-e prometheus_chart=$(PROMETHEUS_CHART) \
 							-e postgres_chart=$(POSTGRES_CHART) \

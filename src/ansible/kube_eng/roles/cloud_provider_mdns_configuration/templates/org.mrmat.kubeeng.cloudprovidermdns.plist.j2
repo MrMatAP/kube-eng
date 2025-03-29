@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>org.mrmat.kubeeng.cloudprovidermdns</string>
+	<key>ProgramArguments</key>
+	<array>
+        <string>{{ cloud_provider_mdns_executable }}</string>
+	</array>
+    <key>WorkingDirectory</key>
+    <string>{{ cloud_provider_mdns_dir }}</string>
+    <key>StandardErrorPath</key>
+    <string>{{ cloud_provider_mdns_dir }}/logs/cloud-provider-mdns.log</string>
+    <key>StandardOutPath</key>
+    <string>{{ cloud_provider_mdns_dir }}/logs/cloud-provider-mdns.log</string>
+    <key>KeepAlive</key>
+    <true/>
+    <key>ProcessType</key>
+    <string>Background</string>
+    <key>UserName</key>
+    <string>{{ cloud_provider_mdns_user }}</string>
+</dict>
+</plist>

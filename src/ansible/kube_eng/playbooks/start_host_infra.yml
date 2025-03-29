@@ -33,3 +33,19 @@
       enabled: true
       state: started
     become: true
+
+  - name: Copy the cloud-provider-mdns launch configuration to its directory
+    ansible.builtin.copy:
+      src: "{{ dist_dir }}/cloud-provider-mdns/org.mrmat.kubeeng.cloudprovidermdns.plist"
+      dest: /Library/LaunchDaemons/org.mrmat.kubeeng.cloudprovidermdns.plist
+      owner: root
+      group: wheel
+      mode: 0644
+    become: true
+
+  - name: Start cloud-provider-mdns
+    community.general.launchd:
+      name: org.mrmat.kubeeng.cloudprovidermdns
+      enabled: true
+      state: started
+    become: true
