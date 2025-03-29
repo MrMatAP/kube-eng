@@ -126,13 +126,20 @@ $(COLLECTION): $(COLLECTION_SOURCES) | deps
 	$(ansible-galaxy) collection install --force $(COLLECTION)
 
 #
-# Host services
+# Host infrastructure
 
 registry: deps
 	$(ansible-playbook) -i $(ANSIBLEDIR)/inventory.yml -$(ANSIBLEDIR)/kube-eng-registry.yml
 
 host-infra: $(COLLECTION)
 	$(ANSIBLE_PLAYBOOK_EXEC) mrmat.kube_eng.create_host_infra
+
+host-infra-start: $(COLLECTION)
+	$(ANSIBLE_PLAYBOOK_EXEC) --ask-become-pass mrmat.kube_eng.start_host_infra
+
+host-infra-stop: $(COLLECTION)
+	$(ANSIBLE_PLAYBOOK_EXEC) --ask-become-pass mrmat.kube_eng.stop_host_infra
+
 #
 # Cluster installation
 

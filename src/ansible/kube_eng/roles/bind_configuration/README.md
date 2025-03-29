@@ -1,7 +1,7 @@
 Role Name
 =========
 
-mrmat.kube_eng.resolver_configuration
+mrmat.kube_eng.bind_configuration
 
 Requirements
 ------------

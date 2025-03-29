@@ -1,0 +1,11 @@
+---
+- name: Stop the host infrastructure
+  hosts: localhost
+  tasks:
+  - name: Stop the resolver
+    community.general.launchd:
+      name: org.mrmat.kube-eng.resolver
+      plist: org.mrmat.kubeeng.resolver.plist
+      enabled: false
+      state: unloaded
+    become: true

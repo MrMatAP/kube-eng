@@ -1,0 +1,19 @@
+---
+- name: Start the host infrastructure
+  hosts: localhost
+  tasks:
+  - name: Copy the resolver launch configuration to its directory
+    ansible.builtin.copy:
+      src: "{{ dist_dir }}/resolver/org.mrmat.kubeeng.resolver.plist"
+      dest: /Library/LaunchDaemons/org.mrmat.kubeeng.resolver.plist
+      owner: root
+      group: wheel
+      mode: 0644
+    become: true
+
+  - name: Start the resolver
+    community.general.launchd:
+      name: org.mrmat.kubeeng.resolver
+      enabled: true
+      state: started
+    become: true

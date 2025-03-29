@@ -37,7 +37,8 @@ tags: []
 # collection label 'namespace.name'. The value is a version range
 # L(specifiers,https://python-semanticversion.readthedocs.io/en/latest/#requirement-specification). Multiple version
 # range specifiers can be set and are separated by ','
-dependencies: {}
+dependencies:
+  community.general: ">=10.1.0"
 
 # The URL of the originating SCM repository
 repository: https://github.com/MrMatAP/kube-eng

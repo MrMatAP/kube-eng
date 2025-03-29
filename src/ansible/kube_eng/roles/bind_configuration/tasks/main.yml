@@ -24,3 +24,8 @@
   ansible.builtin.template:
     src: templates/resolver.key.j2
     dest: "{{ resolver_dir }}/keys/resolver.key"
+
+- name: Template the resolver launchd.plist
+  ansible.builtin.template:
+    src: templates/org.mrmat.kubeeng.resolver.plist.j2
+    dest: "{{ resolver_dir }}/org.mrmat.kubeeng.resolver.plist"

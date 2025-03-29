@@ -4,6 +4,10 @@ argument_specs:
   main:
     short_description: Template the resolver configuration
     options:
+      resolver_executable:
+        description: Path to the BIND executable
+        type: str
+        required: true
       resolver_dir:
         description: Path to the directory in which the resolver operates
         type: str

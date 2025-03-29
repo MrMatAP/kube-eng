@@ -85,7 +85,7 @@ logging {
     category "query-errors" { "_queries_log"; };
 
     channel "_default_log" {
-        file "{{ resolver_dir }}/bind.log" versions 3 size 5m;
+        file "{{ resolver_dir }}/logs/bind.log" versions 3 size 5m;
         print-time yes;
         print-category yes;
         print-severity yes;

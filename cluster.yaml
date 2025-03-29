@@ -28,6 +28,7 @@ host:
     istioctl: /opt/homebrew/bin/istioctl
     kubectl: /opt/homebrew/bin/kubectl
     docker: /usr/local/bin/docker
+    named: /opt/homebrew/sbin/named
   resolver:
     forwarder: 8.8.8.8
   registry:
