@@ -32,10 +32,15 @@ host:
     docker: /usr/local/bin/docker
     named: /opt/homebrew/sbin/named
   cloud_provider_kind:
+    enabled: true
     url: https://github.com/kubernetes-sigs/cloud-provider-kind/releases/download/v0.6.0/cloud-provider-kind_0.6.0_darwin_arm64.tar.gz
+  cloud_provider_mdns:
+    enabled: true
   resolver:
+    enabled: true
     forwarder: 8.8.8.8
   registry:
+    enabled: true
     name: airgap-registry
     port: 5001
 
