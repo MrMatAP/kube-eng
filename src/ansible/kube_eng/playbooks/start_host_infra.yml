@@ -12,6 +12,7 @@
     become: true
 
   - name: Start the resolver
+    when: host.resolver.enabled == true
     community.general.launchd:
       name: org.mrmat.kubeeng.resolver
       enabled: true
@@ -28,6 +29,7 @@
     become: true
 
   - name: Start cloud-provider-kind
+    when: host.cloud_provider_kind.enabled == true
     community.general.launchd:
       name: org.mrmat.kubeeng.cloudproviderkind
       enabled: true
@@ -44,6 +46,7 @@
     become: true
 
   - name: Start cloud-provider-mdns
+    when: host.cloud_provider_mdns.enabled == true
     community.general.launchd:
       name: org.mrmat.kubeeng.cloudprovidermdns
       enabled: true
