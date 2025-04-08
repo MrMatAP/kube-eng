@@ -5,6 +5,8 @@ kind: Gateway
 metadata:
   name: edge-ingress
   namespace: "{{ ns }}"
+  annotations:
+    cert-manager.io/cluster-issuer: ca-issuer
 spec:
   gatewayClassName: istio
   listeners:
@@ -15,8 +17,15 @@ spec:
       namespaces:
         from: All
   - name: https
+    hostname: notfound.nostromo.mrmat.org
     port: 443
-    protocol: HTTP
+    protocol: HTTPS
+    tls:
+      mode: Terminate
+      certificateRefs:
+      - name: edge-ingress-cert
+        kind: Secret
+        group: cert-manager.io
     allowedRoutes:
       namespaces:
         from: All

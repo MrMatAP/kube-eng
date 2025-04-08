@@ -13,6 +13,7 @@ ETCDIR := $(CURDIR)/etc
 VENVDIR := $(CURDIR)/.venv
 ANSIBLEDIR := $(SRCDIR)/ansible
 HELMDIR := $(SRCDIR)/helm
+CHARTDIR := $(DISTDIR)/charts
 
 CLUSTER_VARS := $(CURDIR)/cluster.yaml
 CLUSTER_NAME := $(shell hostname -s)
@@ -20,20 +21,21 @@ NAMESPACE := kube-eng
 
 
 PROMETHEUS_SOURCES := $(shell find $(HELMDIR)/kube-eng-prometheus)
-PROMETHEUS_CHART := $(DISTDIR)/kube-eng-prometheus-$(VERSION).tgz
+PROMETHEUS_CHART := $(CHARTDIR)/kube-eng-prometheus-$(VERSION).tgz
 POSTGRES_SOURCES := $(shell find $(HELMDIR)/kube-eng-postgres)
-POSTGRES_CHART := $(DISTDIR)/kube-eng-postgres-$(VERSION).tgz
+POSTGRES_CHART := $(CHARTDIR)/kube-eng-postgres-$(VERSION).tgz
 KEYCLOAK_SOURCES := $(shell find $(HELMDIR)/kube-eng-keycloak)
-KEYCLOAK_CHART := $(DISTDIR)/kube-eng-keycloak-$(VERSION).tgz
+KEYCLOAK_CHART := $(CHARTDIR)/kube-eng-keycloak-$(VERSION).tgz
 GRAFANA_SOURCES := $(shell find $(HELMDIR)/kube-eng-grafana)
-GRAFANA_CHART := $(DISTDIR)/kube-eng-grafana-$(VERSION).tgz
-JAEGER_CHART := $(DISTDIR)/kube-eng-jaeger-$(VERSION).tgz
+GRAFANA_CHART := $(CHARTDIR)/kube-eng-grafana-$(VERSION).tgz
 JAEGER_SOURCES := $(shell find $(HELMDIR)/kube-eng-jaeger)
+JAEGER_CHART := $(CHARTDIR)/kube-eng-jaeger-$(VERSION).tgz
 KIALI_SOURCES := $(shell find $(HELMDIR)/kube-eng-kiali)
-KIALI_CHART := $(DISTDIR)/kube-eng-kiali-$(VERSION).tgz
+KIALI_CHART := $(CHARTDIR)/kube-eng-kiali-$(VERSION).tgz
 COLLECTION_SOURCES :=$(shell find $(SRCDIR)/ansible/kube_eng)
 
-CHARTS := $(PROMETHEUS_CHART) $(POSTGRES_CHART) $(KEYCLOAK_CHART) $(GRAFANA_CHART) $(JAEGER_CHART) $(KIALI_CHART)
+CHARTS := $(PROMETHEUS_CHART) $(POSTGRES_CHART) $(KEYCLOAK_CHART) \
+		  $(GRAFANA_CHART) $(JAEGER_CHART) $(KIALI_CHART)
 COLLECTION := $(DISTDIR)/mrmat-kube_eng-$(VERSION).tar.gz
 
 ANSIBLE_PLAYBOOK_EXEC = ANSIBLE_PYTHON_INTERPRETER=$(VENVDIR)/bin/python3 $(ansible-playbook) -v -i $(ANSIBLEDIR)/inventory.yml \
@@ -48,7 +50,8 @@ ANSIBLE_PLAYBOOK_EXEC = ANSIBLE_PYTHON_INTERPRETER=$(VENVDIR)/bin/python3 $(ansi
 							-e keycloak_chart=$(KEYCLOAK_CHART) \
 							-e grafana_chart=$(GRAFANA_CHART) \
 							-e jaeger_chart=$(JAEGER_CHART) \
-							-e kiali_chart=$(KIALI_CHART)
+							-e kiali_chart=$(KIALI_CHART) \
+							-e cert_manager_chart=$(CERT_MANAGER_CHART)
 
 
 .PHONY: clean dist all collection
@@ -57,11 +60,6 @@ clean:
 
 all: helm
 password: $(admin-password)
-prometheus: $(PROMETHEUS_CHART)
-postgres: $(POSTGRES_CHART)
-keycloak: $(KEYCLOAK_CHART)
-grafana: $(GRAFANA_CHART)
-kiali: $(KIALI_CHART)
 
 #
 # Dependencies
@@ -70,6 +68,7 @@ admin-password-file := $(CURDIR)/.admin-password
 kind := /opt/homebrew/bin/kind
 istioctl := /opt/homebrew/bin/istioctl
 kubectl := /opt/homebrew/bin/kubectl
+helm := /opt/homebrew/bin/helm
 cloud-provider-mdns := $(VENVDIR)/bin/cloud-provider-mdns
 ansible-galaxy := $(VENVDIR)/bin/ansible-galaxy
 ansible-playbook := $(VENVDIR)/bin/ansible-playbook
@@ -77,13 +76,15 @@ bind := /opt/homebrew/bin/named
 docker := /usr/local/bin/docker
 gtar := /opt/homebrew/bin/gtar
 
-deps: $(admin-password-file) $(docker) $(istioctl) $(kubectl) $(kind) $(cloud-provider-mdns) $(ansible-playbook) $(ansible-galaxy) $(gtar)
+deps: $(admin-password-file) $(docker) $(istioctl) $(kubectl) $(kind) \
+	  $(helm) $(cloud-provider-mdns) $(ansible-playbook) $(ansible-galaxy) \
+	  $(gtar)
 	@echo "All deps installed"
 
 $(admin-password-file):
 	@echo "$(shell openssl rand -base64 12)" > $@
 
-$(BINDIR) $(TMPDIR) $(DISTDIR) $(ETCDIR):
+$(BINDIR) $(TMPDIR) $(DISTDIR) $(CHARTDIR) $(ETCDIR):
 	mkdir -p $@
 
 $(VENVDIR):
@@ -102,6 +103,9 @@ $(istioctl):
 
 $(kubectl):
 	brew install kubectl
+
+$(helm):
+	brew install helm
 
 $(bind):
 	brew install bind
@@ -155,24 +159,24 @@ stack: $(COLLECTION) $(CHARTS)
 
 charts: $(CHARTS)
 
-$(PROMETHEUS_CHART): $(PROMETHEUS_SOURCES) $(DISTDIR)
+$(PROMETHEUS_CHART): $(PROMETHEUS_SOURCES) $(CHARTDIR)
 	helm dep update $(HELMDIR)/kube-eng-prometheus --skip-refresh
-	helm package --version $(VERSION) --destination $(DISTDIR) $(HELMDIR)/kube-eng-prometheus
+	helm package --version $(VERSION) --destination $(CHARTDIR) $(HELMDIR)/kube-eng-prometheus
 
-$(POSTGRES_CHART): $(POSTGRES_SOURCES) $(DISTDIR)
-	helm package --version $(VERSION) --destination $(DISTDIR) $(HELMDIR)/kube-eng-postgres
+$(POSTGRES_CHART): $(POSTGRES_SOURCES) $(CHARTDIR)
+	helm package --version $(VERSION) --destination $(CHARTDIR) $(HELMDIR)/kube-eng-postgres
 
-$(KEYCLOAK_CHART): $(KEYCLOAK_SOURCES) $(DISTDIR)
-	helm package --version $(VERSION) --destination $(DISTDIR) $(HELMDIR)/kube-eng-keycloak
+$(KEYCLOAK_CHART): $(KEYCLOAK_SOURCES) $(CHARTDIR)
+	helm package --version $(VERSION) --destination $(CHARTDIR) $(HELMDIR)/kube-eng-keycloak
 
-$(GRAFANA_CHART): $(GRAFANA_SOURCES) $(DISTDIR)
+$(GRAFANA_CHART): $(GRAFANA_SOURCES) $(CHARTDIR)
 	helm dep update $(HELMDIR)/kube-eng-grafana --skip-refresh
-	helm package --version $(VERSION) --destination $(DISTDIR) $(HELMDIR)/kube-eng-grafana
+	helm package --version $(VERSION) --destination $(CHARTDIR) $(HELMDIR)/kube-eng-grafana
 
-$(JAEGER_CHART): $(JAEGER_SOURCES) $(DISTDIR)
+$(JAEGER_CHART): $(JAEGER_SOURCES) $(CHARTDIR)
 	helm dep update $(HELMDIR)/kube-eng-jaeger --skip-refresh
-	helm package --version $(VERSION) --destination $(DISTDIR) $(HELMDIR)/kube-eng-jaeger
+	helm package --version $(VERSION) --destination $(CHARTDIR) $(HELMDIR)/kube-eng-jaeger
 
-$(KIALI_CHART): $(KIALI_SOURCES) $(DISTDIR)
+$(KIALI_CHART): $(KIALI_SOURCES) $(CHARTDIR)
 	helm dep update $(HELMDIR)/kube-eng-kiali --skip-refresh
-	helm package --version $(VERSION) --destination $(DISTDIR) $(HELMDIR)/kube-eng-kiali
+	helm package --version $(VERSION) --destination $(CHARTDIR) $(HELMDIR)/kube-eng-kiali

@@ -46,6 +46,84 @@
         src: https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.2.1/experimental-install.yaml
         state: present
 
+  - name: Create PKI infrastructure
+    block:
+    - name: Create a directory for PKI
+      ansible.builtin.file:
+        path: "{{ dist_dir }}/pki"
+        state: directory
+    - name: Create a private key for the local CA
+      community.crypto.openssl_privatekey:
+        path: "{{ dist_dir }}/pki/ca.key"
+        type: ECC
+        curve: secp256r1
+        return_content: true
+        state: present
+      register: pki_key
+    - name: Generate a CSR for the local CA
+      community.crypto.openssl_csr:
+        path: "{{ dist_dir }}/pki/ca.csr"
+        privatekey_path: "{{ dist_dir }}/pki/ca.key"
+        common_name: "{{ cluster_name }} Local CA"
+        key_usage_critical: true
+        key_usage:
+        - keyCertSign
+        - cRLSign
+        basic_constraints_critical: true
+        basic_constraints:
+        - "CA:TRUE"
+        - "pathlen:1"
+    - name: Create a self-signed local CA
+      community.crypto.x509_certificate:
+        path: "{{ dist_dir }}/pki/ca.pem"
+        privatekey_path: "{{ dist_dir }}/pki/ca.key"
+        csr_path: "{{ dist_dir }}/pki/ca.csr"
+        provider: selfsigned
+        return_content: true
+      register: pki_cert
+    - name: Deploy cert-manager
+      kubernetes.core.helm:
+        name: cert-manager
+        create_namespace: true
+        release_namespace: "{{ cluster.cert_manager_ns }}"
+        chart_ref: jetstack/cert-manager
+        wait: true
+        values:
+          crds:
+            enabled: true
+            keep: false
+          prometheus:
+            enabled: true
+          config:
+            apiVersion: controller.config.cert-manager.io/v1alpha1
+            kind: ControllerConfiguration
+            enableGatewayAPI: true
+    - name: Create a secret from the local CA files
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: v1
+          kind: Secret
+          type: Opaque
+          metadata:
+            name: ca-key-pair
+            namespace: "{{ cluster.cert_manager_ns }}"
+          data:
+            tls.crt: "{{ pki_cert.certificate | b64encode }}"
+            tls.key: "{{ pki_key.privatekey | b64encode }}"
+    - name: Declare the local CA as an issuer
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: cert-manager.io/v1
+          kind: ClusterIssuer
+          metadata:
+            name: ca-issuer
+            namespace: "{{ cluster.cert_manager_ns }}"
+          spec:
+            ca:
+              secretName: ca-key-pair
+
   - name: Install Edge
     ansible.builtin.import_role:
       name: mrmat.kube_eng.edge

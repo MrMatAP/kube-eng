@@ -4,6 +4,8 @@ kind: Service
 metadata:
   name: istio-ingressgateway
   namespace: "{{ ns }}"
+  annotations:
+    cert-manager.io/cluster-issuer: ca-issuer
 spec:
   type: LoadBalancer
   selector:
