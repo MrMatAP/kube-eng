@@ -144,6 +144,7 @@ host-infra-stop: $(COLLECTION)
 # Cluster installation
 
 cluster: $(COLLECTION)
+	$(helm) repo add jetstack https://charts.jetstack.io
 	$(ANSIBLE_PLAYBOOK_EXEC) mrmat.kube_eng.create_cluster
 
 cluster-destroy: $(COLLECTION)
