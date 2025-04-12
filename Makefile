@@ -1,6 +1,5 @@
 #
 # Convenience Makefile
-# Useful reference: https://makefiletutorial.com
 
 GIT_SHA := $(shell git rev-parse --short HEAD)
 VERSION ?= 0.0.0-dev0.$(GIT_SHA)
@@ -8,16 +7,37 @@ VERSION ?= 0.0.0-dev0.$(GIT_SHA)
 SRCDIR := $(CURDIR)/src
 DISTDIR := $(CURDIR)/.dist
 TMPDIR := $(CURDIR)/.tmp
-
 BINDIR := $(CURDIR)/bin
 VENVDIR := $(CURDIR)/.venv
 ANSIBLEDIR := $(SRCDIR)/ansible
 HELMDIR := $(SRCDIR)/helm
-
 CLUSTER_VARS := $(CURDIR)/cluster.yaml
-CLUSTER_NAME := $(shell hostname -s)
-CLUSTER_CONFIG := $(CURDIR)/var/kind-large.yaml
-NAMESPACE := kube-eng
+
+ifndef $(COMSPEC)
+	kind := /opt/homebrew/bin/kind
+	istioctl := /opt/homebrew/bin/istioctl
+	kubectl := /opt/homebrew/bin/kubectl
+	cloud-provider-kind := $(BINDIR)/cloud-provider-kind
+	cloud-provider-mdns := $(VENVDIR)/bin/cloud-provider-mdns
+	ansible-galaxy := $(VENVDIR)/bin/ansible-galaxy
+	ansible-playbook := $(VENVDIR)/bin/ansible-playbook
+	docker := /usr/local/bin/docker
+
+	CLUSTER_NAME := $(shell hostname --short)
+	PLATFORM := "MacOS"
+else
+	kind := $(LOCALAPPDATA)/Microsoft/WinGet/Links/kind.exe
+	istioctl := $(LOCALAPPDATA)/Microsoft/WinGet/Links/istioctl.exe
+	kubectl := $(ProgramFiles)/Docker/Docker/resources/bin/kubectl.exe
+	cloud-provider-kind := $(BINDIR)/cloud-provider-kind
+	cloud-provider-mdns := $(VENVDIR)/bin/cloud-provider-mdns
+	ansible-galaxy := $(VENVDIR)/bin/ansible-galaxy
+	ansible-playbook := $(VENVDIR)/bin/ansible-playbook
+	docker := $(ProgramFiles)/Docker/Docker/resources/bin/docker.exe
+
+	PLATFORM := "Windows"
+	CLUSTER_NAME := $(shell hostname)
+endif
 
 
 PROMETHEUS_SOURCES := $(shell find $(HELMDIR)/kube-eng-prometheus)
@@ -50,18 +70,12 @@ keycloak: $(KEYCLOAK_CHART)
 grafana: $(GRAFANA_CHART)
 kiali: $(KIALI_CHART)
 
+test: $(kubectl)
+
 #
-# Dependencies
+# Dependencies, depending on platform, tested by presence of the COMSPEC environment variable present on Windows
 
 admin-password-file := $(CURDIR)/.admin-password
-kind := /opt/homebrew/bin/kind
-istioctl := /opt/homebrew/bin/istioctl
-kubectl := /opt/homebrew/bin/kubectl
-cloud-provider-kind := $(BINDIR)/cloud-provider-kind
-cloud-provider-mdns := $(VENVDIR)/bin/cloud-provider-mdns
-ansible-galaxy := $(VENVDIR)/bin/ansible-galaxy
-ansible-playbook := $(VENVDIR)/bin/ansible-playbook
-docker := /usr/local/bin/docker
 
 deps: $(admin-password-file) $(docker) $(istioctl) $(kubectl) $(kind) $(cloud-provider-kind) $(cloud-provider-mdns) $(ansible-playbook) $(ansible-galaxy)
 	@echo "All deps installed"
@@ -81,13 +95,21 @@ $(docker):
 	@exit 1
 
 $(kind):
+ifeq ($(PLATFORM),Windows)
+	winget install Kubernetes.kind
+else
 	brew install kind
+endif
 
 $(istioctl):
 	brew install istioctl
 
 $(kubectl):
+ifeq ($(PLATFORM),Windows)
+	winget install Kubernetes.kubectl
+else
 	brew install kubectl
+endif
 
 $(cloud-provider-kind): | $(TMPDIR) $(BINDIR)
 	curl -Lo $(TMPDIR)/cloud-provider-kind.tar.gz $(CLOUD_PROVIDER_KIND_URL)

@@ -21,3 +21,13 @@ You should then be able to:
 * Open [Prometheus](http://prometheus.local/)
 * Open [Keycloak](http://keylocal.local/)
 * Open [Grafana](http://grafana.local/)
+
+## MacOS Support
+
+Dependencies are installed using brew if they are available there, otherwise downloaded directly.
+
+## Windows Support
+
+Dependencies are installed using winget if they are available there, otherwise downloaded directly.
+A prerequisite is GNU make, which an be installed using `winget install GnuWin32.Make`. 
+This will install GNU make into `C:\Program Files (x86)\GnuWin32\bin\make.exe`.
