@@ -21,6 +21,7 @@ cluster:
   mesh: istio-experimental
   istio_profile: minimal
   gateway_api: true
+  cert_manager_ns: cert-manager
   edge: istio-gateway-api-experimental
   edge_ns: edge
 
@@ -31,14 +32,19 @@ host:
     kubectl: /opt/homebrew/bin/kubectl
     docker: /usr/local/bin/docker
     named: /opt/homebrew/sbin/named
+    step: /opt/homebrew/bin/step
   cloud_provider_kind:
     enabled: true
     url: https://github.com/kubernetes-sigs/cloud-provider-kind/releases/download/v0.6.0/cloud-provider-kind_0.6.0_darwin_arm64.tar.gz
   cloud_provider_mdns:
-    enabled: true
+    enabled: false
   resolver:
     enabled: true
     forwarder: 8.8.8.8
+  pki:
+    enabled: true
+    name: local-pki
+    port: 9000
   registry:
     enabled: true
     name: airgap-registry
@@ -77,7 +83,7 @@ stack:
       image: alertmanager
       tag: v0.27.0
     ns: prometheus
-    hostname: prometheus.local
+    hostname: prometheus.covenant.local
   postgres:
     enabled: true
     preheat_images:
@@ -94,7 +100,7 @@ stack:
       image: keycloak
       tag: 26.0.7
     ns: keycloak
-    hostname: keycloak.local
+    hostname: keycloak.covenant.local
   grafana:
     enabled: true
     preheat_images:
@@ -115,11 +121,11 @@ stack:
       image: grafana
       tag: 11.4.0
     ns: grafana
-    hostname: grafana.local
+    hostname: grafana.covenant.local
     client_id: grafana
     admin_user: admin
   jaeger:
-    enabled: true
+    enabled: false
     preheat_images:
     - registry: docker.io
       repository: jaegertracing
@@ -142,7 +148,7 @@ stack:
       image: cassandra
       tag: 3.11.6
     ns: jaeger
-    hostname: jaeger.local
+    hostname: jaeger.covenant.local
   kiali:
     enabled: true
     preheat_images:
@@ -151,4 +157,4 @@ stack:
       image: kiali
       tag: v2.6.0
     ns: istio-system
-    hostname: kiali.local
+    hostname: kiali.covenant.local

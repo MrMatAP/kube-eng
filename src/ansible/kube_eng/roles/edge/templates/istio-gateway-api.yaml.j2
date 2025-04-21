@@ -5,6 +5,8 @@ kind: Gateway
 metadata:
   name: edge-ingress
   namespace: "{{ ns }}"
+  annotations:
+    cert-manager.io/cluster-issuer: ca-issuer
 spec:
   gatewayClassName: istio
   listeners:
@@ -14,9 +16,15 @@ spec:
     allowedRoutes:
       namespaces:
         from: All
-  - name: https
+  - name: notfound
+    hostname: notfound.{{ cluster_name }}.local
     port: 443
-    protocol: HTTP
+    protocol: HTTPS
+    tls:
+      mode: Terminate
+      certificateRefs:
+      - name: notfound-cert
+        kind: Secret
     allowedRoutes:
       namespaces:
         from: All
