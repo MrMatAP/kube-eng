@@ -3,7 +3,7 @@
 
 route:
   enabled: true
-  name: kube-eng-grafana-httproute
+  name: grafana-httproute
   hostname: grafana.local
   parent: edge-ingress
   parent_ns: edge
@@ -48,7 +48,7 @@ grafana:
     auth.generic_oauth:
       enabled: true
       name: Keycloak-OAuth
-      auth_url: http://ke-keycloak.local/realms/master/protocol/openid-connect/auth
+      auth_url: http://keycloak.covenant.local/realms/master/protocol/openid-connect/auth
       token_url: http://kube-eng-keycloak-svc.kube-eng.svc.cluster.local/realms/master/protocol/openid-connect/token
       api_url: http://kube-eng-keycloak-svc.kube-eng.svc.cluster.local/realms/master/protocol/openid-connect/userinfo
       allow_sign_up: true

@@ -3,7 +3,7 @@
 
 route:
   enabled: true
-  name: kube-eng-kiali-httproute
+  name: kiali-httproute
   hostname: kiali.local
   parent: edge-ingress
   parent_ns: edge

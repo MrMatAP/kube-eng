@@ -49,6 +49,7 @@
         - name: kind
           aliases: "{{ host.registry.name }}"
         state: started
+
     - name: Preheat the Prometheus image(s)
       ansible.builtin.include_role:
         name: mrmat.kube_eng.preheat_image
@@ -59,6 +60,7 @@
         image: "{{ item.image }}"
         tag: "{{ item.tag }}"
       loop: "{{ stack.prometheus.preheat_images }}"
+
     - name: Preheat the Postgres image(s)
       ansible.builtin.include_role:
         name: mrmat.kube_eng.preheat_image
@@ -69,6 +71,7 @@
         image: "{{ item.image }}"
         tag: "{{ item.tag }}"
       loop: "{{ stack.postgres.preheat_images }}"
+
     - name: Preheat the Keycloak image(s)
       ansible.builtin.include_role:
         name: mrmat.kube_eng.preheat_image
@@ -79,6 +82,7 @@
         image: "{{ item.image }}"
         tag: "{{ item.tag }}"
       loop: "{{ stack.keycloak.preheat_images }}"
+
     - name: Preheat the Grafana image(s)
       ansible.builtin.include_role:
         name: mrmat.kube_eng.preheat_image
@@ -89,6 +93,7 @@
         image: "{{ item.image }}"
         tag: "{{ item.tag }}"
       loop: "{{ stack.grafana.preheat_images }}"
+
     - name: Preheat the Jaeger image(s)
       ansible.builtin.include_role:
         name: mrmat.kube_eng.preheat_image
@@ -99,6 +104,7 @@
         image: "{{ item.image }}"
         tag: "{{ item.tag }}"
       loop: "{{ stack.jaeger.preheat_images }}"
+
     - name: Preheat the Kiali image(s)
       ansible.builtin.include_role:
         name: mrmat.kube_eng.preheat_image

@@ -10,19 +10,17 @@ specified it will be generated.
 
 ```shell
 $ make cluster
+```
+
+At this stage, you will find `.dist/pki/ca.pem`, which you should import into your login keystore and trust. Continue
+with the commands below.
+
+```shell
 $ make host-infra
 $ sudo ./bin/cloud-provider-kind
 $ ./.venv/bin/cloud-provider-mdns
 $ make stack
 ```
-
-You should then be able to:
-
-* Open [kiali](http://kiali.local/)
-* Open [Prometheus](http://prometheus.local/)
-* Open [Keycloak](http://keylocal.local/)
-* Open [Grafana](http://grafana.local/)
-* Open [Jaeger](http://jaeger.local/)
 
 ## Limitations
 
@@ -46,3 +44,4 @@ You should then be able to:
           labels:
             istio-injection: enabled
   ```
+* Ansible doesn't immediately trust the CA certificate we generate. The playbook currently ignores TLS validation.

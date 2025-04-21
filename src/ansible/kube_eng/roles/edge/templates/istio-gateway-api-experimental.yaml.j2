@@ -16,21 +16,69 @@ spec:
     allowedRoutes:
       namespaces:
         from: All
-  - name: notfound
-    hostname: notfound.{{ cluster_name }}.local
-    port: 443
-    protocol: HTTPS
-    tls:
-      mode: Terminate
-      certificateRefs:
-      - name: notfound-cert
-        kind: Secret
-    allowedRoutes:
-      namespaces:
-        from: All
   - name: postgres
     port: 5432
     protocol: TCP
     allowedRoutes:
       namespaces:
         from: All
+  - name: prometheus
+    hostname: prometheus.{{ cluster_name }}.local
+    port: 443
+    protocol: HTTPS
+    allowedRoutes:
+      namespaces:
+        from: All
+    tls:
+      mode: Terminate
+      certificateRefs:
+      - name: prometheus-cert
+        kind: Secret
+  - name: keycloak
+    hostname: keycloak.{{ cluster_name }}.local
+    port: 443
+    protocol: HTTPS
+    allowedRoutes:
+      namespaces:
+        from: All
+    tls:
+      mode: Terminate
+      certificateRefs:
+      - name: keycloak-cert
+        kind: Secret
+  - name: grafana
+    hostname: grafana.{{ cluster_name }}.local
+    port: 443
+    protocol: HTTPS
+    allowedRoutes:
+      namespaces:
+        from: All
+    tls:
+      mode: Terminate
+      certificateRefs:
+      - name: grafana-cert
+        kind: Secret
+  - name: jaeger
+    hostname: jaeger.{{ cluster_name }}.local
+    port: 443
+    protocol: HTTPS
+    allowedRoutes:
+      namespaces:
+        from: All
+    tls:
+      mode: Terminate
+      certificateRefs:
+      - name: jaeger-cert
+        kind: Secret
+  - name: kiali
+    hostname: kiali.{{ cluster_name }}.local
+    port: 443
+    protocol: HTTPS
+    allowedRoutes:
+      namespaces:
+        from: All
+    tls:
+      mode: Terminate
+      certificateRefs:
+      - name: kiali-cert
+        kind: Secret

@@ -15,6 +15,7 @@ spec:
     kind: Gateway
     name: {{ .Values.route.parent }}
     namespace: {{ .Values.route.parent_ns }}
+    sectionName: grafana
   rules:
   - backendRefs:
     - kind: Service

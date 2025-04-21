@@ -128,25 +128,17 @@ stack:
     enabled: false
     preheat_images:
     - registry: docker.io
-      repository: jaegertracing
-      image: jaeger-query
-      tag: 1.53.0
+      repository: bitnami
+      image: jaeger
+      tag: 2.5.0-debian-12-r0
     - registry: docker.io
-      repository: jaegertracing
-      image: jaeger-agent
-      tag: 1.53.0
-    - registry: docker.io
-      repository: jaegertracing
-      image: jaeger-collector
-      tag: 1.53.0
-    - registry: docker.io
-      repository: jaegertracing
-      image: jaeger-cassandra-schema
-      tag: 1.53.0
-    - registry: docker.io
-      repository: library
+      repository: bitnami
       image: cassandra
-      tag: 3.11.6
+      tag: 5.0.3-debian-12-r9
+    - registry: docker.io
+      repository: bitnami
+      image: cassandra
+      tag: 5.0.4-debian-12-r2
     ns: jaeger
     hostname: jaeger.covenant.local
   kiali:
@@ -155,6 +147,6 @@ stack:
     - registry: quay.io
       repository: kiali
       image: kiali
-      tag: v2.6.0
+      tag: v2.8.0
     ns: istio-system
     hostname: kiali.covenant.local
