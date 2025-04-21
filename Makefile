@@ -32,13 +32,16 @@ JAEGER_SOURCES := $(shell find $(HELMDIR)/kube-eng-jaeger)
 JAEGER_CHART := $(CHARTDIR)/kube-eng-jaeger-$(VERSION).tgz
 KIALI_SOURCES := $(shell find $(HELMDIR)/kube-eng-kiali)
 KIALI_CHART := $(CHARTDIR)/kube-eng-kiali-$(VERSION).tgz
+
 COLLECTION_SOURCES :=$(shell find $(SRCDIR)/ansible/kube_eng)
 
 CHARTS := $(PROMETHEUS_CHART) $(POSTGRES_CHART) $(KEYCLOAK_CHART) \
-		  $(GRAFANA_CHART) $(JAEGER_CHART) $(KIALI_CHART)
+		  $(GRAFANA_CHART) $(JAEGER_CHART) $(KIALI_CHART) \
+		  $(ALLOY_CHART)
 COLLECTION := $(DISTDIR)/mrmat-kube_eng-$(VERSION).tar.gz
 
-ANSIBLE_PLAYBOOK_EXEC = ANSIBLE_PYTHON_INTERPRETER=$(VENVDIR)/bin/python3 $(ansible-playbook) -v -i $(ANSIBLEDIR)/inventory.yml \
+ANSIBLE_PLAYBOOK_EXEC = ANSIBLE_PYTHON_INTERPRETER=$(VENVDIR)/bin/python3 \
+						$(ansible-playbook) -v -i $(ANSIBLEDIR)/inventory.yml \
 							-e @$(CLUSTER_VARS) \
 							-e dist_dir=$(DISTDIR) \
 							-e admin_password="$(shell cat $(admin-password-file))" \
@@ -161,23 +164,23 @@ stack: $(COLLECTION) $(CHARTS)
 charts: $(CHARTS)
 
 $(PROMETHEUS_CHART): $(PROMETHEUS_SOURCES) $(CHARTDIR)
-	helm dep update $(HELMDIR)/kube-eng-prometheus --skip-refresh
-	helm package --version $(VERSION) --destination $(CHARTDIR) $(HELMDIR)/kube-eng-prometheus
+	$(helm) dep update $(HELMDIR)/kube-eng-prometheus --skip-refresh
+	$(helm) package --version $(VERSION) --destination $(CHARTDIR) $(HELMDIR)/kube-eng-prometheus
 
 $(POSTGRES_CHART): $(POSTGRES_SOURCES) $(CHARTDIR)
-	helm package --version $(VERSION) --destination $(CHARTDIR) $(HELMDIR)/kube-eng-postgres
+	$(helm) package --version $(VERSION) --destination $(CHARTDIR) $(HELMDIR)/kube-eng-postgres
 
 $(KEYCLOAK_CHART): $(KEYCLOAK_SOURCES) $(CHARTDIR)
-	helm package --version $(VERSION) --destination $(CHARTDIR) $(HELMDIR)/kube-eng-keycloak
+	$(helm) package --version $(VERSION) --destination $(CHARTDIR) $(HELMDIR)/kube-eng-keycloak
 
 $(GRAFANA_CHART): $(GRAFANA_SOURCES) $(CHARTDIR)
-	helm dep update $(HELMDIR)/kube-eng-grafana --skip-refresh
-	helm package --version $(VERSION) --destination $(CHARTDIR) $(HELMDIR)/kube-eng-grafana
+	$(helm) dep update $(HELMDIR)/kube-eng-grafana --skip-refresh
+	$(helm) package --version $(VERSION) --destination $(CHARTDIR) $(HELMDIR)/kube-eng-grafana
 
 $(JAEGER_CHART): $(JAEGER_SOURCES) $(CHARTDIR)
-	helm dep update $(HELMDIR)/kube-eng-jaeger --skip-refresh
-	helm package --version $(VERSION) --destination $(CHARTDIR) $(HELMDIR)/kube-eng-jaeger
+	$(helm) dep update $(HELMDIR)/kube-eng-jaeger --skip-refresh
+	$(helm) package --version $(VERSION) --destination $(CHARTDIR) $(HELMDIR)/kube-eng-jaeger
 
 $(KIALI_CHART): $(KIALI_SOURCES) $(CHARTDIR)
-	helm dep update $(HELMDIR)/kube-eng-kiali --skip-refresh
-	helm package --version $(VERSION) --destination $(CHARTDIR) $(HELMDIR)/kube-eng-kiali
+	$(helm) dep update $(HELMDIR)/kube-eng-kiali --skip-refresh
+	$(helm) package --version $(VERSION) --destination $(CHARTDIR) $(HELMDIR)/kube-eng-kiali

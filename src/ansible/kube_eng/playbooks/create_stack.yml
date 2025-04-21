@@ -2,6 +2,7 @@
 - name: Create the stack
   hosts: localhost
   tasks:
+
   - name: Install Prometheus
     when: "stack.prometheus.enabled | bool == true"
     block:
@@ -103,7 +104,7 @@
     block:
     - name: Register Grafana in Keycloak
       community.general.keycloak_client:
-        auth_keycloak_url: "http://{{ stack.keycloak.hostname }}"
+        auth_keycloak_url: "https://{{ stack.keycloak.hostname }}"
         auth_realm: master
         auth_username: admin
         auth_password: "{{ admin_password }}"
@@ -116,10 +117,10 @@
         client_authenticator_type: client-secret
         secret: "{{ admin_password }}"
         root_url: "http:/{{ stack.grafana.hostname }}/"
-        base_url: "http://{{ stack.grafana.hostname }}/"
-        admin_url: "http://{{ stack.grafana.hostname }}/"
+        base_url: "https://{{ stack.grafana.hostname }}/"
+        admin_url: "https://{{ stack.grafana.hostname }}/"
         redirect_uris:
-        - "http://{{ stack.grafana.hostname }}/login/generic_oauth"
+        - "https://{{ stack.grafana.hostname }}/login/generic_oauth"
         standard_flow_enabled: true
         implicit_flow_enabled: false
         direct_access_grants_enabled: true
@@ -128,9 +129,12 @@
         - offline_access
         - profile
         - roles
+        # TODO: Validate your certs!
+        validate_certs: false
+
     - name: Register Grafana Viewer role
       community.general.keycloak_role:
-        auth_keycloak_url: "http://{{ stack.keycloak.hostname }}"
+        auth_keycloak_url: "https://{{ stack.keycloak.hostname }}"
         auth_realm: master
         auth_username: admin
         auth_password: "{{ admin_password }}"
@@ -138,9 +142,12 @@
         description: Grafana Viewers
         client_id: "{{ stack.grafana.client_id }}"
         state: present
+        # TODO: Validate your certs!
+        validate_certs: false
+
     - name: Register Grafana Editor role
       community.general.keycloak_role:
-        auth_keycloak_url: "http://{{ stack.keycloak.hostname }}"
+        auth_keycloak_url: "https://{{ stack.keycloak.hostname }}"
         auth_realm: master
         auth_username: admin
         auth_password: "{{ admin_password }}"
@@ -148,9 +155,12 @@
         description: Grafana Editors
         client_id: "{{ stack.grafana.client_id }}"
         state: present
+        # TODO: Validate your certs!
+        validate_certs: false
+
     - name: Register Grafana Admin role
       community.general.keycloak_role:
-        auth_keycloak_url: "http://{{ stack.keycloak.hostname }}"
+        auth_keycloak_url: "https://{{ stack.keycloak.hostname }}"
         auth_realm: master
         auth_username: admin
         auth_password: "{{ admin_password }}"
@@ -158,6 +168,9 @@
         description: Grafana Admins
         client_id: "{{ stack.grafana.client_id }}"
         state: present
+        # TODO: Validate your certs!
+        validate_certs: false
+
     - name: Install Grafana
       kubernetes.core.helm:
         name: grafana
@@ -177,14 +190,14 @@
               GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET: "{{ admin_password }}"
             grafana.ini:
               server:
-                root_url: "http://{{ stack.grafana.hostname }}"
+                root_url: "https://{{ stack.grafana.hostname }}"
                 auth.generic_oauth:
-                  auth_url: "http://{{ stack.keycloak.hostname }}/realms/master/protocol/openid-connect/auth"
+                  auth_url: "https://{{ stack.keycloak.hostname }}/realms/master/protocol/openid-connect/auth"
                   token_url: "http://kube-eng-keycloak-svc.{{ stack.keycloak.ns }}.svc.cluster.local/realms/master/protocol/openid-connect/token"
                   api_url: "http://kube-eng-keycloak-svc.{{ stack.keycloak.ns }}.svc.cluster.local/realms/master/protocol/openid-connect/userinfo"
     - name: Configure Prometheus datasource
       community.grafana.grafana_datasource:
-        grafana_url: "http://{{ stack.grafana.hostname }}"
+        grafana_url: "https://{{ stack.grafana.hostname }}"
         grafana_user: "{{ stack.grafana.admin_user }}"
         grafana_password: "{{ admin_password }}"
         name: prometheus
@@ -192,20 +205,26 @@
         ds_url: "http://prometheus-server.{{ stack.prometheus.ns }}.svc.cluster.local"
         is_default: true
         state: present
+        # TODO: Validate your certs!
+        validate_certs: false
     - name: Import Istio Control Plane Dashboard
       community.grafana.grafana_dashboard:
-        grafana_url: "http://{{ stack.grafana.hostname }}"
+        grafana_url: "https://{{ stack.grafana.hostname }}"
         grafana_user: "{{ stack.grafana.admin_user }}"
         grafana_password: "{{ admin_password }}"
         dashboard_id: 7645
         state: present
+        # TODO: Validate your certs!
+        validate_certs: false
     - name: Import Ztunnel Dashboard
       community.grafana.grafana_dashboard:
-        grafana_url: "http://{{ stack.grafana.hostname }}"
+        grafana_url: "https://{{ stack.grafana.hostname }}"
         grafana_user: "{{ stack.grafana.admin_user }}"
         grafana_password: "{{ admin_password }}"
         dashboard_id: 21306
         state: present
+        # TODO: Validate your certs!
+        validate_certs: false
 
   - name: Install Jaeger
     when: "stack.jaeger.enabled | bool == true"
@@ -223,6 +242,8 @@
           jaeger:
             global:
               imageRegistry: "{{ host.registry.name }}:5000"
+              security:
+                allowInsecureImages: true
 
   - name: Install Kiali
     when: "stack.kiali.enabled | bool == true"
@@ -246,12 +267,12 @@
                 egress_gateway_namespace: "{{ cluster.edge_ns }}"
               prometheus:
                 internal_url: "http://prometheus-server.{{ stack.prometheus.ns }}.svc.cluster.local"
-                external_url: "http://{{ stack.prometheus.hostname }}"
+                external_url: "https://{{ stack.prometheus.hostname }}"
                 url: "http://prometheus-server.{{ stack.prometheus.ns }}.svc.cluster.local"
               grafana:
                 enabled: "{{ stack.grafana.enabled | bool }}"
                 internal_url: "http://grafana.{{ stack.grafana.ns }}.svc.cluster.local"
-                external_url: "http://{{ stack.grafana.hostname }}"
+                external_url: "https://{{ stack.grafana.hostname }}"
                 auth:
                   username: "{{ stack.grafana.admin_user }}"
                   password: "{{ admin_password }}"

@@ -3,7 +3,7 @@
 
 route:
   enabled: true
-  name: kube-eng-jaeger-httproute
+  name: jaeger-httproute
   hostname: jaeger.local
   parent: edge-ingress
   parent_ns: edge

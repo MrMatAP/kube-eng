@@ -16,6 +16,7 @@ spec:
     kind: Gateway
     name: {{ .name }}
     namespace: {{ .namespace }}
+    sectionName: keycloak
   {{- end }}
   rules:
   - backendRefs:
