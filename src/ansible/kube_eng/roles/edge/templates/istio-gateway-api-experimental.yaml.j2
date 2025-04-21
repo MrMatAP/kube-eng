@@ -16,16 +16,15 @@ spec:
     allowedRoutes:
       namespaces:
         from: All
-  - name: https
-    hostname: notfound.nostromo.mrmat.org
+  - name: notfound
+    hostname: notfound.{{ cluster_name }}.local
     port: 443
     protocol: HTTPS
     tls:
       mode: Terminate
       certificateRefs:
-      - name: edge-ingress-cert
+      - name: notfound-cert
         kind: Secret
-        group: cert-manager.io
     allowedRoutes:
       namespaces:
         from: All

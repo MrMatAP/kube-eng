@@ -16,15 +16,15 @@ spec:
     allowedRoutes:
       namespaces:
         from: All
-  - name: https
+  - name: notfound
+    hostname: notfound.{{ cluster_name }}.local
     port: 443
     protocol: HTTPS
     tls:
-        mode: Terminate
-        certificateRefs:
-        - name: edge-ingress-cert
-          kind: Secret
-          group: cert-manager.io
+      mode: Terminate
+      certificateRefs:
+      - name: notfound-cert
+        kind: Secret
     allowedRoutes:
       namespaces:
         from: All

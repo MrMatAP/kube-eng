@@ -130,4 +130,5 @@
     vars:
       kind: "{{ cluster.edge }}"
       ns: "{{ cluster.edge_ns }}"
+      cluster_name: "{{ cluster.name }}"
       config_file: "{{ dist_dir }}/edge.yaml"

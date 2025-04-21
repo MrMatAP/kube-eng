@@ -83,9 +83,9 @@ stack:
       image: alertmanager
       tag: v0.27.0
     ns: prometheus
-    hostname: prometheus.local
+    hostname: prometheus.covenant.local
   postgres:
-    enabled: false
+    enabled: true
     preheat_images:
     - registry: docker.io
       repository: library
@@ -93,16 +93,16 @@ stack:
       tag: 17.2-alpine3.21
     ns: postgres
   keycloak:
-    enabled: false
+    enabled: true
     preheat_images:
     - registry: quay.io
       repository: keycloak
       image: keycloak
       tag: 26.0.7
     ns: keycloak
-    hostname: keycloak.local
+    hostname: keycloak.covenant.local
   grafana:
-    enabled: false
+    enabled: true
     preheat_images:
     - registry: docker.io
       repository: library
@@ -121,7 +121,7 @@ stack:
       image: grafana
       tag: 11.4.0
     ns: grafana
-    hostname: grafana.local
+    hostname: grafana.covenant.local
     client_id: grafana
     admin_user: admin
   jaeger:
@@ -148,13 +148,13 @@ stack:
       image: cassandra
       tag: 3.11.6
     ns: jaeger
-    hostname: jaeger.local
+    hostname: jaeger.covenant.local
   kiali:
-    enabled: false
+    enabled: true
     preheat_images:
     - registry: quay.io
       repository: kiali
       image: kiali
       tag: v2.6.0
     ns: istio-system
-    hostname: kiali.local
+    hostname: kiali.covenant.local
