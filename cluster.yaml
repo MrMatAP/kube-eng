@@ -37,9 +37,9 @@ host:
     enabled: true
     url: https://github.com/kubernetes-sigs/cloud-provider-kind/releases/download/v0.6.0/cloud-provider-kind_0.6.0_darwin_arm64.tar.gz
   cloud_provider_mdns:
-    enabled: false
-  resolver:
     enabled: true
+  resolver:
+    enabled: false
     forwarder: 8.8.8.8
   pki:
     enabled: true
@@ -47,8 +47,18 @@ host:
     port: 9000
   registry:
     enabled: true
-    name: airgap-registry
+    name: registry
     port: 5001
+    image: "registry:2"
+    volume:
+      name: "registry-volume"
+  postgresql:
+    enabled: true
+    name: pg
+    port: 5432
+    image: "postgres:15"
+    volume:
+      name: "pg-volume"
 
 stack:
   prometheus:
@@ -84,14 +94,6 @@ stack:
       tag: v0.27.0
     ns: prometheus
     hostname: prometheus.covenant.local
-  postgres:
-    enabled: true
-    preheat_images:
-    - registry: docker.io
-      repository: library
-      image: postgres
-      tag: 17.2-alpine3.21
-    ns: postgres
   keycloak:
     enabled: true
     preheat_images:
