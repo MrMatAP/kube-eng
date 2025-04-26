@@ -37,33 +37,13 @@
               image:
                 repository: "{{ host.registry.name }}:5000/prometheus/pushgateway"
 
-  - name: Install and configure PostgreSQL
-    when: "stack.postgres.enabled | bool == true"
-    block:
-    - name: Deploy PostgreSQL
-      kubernetes.core.helm:
-        name: postgres
-        create_namespace: true
-        release_namespace: "{{ stack.postgres.ns }}"
-        chart_ref: "{{ postgres_chart }}"
-        wait: true
-        values:
-          pod:
-            repository: "{{ host.registry.name }}:5000/library/postgres"
-            admin_password: "{{ admin_password }}"
-    - name: Get the IP address of the external PostgreSQL service
-      kubernetes.core.k8s_info:
-        kind: Service
-        name: kube-eng-postgres-ext-svc
-        namespace: "{{ stack.postgres.ns }}"
-      register: pg_ext_svc
-
   - name: Install KeyCloak
-    when: "stack.keycloak.enabled | bool == true and stack.postgres.enabled | bool == true"
+    when: "stack.keycloak.enabled | bool == true and host.postgresql.enabled | bool == true"
     block:
     - name: Create a keycloak user in PostgreSQL
       community.postgresql.postgresql_user:
-        login_host: "{{ pg_ext_svc.resources[0].status.loadBalancer.ingress[0].ip }}"
+        login_host: localhost
+        login_port: "{{ host.postgresql.port | int }}"
         login_user: postgres
         login_password: "{{ admin_password }}"
         login_db: postgres
@@ -75,7 +55,8 @@
         PGOPTIONS: "-c password_encryption=scram-sha-256"
     - name: Create a database for Keycloak in PostgreSQL
       community.postgresql.postgresql_db:
-        login_host: "{{ pg_ext_svc.resources[0].status.loadBalancer.ingress[0].ip }}"
+        login_host: localhost
+        login_port: "{{ host.postgresql.port | int }}"
         login_user: postgres
         login_password: "{{ admin_password }}"
         name: keycloak
@@ -95,7 +76,8 @@
             repository: "{{ host.registry.name }}:5000/keycloak/keycloak"
             admin_password: "{{ admin_password }}"
             db_password: "{{ admin_password }}"
-            db_host: "kube-eng-postgres-svc.{{ stack.postgres.ns }}.svc.cluster.local"
+            db_host: "{{ host.postgresql.name }}"
+            db_port: "{{ host.postgresql.port }}"
           route:
             hostname: "{{ stack.keycloak.hostname }}"
 

@@ -35,7 +35,7 @@ KIALI_CHART := $(CHARTDIR)/kube-eng-kiali-$(VERSION).tgz
 
 COLLECTION_SOURCES :=$(shell find $(SRCDIR)/ansible/kube_eng)
 
-CHARTS := $(PROMETHEUS_CHART) $(POSTGRES_CHART) $(KEYCLOAK_CHART) \
+CHARTS := $(PROMETHEUS_CHART) $(KEYCLOAK_CHART) \
 		  $(GRAFANA_CHART) $(JAEGER_CHART) $(KIALI_CHART) \
 		  $(ALLOY_CHART)
 COLLECTION := $(DISTDIR)/mrmat-kube_eng-$(VERSION).tar.gz
@@ -49,7 +49,6 @@ ANSIBLE_PLAYBOOK_EXEC = ANSIBLE_PYTHON_INTERPRETER=$(VENVDIR)/bin/python3 \
 							-e user_id="$(shell whoami)" \
 							-e cluster_name=$(CLUSTER_NAME) \
 							-e prometheus_chart=$(PROMETHEUS_CHART) \
-							-e postgres_chart=$(POSTGRES_CHART) \
 							-e keycloak_chart=$(KEYCLOAK_CHART) \
 							-e grafana_chart=$(GRAFANA_CHART) \
 							-e jaeger_chart=$(JAEGER_CHART) \
@@ -59,7 +58,10 @@ ANSIBLE_PLAYBOOK_EXEC = ANSIBLE_PYTHON_INTERPRETER=$(VENVDIR)/bin/python3 \
 
 .PHONY: clean dist all collection
 clean:
-	@rm -rf $(DISTDIR) $(TMPDIR) $(BINDIR) $(VENVDIR) $(DISTDIR)
+	@rm -rf $(DISTDIR) $(TMPDIR) $(BINDIR) $(DISTDIR)
+
+distclean: clean
+	@rm -rf $(VENVDIR)
 
 all: helm
 password: $(admin-password)
@@ -144,6 +146,12 @@ host-infra-stop: $(COLLECTION)
 	$(ANSIBLE_PLAYBOOK_EXEC) --ask-become-pass mrmat.kube_eng.stop_host_infra
 
 #
+# Airgap
+
+preheat: $(COLLECTION)
+	$(ANSIBLE_PLAYBOOK_EXEC) mrmat.kube_eng.preheat_registry
+
+#
 # Cluster installation
 
 cluster: $(COLLECTION)
@@ -166,9 +174,6 @@ charts: $(CHARTS)
 $(PROMETHEUS_CHART): $(PROMETHEUS_SOURCES) $(CHARTDIR)
 	$(helm) dep update $(HELMDIR)/kube-eng-prometheus --skip-refresh
 	$(helm) package --version $(VERSION) --destination $(CHARTDIR) $(HELMDIR)/kube-eng-prometheus
-
-$(POSTGRES_CHART): $(POSTGRES_SOURCES) $(CHARTDIR)
-	$(helm) package --version $(VERSION) --destination $(CHARTDIR) $(HELMDIR)/kube-eng-postgres
 
 $(KEYCLOAK_CHART): $(KEYCLOAK_SOURCES) $(CHARTDIR)
 	$(helm) package --version $(VERSION) --destination $(CHARTDIR) $(HELMDIR)/kube-eng-keycloak

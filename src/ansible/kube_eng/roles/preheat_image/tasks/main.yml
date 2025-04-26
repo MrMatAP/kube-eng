@@ -26,3 +26,12 @@
     community.docker.docker_image_push:
       name: "{{ airgap_registry }}/{{ repository }}/{{ image }}"
       tag: "{{ tag }}"
+
+  - name: Remove the duplicate images in the docker registry
+    community.docker.docker_image_remove:
+      name: "{{ image }}"
+    loop:
+    - "{{ registry }}/{{ repository }}/{{ image }}:{{ tag }}"
+    - "{{ airgap_registry }}/{{ repository }}/{{ image }}:{{ tag }}"
+    loop_control:
+      loop_var: image
