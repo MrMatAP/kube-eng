@@ -4,23 +4,26 @@ Create a local Kubernetes cluster suitable for local engineering.
 
 ## How to run this
 
-Start docker, consider making customisations in `cluster.yaml`. All services
+Start docker. Consider making customisations in `cluster.yaml`. All services
 are preconfigured with an admin password stored in `.admin-password`. If not
-specified it will be generated.
-
-```shell
-$ make cluster
-```
-
-At this stage, you will find `.dist/pki/ca.pem`, which you should import into your login keystore and trust. Continue
-with the commands below.
+pre-specified then that admin password will be generated. The pre-heat target will cache all
+required images locally so you don't have to download them again on the road.
 
 ```shell
 $ make host-infra
-$ sudo ./bin/cloud-provider-kind
-$ ./.venv/bin/cloud-provider-mdns
+$ make cluster
+$ make preheat
+```
+
+At this stage, you will find `.dist/pki/ca.pem`, which you should import into your login keystore and trust. Continue with the commands below. The host-infra-start target will ask you for your password
+so it can start some services on the host. The stack target will run unprivileged again.
+
+```shell
+$ make host-infra-start
 $ make stack
 ```
+
+You can stop the host infra services if you mind keeping them running permanently in the background by running `make host-infra-stop`.
 
 ## Limitations
 
@@ -44,4 +47,4 @@ $ make stack
           labels:
             istio-injection: enabled
   ```
-* Ansible doesn't immediately trust the CA certificate we generate. The playbook currently ignores TLS validation.
+* Ansible doesn't immediately trust the CA certificate we generate. The playbook currently ignores TLS validation!

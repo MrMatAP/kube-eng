@@ -16,12 +16,6 @@ spec:
     allowedRoutes:
       namespaces:
         from: All
-  - name: postgres
-    port: 5432
-    protocol: TCP
-    allowedRoutes:
-      namespaces:
-        from: All
   - name: prometheus
     hostname: prometheus.{{ cluster_name }}.local
     port: 443
