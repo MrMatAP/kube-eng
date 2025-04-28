@@ -1,0 +1,22 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+- bundle.yaml
+
+namespace: "{{ ns }}"
+patches:
+- target:
+    group: apps
+    version: v1
+    kind: Deployment
+    name: prometheus-operator
+  patch: |-
+    - op: replace
+      path: /spec/template/spec/containers/0/args/1
+      value: "--prometheus-config-reloader={{ registry }}/prometheus-operator/prometheus-config-reloader:{{ version }}"
+    - op: add
+      path: /spec/template/spec/containers/0/args/1
+      value: --prometheus-default-base-image={{ registry }}/prometheus/prometheus
+    - op: replace
+      path: /spec/template/spec/containers/0/image
+      value: "{{ registry }}/prometheus-operator/prometheus-operator:{{ version }}"

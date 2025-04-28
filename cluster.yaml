@@ -12,6 +12,7 @@ keycloak_chart: ""
 grafana_chart: ""
 jaeger_chart: ""
 kiali_chart: ""
+stack_chart: ""
 cloud_provider_mdns: ""
 user_id: ""
 
@@ -30,6 +31,7 @@ host:
     kind: /opt/homebrew/bin/kind
     istioctl: /opt/homebrew/bin/istioctl
     kubectl: /opt/homebrew/bin/kubectl
+    kustomize: /opt/homebrew/bin/kustomize
     docker: /usr/local/bin/docker
     named: /opt/homebrew/sbin/named
     step: /opt/homebrew/bin/step
@@ -61,41 +63,16 @@ host:
       name: "pg-volume"
 
 stack:
+  ns: stack
   prometheus:
-    enabled: true
-    preheat_images:
-    - registry: quay.io
-      repository: prometheus-operator
-      image: prometheus-config-reloader
-      tag: v0.78.2
-    - registry: quay.io
-      repository: prometheus
-      image: prometheus
-      tag: v3.0.1
-    - registry: quay.io
-      repository: prometheus
-      image: node-exporter
-      tag: v1.8.2
-    - registry: quay.io
-      repository: brancz
-      image: kube-rbac-proxy
-      tag: v0.18.1
-    - registry: quay.io
-      repository: prometheus
-      image: pushgateway
-      tag: v1.10.0
-    - registry: registry.k8s.io
-      repository: kube-state-metrics
-      image: kube-state-metrics
-      tag: v2.14.0
-    - registry: quay.io
-      repository: prometheus
-      image: alertmanager
-      tag: v0.27.0
-    ns: prometheus
+    enabled: false
+    ns: stack
     hostname: prometheus.covenant.local
+    # Use LATEST=$(curl -s https://api.github.com/repos/prometheus-operator/prometheus-operator/releases/latest | jq -cr .tag_name)
+    # to find the latest version
+    bundle: https://raw.githubusercontent.com/prometheus-operator/prometheus-operator/refs/tags/v0.82.0/bundle.yaml
   keycloak:
-    enabled: true
+    enabled: false
     preheat_images:
     - registry: quay.io
       repository: keycloak
@@ -104,7 +81,7 @@ stack:
     ns: keycloak
     hostname: keycloak.covenant.local
   grafana:
-    enabled: true
+    enabled: false
     preheat_images:
     - registry: docker.io
       repository: library
@@ -144,7 +121,7 @@ stack:
     ns: jaeger
     hostname: jaeger.covenant.local
   kiali:
-    enabled: true
+    enabled: false
     preheat_images:
     - registry: quay.io
       repository: kiali
@@ -152,3 +129,25 @@ stack:
       tag: v2.8.0
     ns: istio-system
     hostname: kiali.covenant.local
+
+preheat:
+- registry: quay.io
+  repository: prometheus-operator
+  image: prometheus-config-reloader
+  tag: v0.82.0
+- registry: quay.io
+  repository: prometheus-operator
+  image: prometheus-operator
+  tag: v0.82.0
+- registry: quay.io
+  repository: prometheus
+  image: node-exporter
+  tag: v1.8.2
+- registry: quay.io
+  repository: prometheus
+  image: prometheus
+  tag: v3.2.1
+- registry: registry.k8s.io
+  repository: kube-state-metrics
+  image: kube-state-metrics
+  tag: v2.14.0

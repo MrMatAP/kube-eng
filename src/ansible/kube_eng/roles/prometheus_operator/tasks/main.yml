@@ -1,0 +1,35 @@
+#SPDX-License-Identifier: MIT-0
+---
+- name: Create and label the Prometheus namespace
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: Namespace
+      metadata:
+        name: "{{ ns }}"
+        labels:
+          istio-injection: enabled
+
+- name: Create a temporary directory to kustomize the Prometheus Operator
+  ansible.builtin.tempfile:
+    state: directory
+  register: tmp
+
+- name: Download the Prometheus Operator Bundle
+  ansible.builtin.get_url:
+    url: "https://raw.githubusercontent.com/prometheus-operator/prometheus-operator/refs/tags/{{ version }}/bundle.yaml"
+    dest: "{{ tmp.path }}/bundle.yaml"
+
+- name: Template Prometheus Operator kustomizations
+  ansible.builtin.template:
+    src: templates/kustomization.yaml.j2
+    dest: "{{ tmp.path }}/kustomization.yaml"
+
+# We must invoke this via kubectl and on the server side. kubernetes.core.k8s fails to do
+# it, likely do to it being oversized.
+# See https://prometheus-operator.dev/docs/platform/troubleshooting/
+- name: Deploy the Prometheus Operator
+  ansible.builtin.command:
+    cmd: |-
+      {{ kubectl }} apply --server-side --force-conflicts --wait -k {{ tmp.path }}

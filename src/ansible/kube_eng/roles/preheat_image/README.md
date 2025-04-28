@@ -1,4 +1,4 @@
-Role Name
+preheat_image
 =========
 
 Preheat an image into the local airgapped registry
@@ -28,7 +28,6 @@ Example Playbook
 ----------------
 
 ```yaml
-# Create and configure all the host infrastructure
 ---
 - name: Create the host infrastructure
   hosts: localhost

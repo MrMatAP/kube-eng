@@ -1,0 +1,25 @@
+# Argument requirements. See https://docs.ansible.com/ansible/latest/dev_guide/developing_program_flow_modules.html#argument-spec
+---
+argument_specs:
+  main:
+    short_description: Deploy the Prometheus operator
+    options:
+      kubectl:
+        description: Path to kubectl
+        type: str
+        required: true
+      ns:
+        description: Desired namespace for the operator
+        type: str
+        required: false
+        default: stack
+      registry:
+        description: The registry to pull images from
+        type: str
+        required: false
+        default: quay.io
+      version:
+        description: The version of the Kubernetes operator
+        type: str
+        required: false
+        default: v0.82.0
