@@ -71,6 +71,9 @@ stack:
     # Use LATEST=$(curl -s https://api.github.com/repos/prometheus-operator/prometheus-operator/releases/latest | jq -cr .tag_name)
     # to find the latest version
     bundle: https://raw.githubusercontent.com/prometheus-operator/prometheus-operator/refs/tags/v0.82.0/bundle.yaml
+  alloy:
+    enabled: true
+    ns: stack
   keycloak:
     enabled: false
     preheat_images:

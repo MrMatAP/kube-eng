@@ -27,6 +27,8 @@
           enabled: "{{ stack.prometheus.enabled }}"
           image:
             registry: "{{ host.registry.name }}:5000"
+        alloy:
+          enabled: "{{ stack.alloy.enabled }}"
         prometheus-node-exporter:
           global:
             imageRegistry: "{{ host.registry.name }}:5000"

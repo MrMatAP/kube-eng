@@ -5,6 +5,10 @@ type: application
 version: 0.0.0
 appVersion: "0.0.0"
 dependencies:
+- condition: alloy.enabled
+  name: alloy
+  repository: https://grafana.github.io/helm-charts
+  version: 1.0.*
 - condition: prometheus.node-exporter.enabled
   name: prometheus-node-exporter
   repository: https://prometheus-community.github.io/helm-charts

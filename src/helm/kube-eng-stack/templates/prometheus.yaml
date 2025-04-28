@@ -183,8 +183,8 @@ spec:
   parentRefs:
   - group: gateway.networking.k8s.io
     kind: Gateway
-    name: {{ .Values.prometheus.route.parent }}
-    namespace: {{ .Values.prometheus.route.parent_ns }}
+    name: {{ .Values.cluster.edge.name }}
+    namespace: {{ .Values.cluster.edge.namespace }}
     sectionName: prometheus
   rules:
   - backendRefs:
