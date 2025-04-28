@@ -1,0 +1,5 @@
+#SPDX-License-Identifier: MIT-0
+---
+namespace: stack
+registry: quay.io
+version: v0.82.0

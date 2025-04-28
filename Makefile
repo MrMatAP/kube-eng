@@ -22,8 +22,6 @@ NAMESPACE := kube-eng
 
 PROMETHEUS_SOURCES := $(shell find $(HELMDIR)/kube-eng-prometheus)
 PROMETHEUS_CHART := $(CHARTDIR)/kube-eng-prometheus-$(VERSION).tgz
-POSTGRES_SOURCES := $(shell find $(HELMDIR)/kube-eng-postgres)
-POSTGRES_CHART := $(CHARTDIR)/kube-eng-postgres-$(VERSION).tgz
 KEYCLOAK_SOURCES := $(shell find $(HELMDIR)/kube-eng-keycloak)
 KEYCLOAK_CHART := $(CHARTDIR)/kube-eng-keycloak-$(VERSION).tgz
 GRAFANA_SOURCES := $(shell find $(HELMDIR)/kube-eng-grafana)
@@ -33,11 +31,14 @@ JAEGER_CHART := $(CHARTDIR)/kube-eng-jaeger-$(VERSION).tgz
 KIALI_SOURCES := $(shell find $(HELMDIR)/kube-eng-kiali)
 KIALI_CHART := $(CHARTDIR)/kube-eng-kiali-$(VERSION).tgz
 
+STACK_SOURCES := $(shell find $(HELMDIR)/kube-eng-stack)
+STACK_CHART := $(CHARTDIR)/kube-eng-stack-$(VERSION).tgz
 COLLECTION_SOURCES :=$(shell find $(SRCDIR)/ansible/kube_eng)
 
-CHARTS := $(PROMETHEUS_CHART) $(KEYCLOAK_CHART) \
-		  $(GRAFANA_CHART) $(JAEGER_CHART) $(KIALI_CHART) \
-		  $(ALLOY_CHART)
+#CHARTS := $(PROMETHEUS_CHART) $(KEYCLOAK_CHART) \
+#		  $(GRAFANA_CHART) $(JAEGER_CHART) $(KIALI_CHART) \
+#		  $(STACK_CHART)
+CHARTS := $(STACK_CHART)
 COLLECTION := $(DISTDIR)/mrmat-kube_eng-$(VERSION).tar.gz
 
 ANSIBLE_PLAYBOOK_EXEC = ANSIBLE_PYTHON_INTERPRETER=$(VENVDIR)/bin/python3 \
@@ -53,7 +54,7 @@ ANSIBLE_PLAYBOOK_EXEC = ANSIBLE_PYTHON_INTERPRETER=$(VENVDIR)/bin/python3 \
 							-e grafana_chart=$(GRAFANA_CHART) \
 							-e jaeger_chart=$(JAEGER_CHART) \
 							-e kiali_chart=$(KIALI_CHART) \
-							-e cert_manager_chart=$(CERT_MANAGER_CHART)
+							-e stack_chart=$(STACK_CHART)
 
 
 .PHONY: clean dist all collection
@@ -73,6 +74,7 @@ admin-password-file := $(CURDIR)/.admin-password
 kind := /opt/homebrew/bin/kind
 istioctl := /opt/homebrew/bin/istioctl
 kubectl := /opt/homebrew/bin/kubectl
+kustomize := /opt/homebrew/bin/kustomize
 helm := /opt/homebrew/bin/helm
 cloud-provider-mdns := $(VENVDIR)/bin/cloud-provider-mdns
 ansible-galaxy := $(VENVDIR)/bin/ansible-galaxy
@@ -108,6 +110,9 @@ $(istioctl):
 
 $(kubectl):
 	brew install kubectl
+
+$(kustomize):
+	brew install kustomize
 
 $(helm):
 	brew install helm
@@ -189,3 +194,11 @@ $(JAEGER_CHART): $(JAEGER_SOURCES) $(CHARTDIR)
 $(KIALI_CHART): $(KIALI_SOURCES) $(CHARTDIR)
 	$(helm) dep update $(HELMDIR)/kube-eng-kiali --skip-refresh
 	$(helm) package --version $(VERSION) --destination $(CHARTDIR) $(HELMDIR)/kube-eng-kiali
+
+$(STACK_CHART): $(STACK_SOURCES) $(CHARTDIR)
+	$(helm) dep update $(HELMDIR)/kube-eng-stack
+	$(helm) package \
+		--version $(VERSION) \
+		--app-version $(VERSION) \
+		--destination $(CHARTDIR) \
+		$(HELMDIR)/kube-eng-stack

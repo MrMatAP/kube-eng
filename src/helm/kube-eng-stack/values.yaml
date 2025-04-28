@@ -1,0 +1,40 @@
+# Values for the kube-eng stack
+
+cluster:
+  name: kube-eng
+  domain: local
+
+prometheus:
+  enabled: true
+  name: prometheus
+  image:
+    registry: quay.io
+    repository: prometheus/prometheus
+    tag: v3.2.1
+  crb:
+    name: prometheus
+  sa:
+    name: prometheus
+  pv:
+    name: prometheus
+  cm:
+    name: prometheus
+  svc:
+    name: prometheus
+  route:
+    name: prometheus
+    hostname: prometheus
+    parent: edge-ingress
+    parent_ns: edge
+  node-exporter:
+    enabled: true
+  kube-state-metrics:
+    enabled: true
+
+# Overrides to support the local airgapped registry
+prometheus-node-exporter:
+  global:
+    imageRegistry: ""
+kube-state-metrics:
+  global:
+    imageRegistry: ""

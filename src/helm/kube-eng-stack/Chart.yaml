@@ -1,0 +1,15 @@
+apiVersion: v2
+name: kube-eng-stack
+description: A Helm chart to deploy the kube-eng stack
+type: application
+version: 0.0.0
+appVersion: "0.0.0"
+dependencies:
+- condition: prometheus.node-exporter.enabled
+  name: prometheus-node-exporter
+  repository: https://prometheus-community.github.io/helm-charts
+  version: 4.42.*
+- condition: prometheus.kube-state-metrics.enabled
+  name: kube-state-metrics
+  repository: https://prometheus-community.github.io/helm-charts
+  version: 5.27.*

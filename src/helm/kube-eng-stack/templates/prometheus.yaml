@@ -1,0 +1,314 @@
+# Prometheus
+{{- if .Values.prometheus.enabled }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: prometheus
+  labels:
+    app: prometheus
+    version: {{ .Chart.AppVersion }}
+    app.kubernetes.io/name: {{ .Values.prometheus.crb.name }}
+    app.kubernetes.io/part-of: {{ .Release.Name }}
+    app.kubernetes.io/component: prometheus
+    app.kubernetes.io/version: {{ .Chart.AppVersion }}
+rules:
+- apiGroups: [""]
+  resources:
+  - nodes
+  - nodes/metrics
+  - services
+  - endpoints
+  - pods
+  verbs: ["get", "list", "watch"]
+- apiGroups: [""]
+  resources:
+  - configmaps
+  verbs: ["get"]
+- apiGroups:
+  - discovery.k8s.io
+  resources:
+  - endpointslices
+  verbs: ["get", "list", "watch"]
+- apiGroups:
+  - networking.k8s.io
+  resources:
+  - ingresses
+  verbs: ["get", "list", "watch"]
+- nonResourceURLs: ["/metrics"]
+  verbs: ["get"]
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ .Values.prometheus.sa.name }}
+  labels:
+    app: prometheus
+    version: {{ .Chart.AppVersion }}
+    app.kubernetes.io/name: {{ .Values.prometheus.sa.name }}
+    app.kubernetes.io/part-of: {{ .Release.Name }}
+    app.kubernetes.io/component: prometheus
+    app.kubernetes.io/instance: {{ .Values.prometheus.name }}
+    app.kubernetes.io/version: {{ .Chart.AppVersion }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: prometheus
+  labels:
+    app: prometheus
+    version: {{ .Chart.AppVersion }}
+    app.kubernetes.io/name: {{ .Values.prometheus.crb.name }}
+    app.kubernetes.io/part-of: {{ .Release.Name }}
+    app.kubernetes.io/component: prometheus
+    app.kubernetes.io/instance: {{ .Values.prometheus.name }}
+    app.kubernetes.io/version: {{ .Chart.AppVersion }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: prometheus
+subjects:
+- kind: ServiceAccount
+  name: {{ .Values.prometheus.sa.name }}
+  namespace: {{ .Release.Namespace }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Values.prometheus.cm.name }}
+  labels:
+    app: prometheus
+    version: {{ .Chart.AppVersion }}
+    app.kubernetes.io/name: {{ .Values.prometheus.cm.name }}
+    app.kubernetes.io/part-of: {{ .Release.Name }}
+    app.kubernetes.io/component: prometheus
+    app.kubernetes.io/instance: {{ .Values.prometheus.name }}
+    app.kubernetes.io/version: {{ .Chart.AppVersion }}
+data:
+  allow-snippet-annotations: "false"
+  prometheus.yml: |
+    global:
+      evaluation_interval: 1m
+      scrape_interval: 1m
+      scrape_timeout: 10s
+    scrape_configs:
+    - job_name: prometheus
+      static_configs:
+      - targets:
+        - localhost:9090
+---
+apiVersion: monitoring.coreos.com/v1
+kind: Prometheus
+metadata:
+  name: {{ .Values.prometheus.name }}
+  labels:
+    app: prometheus
+    version: {{ .Chart.AppVersion }}
+    app.kubernetes.io/name: {{ .Values.prometheus.name }}
+    app.kubernetes.io/part-of: {{ .Release.Name }}
+    app.kubernetes.io/component: prometheus
+    app.kubernetes.io/instance: {{ .Values.prometheus.name }}
+    app.kubernetes.io/version: {{ .Chart.AppVersion }}
+spec:
+  serviceAccountName: {{ .Values.prometheus.sa.name }}
+  image: {{ .Values.prometheus.image.registry }}/{{ .Values.prometheus.image.repository }}:{{ .Values.prometheus.image.tag }}
+  version: {{ .Values.prometheus.image.tag }}
+  externalUrl: https://{{ .Values.prometheus.route.hostname }}.{{ .Values.cluster.name }}.{{ .Values.cluster.domain }}
+  replicas: 1
+  nodeSelector:
+    kubernetes.io/os: linux
+  podMetadata:
+    labels:
+      app: prometheus
+      version: {{ .Chart.AppVersion }}
+      app.kubernetes.io/name: {{ .Values.prometheus.name }}
+      app.kubernetes.io/part-of: {{ .Release.Name }}
+      app.kubernetes.io/component: prometheus
+      app.kubernetes.io/instance: {{ .Values.prometheus.name }}
+      app.kubernetes.io/version: {{ .Chart.AppVersion }}
+  securityContext:
+    fsGroup: 2000
+    runAsNonRoot: true
+    runAsUser: 1000
+  podMonitorNamespaceSelector: {}
+  podMonitorSelector: {}
+  probeNamespaceSelector: {}
+  probeSelector: {}
+  ruleNamespaceSelector: {}
+  ruleSelector: {}
+  scrapeConfigNamespaceSelector: {}
+  scrapeConfigSelector: {}
+  serviceMonitorNamespaceSelector: {}
+  serviceMonitorSelector: {}
+  enableFeatures: []
+  externalLabels: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.prometheus.svc.name }}
+  labels:
+    app: prometheus
+    version: {{ .Chart.AppVersion }}
+    app.kubernetes.io/name: {{ .Values.prometheus.svc.name }}
+    app.kubernetes.io/part-of: {{ .Release.Name }}
+    app.kubernetes.io/component: prometheus
+    app.kubernetes.io/instance: {{ .Values.prometheus.name }}
+    app.kubernetes.io/version: {{ .Chart.AppVersion }}
+spec:
+  type: ClusterIP
+  ports:
+  - name: web
+    port: 9090
+    protocol: TCP
+    targetPort: web
+  selector:
+    app.kubernetes.io/instance: {{ .Values.prometheus.name }}
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: {{ .Values.prometheus.route.name }}
+  labels:
+    app: prometheus
+    version: {{ .Chart.AppVersion }}
+    app.kubernetes.io/name: {{ .Values.prometheus.route.name }}
+    app.kubernetes.io/part-of: {{ .Release.Name }}
+    app.kubernetes.io/component: prometheus
+    app.kubernetes.io/instance: {{ .Values.prometheus.name }}
+    app.kubernetes.io/version: {{ .Chart.AppVersion }}
+spec:
+  hostnames:
+  - {{ .Values.prometheus.route.hostname }}.{{ .Values.cluster.name }}.{{ .Values.cluster.domain }}
+  parentRefs:
+  - group: gateway.networking.k8s.io
+    kind: Gateway
+    name: {{ .Values.prometheus.route.parent }}
+    namespace: {{ .Values.prometheus.route.parent_ns }}
+    sectionName: prometheus
+  rules:
+  - backendRefs:
+    - kind: Service
+      name: {{ .Values.prometheus.svc.name }}
+      port: 9090
+      weight: 1
+    matches:
+    - path:
+        type: PathPrefix
+        value: /
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: prometheus-istiod
+  labels:
+    app: prometheus
+    version: {{ .Chart.AppVersion }}
+    app.kubernetes.io/name: {{ .Values.prometheus.name }}
+    app.kubernetes.io/part-of: {{ .Release.Name }}
+    app.kubernetes.io/component: prometheus
+    app.kubernetes.io/version: {{ .Chart.AppVersion }}
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: istiod
+  namespaceSelector:
+    matchNames:
+    - istio-system
+  endpoints:
+  - bearerTokenFile: /var/run/secrets/kubernetes.io/serviceaccount/token
+    honorLabels: true
+    interval: 30s
+    scheme: http
+    port: http-monitoring
+    relabelings:
+    - action: keep
+      regex: istiod;http-monitoring
+      sourceLabels:
+      - __meta_kubernetes_service_name
+      - __meta_kubernetes_endpoint_port_name
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: prometheus-node-exporter
+  labels:
+    app: prometheus
+    version: {{ .Chart.AppVersion }}
+    app.kubernetes.io/name: {{ .Values.prometheus.name }}
+    app.kubernetes.io/part-of: {{ .Release.Name }}
+    app.kubernetes.io/component: prometheus
+    app.kubernetes.io/version: {{ .Chart.AppVersion }}
+spec:
+  jobLabel: app.kubernetes.io/name
+  selector:
+    matchLabels:
+      app.kubernetes.io/part-of: prometheus-node-exporter
+  endpoints:
+  - bearerTokenFile: /var/run/secrets/kubernetes.io/serviceaccount/token
+    interval: 15s
+    targetPort: 9100
+    path: metrics
+    scheme: http
+    relabelings:
+    - action: replace
+      regex: (.*)
+      replacement: $1
+      sourceLabels:
+      - __meta_kubernetes_pod_node_name
+      targetLabel: instance
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: prometheus-kube-state
+  labels:
+    app: prometheus
+    version: {{ .Chart.AppVersion }}
+    app.kubernetes.io/name: {{ .Values.prometheus.name }}
+    app.kubernetes.io/part-of: {{ .Release.Name }}
+    app.kubernetes.io/component: prometheus
+    app.kubernetes.io/version: {{ .Chart.AppVersion }}
+spec:
+  endpoints:
+  - bearerTokenFile: /var/run/secrets/kubernetes.io/serviceaccount/token
+    honorLabels: true
+    interval: 30s
+    metricRelabelings:
+    - action: drop
+      regex: kube_(endpoint_(address_not_ready|address_available|ports))
+      sourceLabels:
+      - __name__
+    targetPort: 8080
+    relabelings:
+    - action: labeldrop
+      regex: (pod|service|endpoint|namespace)
+    scheme: http
+    scrapeTimeout: 30s
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: kube-state-metrics
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: prometheus
+  labels:
+    app: prometheus
+    version: {{ .Chart.AppVersion }}
+    app.kubernetes.io/name: {{ .Values.prometheus.name }}
+    app.kubernetes.io/part-of: {{ .Release.Name }}
+    app.kubernetes.io/component: prometheus
+    app.kubernetes.io/version: {{ .Chart.AppVersion }}
+spec:
+  endpoints:
+  - interval: 30s
+    port: web
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ .Values.prometheus.svc.name }}
+      app.kubernetes.io/part-of: {{ .Release.Name }}
+      app.kubernetes.io/component: prometheus
+      app.kubernetes.io/version: {{ .Chart.AppVersion }}
+---
+{{- end }}

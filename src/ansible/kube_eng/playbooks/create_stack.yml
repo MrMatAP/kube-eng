@@ -1,41 +1,38 @@
 ---
-- name: Create the stack
+- name: Deploy the stack
   hosts: localhost
   tasks:
 
-  - name: Install Prometheus
+  - name: Deploy the Prometheus Operator
     when: "stack.prometheus.enabled | bool == true"
-    block:
-    - name: Deploy Prometheus
-      kubernetes.core.helm:
-        name: prometheus
-        create_namespace: true
-        release_namespace: "{{ stack.prometheus.ns }}"
-        chart_ref: "{{ prometheus_chart }}"
-        wait: true
-        values:
-          route:
-            hostname: "{{ stack.prometheus.hostname }}"
-          prometheus:
-            configmapReload:
-              prometheus:
-                image:
-                  repository: "{{ host.registry.name }}:5000/prometheus-operator/prometheus-config-reloader"
-            server:
-              image:
-                repository: "{{ host.registry.name }}:5000/prometheus/prometheus"
-            alertmanager:
-              image:
-                repository: "{{ host.registry.name }}:5000/prometheus/alertmanager"
-            prometheus-node-exporter:
-              global:
-                imageRegistry: "{{ host.registry.name }}:5000"
-            kube-state-metrics:
-              global:
-                imageRegistry: "{{ host.registry.name }}:5000"
-            prometheus-pushgateway:
-              image:
-                repository: "{{ host.registry.name }}:5000/prometheus/pushgateway"
+    ansible.builtin.import_role:
+      name: mrmat.kube_eng.prometheus_operator
+    vars:
+      kubectl: "{{ host.tools.kubectl }}"
+      ns: "{{ stack.prometheus.ns }}"
+      registry: "{{ host.registry.name }}:5000"
+
+  - name: Deploy the stack
+    kubernetes.core.helm:
+      name: stack
+      create_namespace: true
+      release_namespace: "{{ stack.ns }}"
+      chart_ref: "{{ stack_chart }}"
+      wait: true
+      values:
+        cluster:
+          name: "{{ cluster_name }}"
+          domain: local
+        prometheus:
+          enabled: "{{ stack.prometheus.enabled }}"
+          image:
+            registry: "{{ host.registry.name }}:5000"
+        prometheus-node-exporter:
+          global:
+            imageRegistry: "{{ host.registry.name }}:5000"
+        kube-state-metrics:
+          global:
+            imageRegistry: "{{ host.registry.name }}:5000"
 
   - name: Install KeyCloak
     when: "stack.keycloak.enabled | bool == true and host.postgresql.enabled | bool == true"
