@@ -3,9 +3,20 @@
 cluster:
   name: kube-eng
   domain: local
+  edge:
+    name: edge-ingress
+    namespace: edge
+
+alloy:
+  enabled: true
+  route:
+    name: alloy
+    hostname: alloy
+  svc:
+    name: stack-alloy
 
 prometheus:
-  enabled: true
+  enabled: false
   name: prometheus
   image:
     registry: quay.io
@@ -24,8 +35,6 @@ prometheus:
   route:
     name: prometheus
     hostname: prometheus
-    parent: edge-ingress
-    parent_ns: edge
   node-exporter:
     enabled: true
   kube-state-metrics:
