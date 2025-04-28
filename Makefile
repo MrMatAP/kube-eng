@@ -22,8 +22,6 @@ NAMESPACE := kube-eng
 
 PROMETHEUS_SOURCES := $(shell find $(HELMDIR)/kube-eng-prometheus)
 PROMETHEUS_CHART := $(CHARTDIR)/kube-eng-prometheus-$(VERSION).tgz
-POSTGRES_SOURCES := $(shell find $(HELMDIR)/kube-eng-postgres)
-POSTGRES_CHART := $(CHARTDIR)/kube-eng-postgres-$(VERSION).tgz
 KEYCLOAK_SOURCES := $(shell find $(HELMDIR)/kube-eng-keycloak)
 KEYCLOAK_CHART := $(CHARTDIR)/kube-eng-keycloak-$(VERSION).tgz
 GRAFANA_SOURCES := $(shell find $(HELMDIR)/kube-eng-grafana)
