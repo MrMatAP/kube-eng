@@ -7,12 +7,11 @@ dist_dir: ""
 admin_password: ""
 cluster_name: ""
 prometheus_chart: ""
-postgres_chart: ""
+alloy_chart: ""
 keycloak_chart: ""
 grafana_chart: ""
 jaeger_chart: ""
 kiali_chart: ""
-stack_chart: ""
 cloud_provider_mdns: ""
 user_id: ""
 
@@ -23,8 +22,10 @@ cluster:
   istio_profile: minimal
   gateway_api: true
   cert_manager_ns: cert-manager
-  edge: istio-gateway-api-experimental
   edge_ns: edge
+  edge_name: edge-ingress
+  edge: istio-gateway-api-experimental
+  domain: local
 
 host:
   tools:
@@ -65,15 +66,13 @@ host:
 stack:
   ns: stack
   prometheus:
-    enabled: false
+    enabled: true
     ns: stack
-    hostname: prometheus.covenant.local
-    # Use LATEST=$(curl -s https://api.github.com/repos/prometheus-operator/prometheus-operator/releases/latest | jq -cr .tag_name)
-    # to find the latest version
-    bundle: https://raw.githubusercontent.com/prometheus-operator/prometheus-operator/refs/tags/v0.82.0/bundle.yaml
+    hostname: prometheus
   alloy:
     enabled: true
     ns: stack
+    hostname: alloy
   keycloak:
     enabled: false
     preheat_images:
@@ -137,20 +136,25 @@ preheat:
 - registry: quay.io
   repository: prometheus-operator
   image: prometheus-config-reloader
-  tag: v0.82.0
+  tag: v0.78.2
 - registry: quay.io
-  repository: prometheus-operator
-  image: prometheus-operator
-  tag: v0.82.0
+  repository: prometheus
+  image: prometheus
+  tag: v3.0.1
 - registry: quay.io
   repository: prometheus
   image: node-exporter
   tag: v1.8.2
-- registry: quay.io
-  repository: prometheus
-  image: prometheus
-  tag: v3.2.1
 - registry: registry.k8s.io
   repository: kube-state-metrics
   image: kube-state-metrics
   tag: v2.14.0
+# Alloy
+- registry: docker.io
+  repository: grafana
+  image: alloy
+  tag: v1.8.2
+- registry: quay.io
+  repository: prometheus-operator
+  image: prometheus-config-reloader
+  tag: v0.81.0
