@@ -1,5 +1,0 @@
-# Kube-Eng Stack
-
-{{- if .Values.prometheus.enabled }}
-* Prometheus:
-{{- end }}

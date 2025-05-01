@@ -22,6 +22,8 @@ NAMESPACE := kube-eng
 
 PROMETHEUS_SOURCES := $(shell find $(HELMDIR)/kube-eng-prometheus)
 PROMETHEUS_CHART := $(CHARTDIR)/kube-eng-prometheus-$(VERSION).tgz
+ALLOY_SOURCES := $(shell find $(HELMDIR)/kube-eng-alloy)
+ALLOY_CHART := $(CHARTDIR)/kube-eng-alloy-$(VERSION).tgz
 KEYCLOAK_SOURCES := $(shell find $(HELMDIR)/kube-eng-keycloak)
 KEYCLOAK_CHART := $(CHARTDIR)/kube-eng-keycloak-$(VERSION).tgz
 GRAFANA_SOURCES := $(shell find $(HELMDIR)/kube-eng-grafana)
@@ -31,14 +33,9 @@ JAEGER_CHART := $(CHARTDIR)/kube-eng-jaeger-$(VERSION).tgz
 KIALI_SOURCES := $(shell find $(HELMDIR)/kube-eng-kiali)
 KIALI_CHART := $(CHARTDIR)/kube-eng-kiali-$(VERSION).tgz
 
-STACK_SOURCES := $(shell find $(HELMDIR)/kube-eng-stack)
-STACK_CHART := $(CHARTDIR)/kube-eng-stack-$(VERSION).tgz
 COLLECTION_SOURCES :=$(shell find $(SRCDIR)/ansible/kube_eng)
 
-#CHARTS := $(PROMETHEUS_CHART) $(KEYCLOAK_CHART) \
-#		  $(GRAFANA_CHART) $(JAEGER_CHART) $(KIALI_CHART) \
-#		  $(STACK_CHART)
-CHARTS := $(STACK_CHART)
+CHARTS := $(PROMETHEUS_CHART) $(ALLOY_CHART)
 COLLECTION := $(DISTDIR)/mrmat-kube_eng-$(VERSION).tar.gz
 
 ANSIBLE_PLAYBOOK_EXEC = ANSIBLE_PYTHON_INTERPRETER=$(VENVDIR)/bin/python3 \
@@ -50,11 +47,11 @@ ANSIBLE_PLAYBOOK_EXEC = ANSIBLE_PYTHON_INTERPRETER=$(VENVDIR)/bin/python3 \
 							-e user_id="$(shell whoami)" \
 							-e cluster_name=$(CLUSTER_NAME) \
 							-e prometheus_chart=$(PROMETHEUS_CHART) \
+							-e alloy_chart=$(ALLOY_CHART) \
 							-e keycloak_chart=$(KEYCLOAK_CHART) \
 							-e grafana_chart=$(GRAFANA_CHART) \
 							-e jaeger_chart=$(JAEGER_CHART) \
-							-e kiali_chart=$(KIALI_CHART) \
-							-e stack_chart=$(STACK_CHART)
+							-e kiali_chart=$(KIALI_CHART)
 
 
 .PHONY: clean dist all collection
@@ -180,6 +177,10 @@ $(PROMETHEUS_CHART): $(PROMETHEUS_SOURCES) $(CHARTDIR)
 	$(helm) dep update $(HELMDIR)/kube-eng-prometheus --skip-refresh
 	$(helm) package --version $(VERSION) --destination $(CHARTDIR) $(HELMDIR)/kube-eng-prometheus
 
+$(ALLOY_CHART): $(ALLOY_SOURCES) $(CHARTDIR)
+	$(helm) dep update $(HELMDIR)/kube-eng-alloy --skip-refresh
+	$(helm) package --version $(VERSION) --destination $(CHARTDIR) $(HELMDIR)/kube-eng-alloy
+
 $(KEYCLOAK_CHART): $(KEYCLOAK_SOURCES) $(CHARTDIR)
 	$(helm) package --version $(VERSION) --destination $(CHARTDIR) $(HELMDIR)/kube-eng-keycloak
 
@@ -194,11 +195,3 @@ $(JAEGER_CHART): $(JAEGER_SOURCES) $(CHARTDIR)
 $(KIALI_CHART): $(KIALI_SOURCES) $(CHARTDIR)
 	$(helm) dep update $(HELMDIR)/kube-eng-kiali --skip-refresh
 	$(helm) package --version $(VERSION) --destination $(CHARTDIR) $(HELMDIR)/kube-eng-kiali
-
-$(STACK_CHART): $(STACK_SOURCES) $(CHARTDIR)
-	$(helm) dep update $(HELMDIR)/kube-eng-stack
-	$(helm) package \
-		--version $(VERSION) \
-		--app-version $(VERSION) \
-		--destination $(CHARTDIR) \
-		$(HELMDIR)/kube-eng-stack

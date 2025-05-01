@@ -1,0 +1,37 @@
+# Default values for Kube Eng :: Alloy
+
+cluster:
+  control_plane_nodes: 1
+  worker_nodes: 3
+  mesh: "istio"
+  istio_profile: "istio-experimental"
+  gateway_api: true
+  edge_ns: edge
+  edge: edge-ingress
+  name: "cluster"
+  domain: "local"
+
+route:
+  name: route-alloy
+  hostname: alloy
+  sectionName: alloy
+
+overrides:
+  fullnameOverride: alloy
+  alloy:
+    configMap:
+      create: false
+      name: alloy
+      key: config.alloy
+  controller:
+    type: 'deployment'
+    replicas: 1
+  ingress:
+    enabled: false
+  image:
+    registry: "docker.io"
+  serviceAccount:
+    name: sa-alloy
+  configReloader:
+    image:
+      registry: "quay.io"
