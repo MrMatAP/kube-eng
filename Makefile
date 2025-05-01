@@ -24,6 +24,10 @@ PROMETHEUS_SOURCES := $(shell find $(HELMDIR)/kube-eng-prometheus)
 PROMETHEUS_CHART := $(CHARTDIR)/kube-eng-prometheus-$(VERSION).tgz
 ALLOY_SOURCES := $(shell find $(HELMDIR)/kube-eng-alloy)
 ALLOY_CHART := $(CHARTDIR)/kube-eng-alloy-$(VERSION).tgz
+MINIO_OPERATOR_SOURCES := $(shell find $(HELMDIR)/kube-eng-minio-operator)
+MINIO_OPERATOR_CHART := $(CHARTDIR)/kube-eng-minio-operator-$(VERSION).tgz
+MINIO_TENANT_SOURCES := $(shell find $(HELMDIR)/kube-eng-minio-tenant)
+MINIO_TENANT_CHART := $(CHARTDIR)/kube-eng-minio-tenant-$(VERSION).tgz
 KEYCLOAK_SOURCES := $(shell find $(HELMDIR)/kube-eng-keycloak)
 KEYCLOAK_CHART := $(CHARTDIR)/kube-eng-keycloak-$(VERSION).tgz
 GRAFANA_SOURCES := $(shell find $(HELMDIR)/kube-eng-grafana)
@@ -35,7 +39,8 @@ KIALI_CHART := $(CHARTDIR)/kube-eng-kiali-$(VERSION).tgz
 
 COLLECTION_SOURCES :=$(shell find $(SRCDIR)/ansible/kube_eng)
 
-CHARTS := $(PROMETHEUS_CHART) $(ALLOY_CHART)
+CHARTS := $(PROMETHEUS_CHART) $(ALLOY_CHART) \
+		  $(MINIO_OPERATOR_CHART) $(MINIO_TENANT_CHART)
 COLLECTION := $(DISTDIR)/mrmat-kube_eng-$(VERSION).tar.gz
 
 ANSIBLE_PLAYBOOK_EXEC = ANSIBLE_PYTHON_INTERPRETER=$(VENVDIR)/bin/python3 \
@@ -48,6 +53,8 @@ ANSIBLE_PLAYBOOK_EXEC = ANSIBLE_PYTHON_INTERPRETER=$(VENVDIR)/bin/python3 \
 							-e cluster_name=$(CLUSTER_NAME) \
 							-e prometheus_chart=$(PROMETHEUS_CHART) \
 							-e alloy_chart=$(ALLOY_CHART) \
+							-e minio_operator_chart=$(MINIO_OPERATOR_CHART) \
+							-e minio_tenant_chart=$(MINIO_TENANT_CHART) \
 							-e keycloak_chart=$(KEYCLOAK_CHART) \
 							-e grafana_chart=$(GRAFANA_CHART) \
 							-e jaeger_chart=$(JAEGER_CHART) \
@@ -139,6 +146,13 @@ $(COLLECTION): $(COLLECTION_SOURCES) | deps
 # Host infrastructure
 
 host-infra: $(COLLECTION)
+	$(helm) repo add minio-operator https://operator.min.io
+	$(helm) dep update $(HELMDIR)/kube-eng-prometheus --skip-refresh
+	$(helm) dep update $(HELMDIR)/kube-eng-alloy --skip-refresh
+	$(helm) dep update $(HELMDIR)/kube-eng-minio-operator --skip-refresh
+	$(helm) dep update $(HELMDIR)/kube-eng-minio-tenant --skip-refresh
+	$(helm) dep update $(HELMDIR)/kube-eng-grafana --skip-refresh
+	$(helm) dep update $(HELMDIR)/kube-eng-kiali --skip-refresh
 	$(ANSIBLE_PLAYBOOK_EXEC) mrmat.kube_eng.create_host_infra
 
 host-infra-start: $(COLLECTION)
@@ -174,24 +188,25 @@ stack: $(COLLECTION) $(CHARTS)
 charts: $(CHARTS)
 
 $(PROMETHEUS_CHART): $(PROMETHEUS_SOURCES) $(CHARTDIR)
-	$(helm) dep update $(HELMDIR)/kube-eng-prometheus --skip-refresh
 	$(helm) package --version $(VERSION) --destination $(CHARTDIR) $(HELMDIR)/kube-eng-prometheus
 
 $(ALLOY_CHART): $(ALLOY_SOURCES) $(CHARTDIR)
-	$(helm) dep update $(HELMDIR)/kube-eng-alloy --skip-refresh
 	$(helm) package --version $(VERSION) --destination $(CHARTDIR) $(HELMDIR)/kube-eng-alloy
+
+$(MINIO_OPERATOR_CHART): $(MINIO_OPERATOR_SOURCES) $(CHARTDIR)
+	$(helm) package --version $(VERSION) --destination $(CHARTDIR) $(HELMDIR)/kube-eng-minio-operator
+
+$(MINIO_TENANT_CHART): $(MINIO_TENANT_SOURCES) $(CHARTDIR)
+	$(helm) package --version $(VERSION) --destination $(CHARTDIR) $(HELMDIR)/kube-eng-minio-tenant
 
 $(KEYCLOAK_CHART): $(KEYCLOAK_SOURCES) $(CHARTDIR)
 	$(helm) package --version $(VERSION) --destination $(CHARTDIR) $(HELMDIR)/kube-eng-keycloak
 
 $(GRAFANA_CHART): $(GRAFANA_SOURCES) $(CHARTDIR)
-	$(helm) dep update $(HELMDIR)/kube-eng-grafana --skip-refresh
 	$(helm) package --version $(VERSION) --destination $(CHARTDIR) $(HELMDIR)/kube-eng-grafana
 
 $(JAEGER_CHART): $(JAEGER_SOURCES) $(CHARTDIR)
-	$(helm) dep update $(HELMDIR)/kube-eng-jaeger --skip-refresh
 	$(helm) package --version $(VERSION) --destination $(CHARTDIR) $(HELMDIR)/kube-eng-jaeger
 
 $(KIALI_CHART): $(KIALI_SOURCES) $(CHARTDIR)
-	$(helm) dep update $(HELMDIR)/kube-eng-kiali --skip-refresh
 	$(helm) package --version $(VERSION) --destination $(CHARTDIR) $(HELMDIR)/kube-eng-kiali

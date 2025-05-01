@@ -73,6 +73,12 @@ stack:
     enabled: true
     ns: stack
     hostname: alloy
+  minio_operator:
+    enabled: true
+    ns: stack
+  minio_tenant:
+    enabled: true
+    ns: stack
   keycloak:
     enabled: false
     preheat_images:
@@ -158,3 +164,13 @@ preheat:
   repository: prometheus-operator
   image: prometheus-config-reloader
   tag: v0.81.0
+# Minio Operator
+- registry: quay.io
+  repository: minio
+  image: operator
+  tag: v7.1.1
+# Minio Tenant
+- registry: quay.io
+  repository: minio
+  image: minio
+  tag: RELEASE.2025-04-08T15-41-24Z

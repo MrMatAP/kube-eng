@@ -28,6 +28,30 @@ spec:
       certificateRefs:
       - name: prometheus-cert
         kind: Secret
+  - name: minio
+    hostname: minio.{{ cluster_name }}.local
+    port: 443
+    protocol: HTTPS
+    allowedRoutes:
+      namespaces:
+        from: All
+    tls:
+      mode: Terminate
+      certificateRefs:
+      - name: minio-cert
+        kind: Secret
+  - name: alloy
+    hostname: alloy.{{ cluster_name }}.local
+    port: 443
+    protocol: HTTPS
+    allowedRoutes:
+      namespaces:
+        from: All
+    tls:
+      mode: Terminate
+      certificateRefs:
+      - name: alloy-cert
+        kind: Secret
   - name: keycloak
     hostname: keycloak.{{ cluster_name }}.local
     port: 443

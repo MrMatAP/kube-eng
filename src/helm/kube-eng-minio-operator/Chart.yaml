@@ -1,0 +1,11 @@
+apiVersion: v2
+name: kube-eng-minio-operator
+description: A Helm chart for MinIO Operator
+type: application
+version: 0.0.0
+appVersion: "0.0.0"
+dependencies:
+- name: operator
+  repository: https://operator.min.io
+  version: 7.1.*
+  alias: overrides

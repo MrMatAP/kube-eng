@@ -77,6 +77,53 @@
             image:
               registry: "{{ host.registry.name }}:5000"
 
+  - name: Deploy MinIO Operator
+    when: "stack.minio_operator.enabled | bool == true"
+    kubernetes.core.helm:
+      name: minio-operator
+      create_namespace: true
+      release_namespace: "{{ stack.minio_operator.ns }}"
+      chart_ref: "{{ minio_operator_chart }}"
+      wait: true
+      values:
+        cluster:
+          control_plane_nodes: "{{ cluster.control_plane_nodes | int }}"
+          worker_nodes: "{{ cluster.worker_nodes | int }}"
+          mesh: "{{ cluster.mesh }}"
+          istio_profile: "{{ cluster.istio_profile }}"
+          gateway_api: "{{ cluster.gateway_api | bool }}"
+          edge_ns: "{{ cluster.edge_ns }}"
+          edge: "{{ cluster.edge_name }}"
+          name: "{{ cluster_name }}"
+          domain: "{{ cluster.domain }}"
+        overrides:
+          image:
+            repository: "{{ host.registry.name }}:5000/minio/operator"
+
+  - name: Deploy MinIO Tenant
+    when: "stack.minio_tenant.enabled | bool == true"
+    kubernetes.core.helm:
+      name: minio-tenant
+      create_namespace: true
+      release_namespace: "{{ stack.minio_tenant.ns }}"
+      chart_ref: "{{ minio_tenant_chart }}"
+      wait: true
+      values:
+        cluster:
+          control_plane_nodes: "{{ cluster.control_plane_nodes | int }}"
+          worker_nodes: "{{ cluster.worker_nodes | int }}"
+          mesh: "{{ cluster.mesh }}"
+          istio_profile: "{{ cluster.istio_profile }}"
+          gateway_api: "{{ cluster.gateway_api | bool }}"
+          edge_ns: "{{ cluster.edge_ns }}"
+          edge: "{{ cluster.edge_name }}"
+          name: "{{ cluster_name }}"
+          domain: "{{ cluster.domain }}"
+        overrides:
+          tenant:
+            image:
+              repository: "{{ host.registry.name }}:5000/minio/minio"
+
 #
 #  - name: Install KeyCloak
 #    when: "stack.keycloak.enabled | bool == true and host.postgresql.enabled | bool == true"
