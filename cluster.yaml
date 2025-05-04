@@ -8,6 +8,9 @@ admin_password: ""
 cluster_name: ""
 prometheus_chart: ""
 alloy_chart: ""
+minio_operator_chart: ""
+minio_tenant_chart: ""
+loki_chart: ""
 keycloak_chart: ""
 grafana_chart: ""
 jaeger_chart: ""
@@ -40,7 +43,7 @@ host:
     enabled: true
     url: https://github.com/kubernetes-sigs/cloud-provider-kind/releases/download/v0.6.0/cloud-provider-kind_0.6.0_darwin_arm64.tar.gz
   cloud_provider_mdns:
-    enabled: true
+    enabled: false
   resolver:
     enabled: false
     forwarder: 8.8.8.8
@@ -62,83 +65,63 @@ host:
     image: "postgres:15"
     volume:
       name: "pg-volume"
+  minio:
+    enabled: false
+    name: minio
+    port: 9000
+    image: "minio/minio"
+    volume:
+      name: "minio-volume"
+    console:
+      port: 9001
 
 stack:
-  ns: stack
   prometheus:
     enabled: true
     ns: stack
     hostname: prometheus
   alloy:
-    enabled: true
+    enabled: false
     ns: stack
     hostname: alloy
-  minio_operator:
-    enabled: true
-    ns: stack
-  minio_tenant:
-    enabled: true
+  loki:
+    enabled: false
     ns: stack
   keycloak:
-    enabled: false
-    preheat_images:
-    - registry: quay.io
-      repository: keycloak
-      image: keycloak
-      tag: 26.0.7
-    ns: keycloak
-    hostname: keycloak.covenant.local
+    enabled: true
+    ns: stack
+    hostname: keycloak
   grafana:
     enabled: false
-    preheat_images:
-    - registry: docker.io
-      repository: library
-      image: busybox
-      tag: 1.31.1
-    - registry: docker.io
-      repository: curlimages
-      image: curl
-      tag: 7.85.0
-    - registry: quay.io
-      repository: kiwigrid
-      image: k8s-sidecar
-      tag: 1.28.0
-    - registry: docker.io
-      repository: grafana
-      image: grafana
-      tag: 11.4.0
-    ns: grafana
-    hostname: grafana.covenant.local
+    ns: stack
+    hostname: grafana
     client_id: grafana
     admin_user: admin
   jaeger:
-    enabled: false
-    preheat_images:
-    - registry: docker.io
-      repository: bitnami
-      image: jaeger
-      tag: 2.5.0-debian-12-r0
-    - registry: docker.io
-      repository: bitnami
-      image: cassandra
-      tag: 5.0.3-debian-12-r9
-    - registry: docker.io
-      repository: bitnami
-      image: cassandra
-      tag: 5.0.4-debian-12-r2
-    ns: jaeger
-    hostname: jaeger.covenant.local
+    enabled: true
+    ns: stack
+    hostname: jaeger
   kiali:
-    enabled: false
-    preheat_images:
-    - registry: quay.io
-      repository: kiali
-      image: kiali
-      tag: v2.8.0
-    ns: istio-system
-    hostname: kiali.covenant.local
+    enabled: true
+    ns: stack
+    hostname: kiali
 
 preheat:
+# Cluster
+- registry: registry.k8s.io
+  repository: coredns
+  image: coredns
+  tag: v1.11.3
+# Istio
+- registry: docker.io
+  repository: istio
+  image: pilot
+  tag: 1.25.2
+- registry: docker.io
+  repository: istio
+  image: proxyv2
+  tag: 1.25.2
+# Prometheus
 - registry: quay.io
   repository: prometheus-operator
   image: prometheus-config-reloader
@@ -164,13 +147,56 @@ preheat:
   repository: prometheus-operator
   image: prometheus-config-reloader
   tag: v0.81.0
-# Minio Operator
+# Keycloak
 - registry: quay.io
-  repository: minio
-  image: operator
-  tag: v7.1.1
-# Minio Tenant
+  repository: keycloak
+  image: keycloak-operator
+  tag: 26.2.2
 - registry: quay.io
-  repository: minio
-  image: minio
-  tag: RELEASE.2025-04-08T15-41-24Z
+  repository: keycloak
+  image: keycloak
+  tag: 26.2.2
+# Grafana
+- registry: docker.io
+  repository: grafana
+  image: grafana
+  tag: 11.6.0
+- registry: docker.io
+  repository: library
+  image: busybox
+  tag: 1.31.1
+- registry: docker.io
+  repository: curlimages
+  image: curl
+  tag: 8.9.1
+# Jaeger
+- registry: ghcr.io
+  repository: open-telemetry/opentelemetry-operator
+  image: opentelemetry-operator
+  tag: 0.124.0
+- registry: docker.io
+  repository: jaegertracing
+  image: jaeger
+  tag: latest
+# Kiali
+- registry: quay.io
+  repository: kiali
+  image: kiali-operator
+  tag: v2.9.0
+- registry: quay.io
+  repository: kiali
+  image: kiali
+  tag: v2.9.0
+# cert-manager
+- registry: quay.io
+  repository: jetstack
+  image: cert-manager-cainjector
+  tag: v0.19.1
+- registry: quay.io
+  repository: jetstack
+  image: cert-manager-controller
+  tag: v1.17.2
+- registry: quay.io
+  repository: jetstack
+  image: cert-manager-controller
+  tag: v1.17.2

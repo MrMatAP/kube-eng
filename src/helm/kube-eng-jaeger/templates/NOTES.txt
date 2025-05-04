@@ -1,3 +1,3 @@
-# Kube-Eng :: Kiali installed
+# Kube Eng :: Jaeger installed
 
-Hostname:   {{ .Values.route.hostname }}
+URL:            {{ .Values.route.hostname }}.{{ .Values.cluster.name }}.{{ .Values.cluster.domain }}

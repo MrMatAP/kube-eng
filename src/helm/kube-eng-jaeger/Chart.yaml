@@ -3,9 +3,4 @@ name: kube-eng-jaeger
 description: A Helm chart to install Jaeger
 type: application
 version: 0.0.0
-# The upstream Jaeger version and dependency
-appVersion: 1.53.0
-dependencies:
-- name: jaeger
-  version: 5.1.14
-  repository: https://charts.bitnami.com/bitnami
+appVersion: 0.0.0

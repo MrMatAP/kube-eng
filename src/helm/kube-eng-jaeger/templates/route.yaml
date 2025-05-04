@@ -1,28 +1,29 @@
+{{- if .Values.cluster.gateway_api }}
+---
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
   name: {{ .Values.route.name }}
   labels:
-    app: {{ .Release.Name }}
-    version: {{ .Chart.AppVersion }}
+    {{- include "common.labels" . | nindent 4 }}
     app.kubernetes.io/name: {{ .Values.route.name }}
-    app.kubernetes.io/part-of: {{ .Release.Name }}
 spec:
   hostnames:
-  - {{ .Values.route.hostname }}
+  - {{ .Values.route.hostname }}.{{ .Values.cluster.name }}.{{ .Values.cluster.domain }}
   parentRefs:
   - group: gateway.networking.k8s.io
     kind: Gateway
-    name: {{ .Values.route.parent }}
-    namespace: {{ .Values.route.parent_ns }}
-    sectionName: grafana
+    name: {{ .Values.cluster.edge }}
+    namespace: {{ .Values.cluster.edge_ns }}
+    sectionName: {{ .Values.route.sectionName }}
   rules:
   - backendRefs:
     - kind: Service
-      name: {{ .Release.Name }}
-      port: 80
+      name: jaeger-collector
+      port: 16686
       weight: 1
     matches:
     - path:
         type: PathPrefix
         value: /
+{{- end }}

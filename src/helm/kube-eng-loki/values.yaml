@@ -1,0 +1,127 @@
+# Default values for Kube Eng :: Loki
+
+cluster:
+  control_plane_nodes: 1
+  worker_nodes: 3
+  mesh: "istio"
+  istio_profile: "istio-experimental"
+  gateway_api: true
+  edge_ns: edge
+  edge: edge-ingress
+  name: "cluster"
+  domain: "local"
+
+route:
+  name: route-loki
+  hostname: loki
+  sectionName: loki
+
+overrides:
+  global:
+    image:
+      registry: null
+  fullnameOverride: loki
+  deploymentMode: SingleBinary
+  loki:
+    auth_enabled: false
+    commonConfig:
+      replication_factor: 1
+    storage:
+      bucketNames:
+        chunks: loki-chunks
+        ruler: loki-ruler
+        admin: loki-admin
+      type: s3
+      s3:
+        s3: http://loki:lokiloki@minio:9000
+        endpoint: http://loki:lokiloki@minio:9000
+        # If you changed the region
+        #region: covenant
+        insecure: true
+        s3ForcePathStyle: true
+      tsdb_shipper:
+        active_index_directory: /loki/index
+        cache_location: /loki/index_cache
+        cache_ttl: 24h
+      object_store:
+        type: s3
+        s3:
+          endpoint: http://loki:lokiloki@minio:9000
+          # If you changed the region
+          #region: covenant
+          insecure: true
+    storage_ config:
+      tsdb_shipper:
+        active_index_directory: /loki/index
+        cache_location: /loki/index_cache
+      aws:
+        s3: http://loki:lokiloki@minio:9000
+        # If you changed the region
+        #region: covenant
+        s3forcepathstyle: true
+    schemaConfig:
+      configs:
+      - from: 2024-04-01
+        store: tsdb
+        object_store: s3
+        schema: v13
+        index:
+          prefix: index_
+          period: 24h
+
+  enterprise:
+    enabled: false
+  test:
+    enabled: true
+  lokiCanary:
+    enabled: true
+  adminApi:
+    replicas: 1
+  gateway:
+    enabled: true
+  enterpriseGateway:
+    replicas: 0
+  ingress:
+    enabled: false
+
+  # Single Binary Deployment
+  singleBinary:
+    replicas: 1
+
+  # Simple Scalable Mode
+  write:
+    replicas: 0
+  read:
+    replicas: 0
+  backend:
+    replicas: 0
+
+  # Microservice Mode
+  ingester:
+    replicas: 0
+  distributor:
+    replicas: 0
+  querier:
+    replicas: 0
+  queryFrontend:
+    replicas: 0
+  queryScheduler:
+    replicas: 0
+  indexGateway:
+    replicas: 0
+  compactor:
+    replicas: 0
+  bloomGateway:
+    replicas: 0
+  bloomPlanner:
+    replicas: 0
+  bloomBuilder:
+    replicas: 0
+  patternIngester:
+    replicas: 0
+  ruler:
+    enabled: false
+  overridesExporter:
+    enabled: false
+  minio:
+    enabled: false

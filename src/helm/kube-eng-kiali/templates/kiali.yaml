@@ -1,0 +1,44 @@
+apiVersion: kiali.io/v1alpha1
+kind: Kiali
+metadata:
+  name: kiali
+  labels:
+    {{- include "common.labels" . | nindent 4 }}
+    app.kubernetes.io/name: kiali
+spec:
+  istio-namespace: "istio-system"
+  auth:
+    strategy: "anonymous"
+  deployment:
+    additional_service_yaml:
+      externalName: {{ .Values.route.hostname }}.{{ .Values.cluster.name }}.{{ .Values.cluster.domain }}
+    cluster_wide_access: true
+    ingress:
+      enabled: false
+    instance_name: "kiali"
+    namespace: "{{ .Release.Namespace }}"
+    replicas: 1
+    service_type: "ClusterIP"
+  external_services:
+    prometheus:
+      url: "http://prometheus.stack.svc.cluster.local"
+    grafana:
+      internal_url: "http://grafana-overrides.stack.svc.cluster.local"
+      external_url: "https://grafana.covenant.local"
+      auth:
+        type: {{ .Values.integrations.grafana.auth.type }}
+        {{- if .Values.integrations.grafana.auth.token }}
+        token: {{ .Values.integrations.grafana.auth.token }}
+        {{- else }}
+        username: {{ .Values.integrations.grafana.auth.username }}
+        password: {{ .Values.integrations.grafana.auth.password }}
+        {{- end}}
+    istio:
+      ingress_gateway_namespace: "edge"
+      root_namespace: "istio-system"
+    tracing:
+      enabled: true
+      external_url: {{ .Values.integrations.tracing.external | quote }}
+      internal_url: {{ .Values.integrations.tracing.internal | quote }}
+      use_grpc: false
+      provider: "jaeger"

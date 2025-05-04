@@ -1,34 +1,39 @@
 #
 # Default values for Kube Eng :: Grafana
 
+cluster:
+  control_plane_nodes: 1
+  worker_nodes: 3
+  mesh: "istio"
+  istio_profile: "istio-experimental"
+  gateway_api: true
+  edge_ns: edge
+  edge: edge-ingress
+  name: "cluster"
+  domain: "local"
+
 route:
-  enabled: true
-  name: grafana-httproute
-  hostname: grafana.local
-  parent: edge-ingress
-  parent_ns: edge
+  name: route-grafana
+  hostname: grafana
+  sectionName: grafana
 
 #
 # Dependency Chart overrides
 
-grafana:
+overrides:
+  global:
+    imageRegistry: null
+  replicas: 1
   extraLabels:
     app: grafana
     version: 8.8.2
-  podLabels:
-    sidecar.istio.io/inject: "true"
   serviceAccount:
     create: true
-    name: ke-grafana-sa
-    labels:
-      app.kubernetes.io/name: ke-grafana-sa
-      app.kubernetes.io/part-of: ke-grafana
+    name: sa-grafana
   service:
     enabled: true
     type: ClusterIP
     appProtocol: http
-    labels:
-      app.kubernetes.io/part-of: ke-grafana
   ingress:
     enabled: false
   persistence:
@@ -41,8 +46,10 @@ grafana:
     GF_AUTH_GENERIC_OAUTH_CLIENT_ID: ""
     GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET: ""
   grafana.ini:
+    analytics:
+      check_for_updates: false
     server:
-      root_url: http://ke-grafana.local
+      root_url: http://grafana.local
     auth.basic:
       enabled: true
     auth.generic_oauth:
@@ -56,7 +63,61 @@ grafana:
       email_attribute_path: email
       login_attribute_path: username
       name_attribute_path: full_name
-      role_attribute_path: contains(resource_access.mrmat_grafana.roles.[*], "Admin") && 'Admin' || contains(resource_access.mrmat_grafana.roles.[*], "Editor") && 'Editor' || 'Viewer'
-
-
-
+      role_attribute_path: contains(resource_access.grafana.roles.[*], "Admin") && 'Admin' || contains(resource_access.grafana.roles.[*], "Editor") && 'Editor' || 'Viewer'
+  dashboardProviders:
+    dashboardproviders.yaml:
+      apiVersion: 1
+      providers:
+      - name: 'default'
+        orgId: 1
+        folder: ''
+        type: file
+        disableDeletion: false
+        updateIntervalSeconds: 10
+        allowUiUpdates: true
+        editable: true
+        options:
+          path: /var/lib/grafana/dashboards/default
+          foldersFromFilesStructure: true
+  dashboards:
+    default:
+      k8s-dashboard:
+        gnetId: 15661
+        revision: 2
+        datasource: Prometheus
+      coredns-dashboard:
+        gnetId: 15762
+        revision: 20
+        datasource: Prometheus
+      istio-control-plane-dashboard:
+        gnetId: 7645
+        revision: 255
+        datasource: Prometheus
+      istio-mesh-dashboard:
+        gnetId: 7639
+        revision: 255
+        datasource: Prometheus
+      istio-performance-dashboard:
+        gnetId: 11829
+        revision: 255
+        datasource: Prometheus
+      istio-service-dashboard:
+        gnetId: 7636
+        revision: 255
+        datasource: Prometheus
+      istio-wasm-dashboard:
+        gnetId: 13277
+        revision: 212
+        datasource: Prometheus
+      istio-workload-dashboard:
+        gnetId: 7630
+        revision: 255
+        datasource: Prometheus
+      istio-ztunnel-dashboard:
+        gnetId: 21306
+        revision: 22
+        datasource: Prometheus
+      keycloak-metrics-dashboard:
+        gnetId: 10441
+        revision: 2
+        datasource: Prometheus

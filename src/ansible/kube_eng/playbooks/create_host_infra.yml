@@ -87,6 +87,34 @@
         restart_policy: always
         state: healthy
 
+  - name: Create a local MinIO server
+    when: host.minio.enabled == true
+    block:
+    - name: Create a volume for Minio
+      community.docker.docker_volume:
+        name: "{{ host.minio.volume.name }}"
+        state: present
+    - name: Create a MinIO container
+      community.docker.docker_container:
+        name: "{{ host.minio.name }}"
+        image: "{{ host.minio.image }}"
+        restart: true
+        ports:
+        - "127.0.0.1:{{ host.minio.port | int }}:9000"
+        - "127.0.0.1:{{ host.minio.console.port | int }}:9001"
+        mounts:
+        - source: "{{ host.minio.volume.name }}"
+          target: /data
+        networks:
+        - name: kind
+          aliases: "{{ host.minio.name }}"
+        env:
+          MINIO_ROOT_USER: admin
+          MINIO_ROOT_PASSWORD: "{{ admin_password }}"
+        command: "server /data --console-address ':9001'"
+        restart_policy: always
+        state: healthy
+
   - name: Create an airgapped registry
     when: host.registry.enabled == true
     block:
