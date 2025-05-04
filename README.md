@@ -29,7 +29,9 @@ You can stop the host infra services if you mind keeping them running permanentl
 
 * On ARM-based MacOS, there is a kernel panic when issuing a query to current BIND 9.20.7
   * The reason for the kernel panic is the [use of private APIs within libuv](https://github.com/libuv/libuv/issues/4594). Mitigation for this is to revert [back and pin to libuv 1.48.0](https://delaat.net/setup/#mozTocId756945)
-* It would be useful if the airgap-registry is a pull-through so we do not have to declare the
+* It would be useful if the airgap registry was a pull-through so we do not have to declare the
   container images to preheat. But the bare registry:2 from dockerhub can only have one upstream and the harbor registry uses a lot of resources.
-* Ansible doesn't immediately trust the CA certificate we generate. The playbook currently ignores TLS validation!
-* There is some issue with kubernetes.core.k8s, kustomize or even kubectl that prevents us from applying the Prometheus Operator bundle in its (huge) entirety. It works by invoking kubectl and setting server-side apply.
+* Ansible doesn't immediately trust the CA certificate we generate. The playbook currently ignores TLS validation when communicating with newly-spawned services
+* Kiali isn't integrated into Keycloak
+* Kiali can't authenticate to Grafana
+* Kiali is unable to pull traces from Jaeger
