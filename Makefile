@@ -190,7 +190,7 @@ $(ALLOY_CHART): $(ALLOY_SOURCES) $(CHARTDIR)
 	$(helm) package --version $(VERSION) --destination $(CHARTDIR) $(HELMDIR)/kube-eng-alloy
 
 $(LOKI_CHART): $(LOKI_SOURCES) $(CHARTDIR)
-	$(helm) dep update $(HELMDIR)/kube-eng-prometheus --skip-refresh
+	$(helm) dep update $(HELMDIR)/kube-eng-loki --skip-refresh
 	$(helm) package --version $(VERSION) --destination $(CHARTDIR) $(HELMDIR)/kube-eng-loki
 
 $(KEYCLOAK_CHART): $(KEYCLOAK_SOURCES) $(CHARTDIR)
