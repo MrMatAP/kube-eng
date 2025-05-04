@@ -1,32 +1,30 @@
 #
 # Default values for Kube Eng :: Keycloak
 
-sa:
-  name: kube-eng-keycloak-sa
+cluster:
+  control_plane_nodes: 1
+  worker_nodes: 3
+  mesh: "istio"
+  istio_profile: "istio-experimental"
+  gateway_api: true
+  edge_ns: edge
+  edge: edge-ingress
+  name: "cluster"
+  domain: "local"
 
-pod:
-  name: kube-eng-keycloak
-  replicas: 1
-  repository: quay.io/keycloak/keycloak
-  imagePullPolicy: IfNotPresent
-  port: 8080
-  managementPort: 9000
-  admin_user: admin
-  admin_password: admin
+route:
+  name: route-keycloak
+  hostname: keycloak
+  sectionName: keycloak
+
+keycloak:
+  instances: 1
   db: postgres
   db_user: keycloak
   db_password: admin
   db_host: kube-eng-postgres-svc.kube-eng.svc.cluster.local
   db_database: keycloak
-
-svc:
-  name: kube-eng-keycloak-svc
-  port: 80
+  port: 8080
   managementPort: 9000
-
-route:
-  name: keycloak-httproute
-  hostname: ke-keycloak.local
-  parents:
-  - name: edge-ingress
-    namespace: edge
+  admin_user: admin
+  admin_password: admin

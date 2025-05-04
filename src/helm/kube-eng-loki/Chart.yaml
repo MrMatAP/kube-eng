@@ -1,0 +1,11 @@
+apiVersion: v2
+name: kube-eng-loki
+description: A Helm chart for Grafana Loki
+type: application
+version: 0.0.0
+appVersion: "0.0.0"
+dependencies:
+- name: loki
+  repository: https://grafana.github.io/helm-charts
+  version: 6.29.*
+  alias: overrides

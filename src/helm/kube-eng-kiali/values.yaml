@@ -1,41 +1,32 @@
 #
 # Default values for Kube Eng :: Kiali
 
+cluster:
+  control_plane_nodes: 1
+  worker_nodes: 3
+  mesh: "istio"
+  istio_profile: "istio-experimental"
+  gateway_api: true
+  edge_ns: edge
+  edge: edge-ingress
+  name: "cluster"
+  domain: "local"
+
 route:
-  enabled: true
-  name: kiali-httproute
-  hostname: kiali.local
-  parent: edge-ingress
-  parent_ns: edge
+  name: route-kiali
+  hostname: kiali
+  sectionName: kiali
 
-#
-# Dependency overrides
-#  auth:
-#    strategy: openid
-#    openid:
-#      client_id: "mrmat-kiali"
-#      disable_rbac: true
-#      issuer_uri: http://mrmat-keycloak.local/realms/master
+integrations:
+  tracing:
+    internal: "http://jaeger-collector.stack.svc.cluster.local:16686/jaeger"
+    external: "https://jaeger.covenant.local"
+  grafana:
+    auth:
+      type: bearer
+      token: null
+      username: null
+      password: null
 
-kiali:
-  istio_namespace: istio-system
-  auth:
-    strategy: anonymous
-  external_services:
-    custom_dashboards:
-      enabled: true
-    istio:
-      ingress_gateway_namespace: edge
-      egress_gateway_namespace: edge
-    prometheus:
-      internal_url: http://prometheus-server.kube-eng.svc.cluster.local
-      external_url: http://prometheus.local
-      url: http://prometheus-server.kube-eng.svc.cluster.local
-    grafana:
-      enabled: true
-      internal_url: http://grafana.kube-eng.svc.cluster.local
-      external_url: http://grafana.local
-      auth:
-        username: admin
-        password: admin
-        type: basic
+# To authenticate to Grafana, create a service account, set type to 'bearer' and specify the token.
+# alternatively, set token to 'basic' and specify username and password

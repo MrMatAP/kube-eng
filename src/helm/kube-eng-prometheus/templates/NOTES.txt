@@ -1,3 +1,3 @@
 # Kube-Eng :: Prometheus installed
 
-Hostname:   {{ .Values.route.hostname }}.{{ .Values.cluster.name }}.{{ .Values.cluster.domain }}
+URL:   {{ .Values.route.hostname }}.{{ .Values.cluster.name }}.{{ .Values.cluster.domain }}

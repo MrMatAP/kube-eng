@@ -1,0 +1,55 @@
+apiVersion: k8s.keycloak.org/v2alpha1
+kind: Keycloak
+metadata:
+  name: keycloak
+  labels:
+    {{- include "common.labels" . | nindent 4 }}
+    app.kubernetes.io/name: keycloak
+spec:
+  instances: {{ .Values.keycloak.instances }}
+  db:
+    vendor: {{ .Values.keycloak.db }}
+    host: {{ .Values.keycloak.db_host }}
+    database: {{ .Values.keycloak.db_database }}
+    usernameSecret:
+      name: keycloak-db-secret
+      key: username
+    passwordSecret:
+      name: keycloak-db-secret
+      key: password
+  transaction:
+    xaEnabled: false
+  hostname:
+    hostname: https://{{ .Values.route.hostname }}.{{ .Values.cluster.name }}.{{ .Values.cluster.domain }}
+    backchannelDynamic: true
+    strict: false
+  http:
+    httpPort: {{ .Values.keycloak.port }}
+    httpEnabled: true
+  httpManagement:
+    port: {{ .Values.keycloak.managementPort }}
+  proxy:
+    headers: xforwarded
+  features:
+    enabled:
+    - account:v3
+    - account-api
+    - admin:v2
+    - admin-api
+    - authorization
+    - ciba
+    - client-policies
+    - device-flow
+    - impersonation
+    - opentelemetry
+    - organization
+    - par
+    - passkeys
+    - persistent-user-sessions
+    - step-up-authentication
+    - web-authn
+    - hostname:v2
+    - login:v2
+  bootstrapAdmin:
+    user:
+      secret: keycloak-admin-secret

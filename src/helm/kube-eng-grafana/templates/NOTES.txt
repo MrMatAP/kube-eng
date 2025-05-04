@@ -2,4 +2,4 @@
 
 Note how the configuration routes OAuth through the browser but will obtain the token and userinfo via a direct link through the Kubernetes service.
 
-Hostname:   {{ .Values.route.hostname }}
+URL:   {{ .Values.route.hostname }}.{{ .Values.cluster.name }}.{{ .Values.cluster.domain }}
