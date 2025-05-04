@@ -43,7 +43,7 @@ host:
     enabled: true
     url: https://github.com/kubernetes-sigs/cloud-provider-kind/releases/download/v0.6.0/cloud-provider-kind_0.6.0_darwin_arm64.tar.gz
   cloud_provider_mdns:
-    enabled: false
+    enabled: true
   resolver:
     enabled: false
     forwarder: 8.8.8.8
@@ -92,7 +92,7 @@ stack:
     ns: stack
     hostname: keycloak
   grafana:
-    enabled: false
+    enabled: true
     ns: stack
     hostname: grafana
     client_id: grafana
@@ -182,21 +182,22 @@ preheat:
 - registry: quay.io
   repository: kiali
   image: kiali-operator
-  tag: v2.9.0
+  tag: v2.8.0
 - registry: quay.io
   repository: kiali
   image: kiali
-  tag: v2.9.0
+  tag: v2.8.0
 # cert-manager
 - registry: quay.io
   repository: jetstack
+  image: cert-manager-controller
+  tag: v1.17.2
+- registry: quay.io
+  repository: jetstack
+  image: cert-manager-controller
+  tag: v1.17.2
+- registry: quay.io
+  repository: jetstack
   image: cert-manager-cainjector
-  tag: v0.19.1
-- registry: quay.io
-  repository: jetstack
-  image: cert-manager-controller
-  tag: v1.17.2
-- registry: quay.io
-  repository: jetstack
-  image: cert-manager-controller
-  tag: v1.17.2
+  tag: v1.17.1
+
