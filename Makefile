@@ -22,6 +22,8 @@ NAMESPACE := kube-eng
 
 CERT_MANAGER_SOURCES := $(shell find $(HELMDIR)/kube-eng-cert-manager)
 CERT_MANAGER_CHART := $(CHARTDIR)/kube-eng-cert-manager-$(VERSION).tgz
+EDGE_SOURCES := $(shell find $(HELMDIR)/kube-eng-edge)
+EDGE_CHART := $(CHARTDIR)/kube-eng-edge-$(VERSION).tgz
 PROMETHEUS_SOURCES := $(shell find $(HELMDIR)/kube-eng-prometheus)
 PROMETHEUS_CHART := $(CHARTDIR)/kube-eng-prometheus-$(VERSION).tgz
 ALLOY_SOURCES := $(shell find $(HELMDIR)/kube-eng-alloy)
@@ -39,7 +41,8 @@ KIALI_CHART := $(CHARTDIR)/kube-eng-kiali-$(VERSION).tgz
 
 COLLECTION_SOURCES :=$(shell find $(SRCDIR)/ansible/kube_eng)
 
-CHARTS := $(CERT_MANAGER_CHART) $(PROMETHEUS_CHART) $(ALLOY_CHART) $(LOKI_CHART) $(GRAFANA_CHART) \
+CHARTS := $(CERT_MANAGER_CHART) $(EDGE_CHART) \
+		  $(PROMETHEUS_CHART) $(ALLOY_CHART) $(LOKI_CHART) $(GRAFANA_CHART) \
 		  $(KEYCLOAK_CHART) $(JAEGER_CHART) $(KIALI_CHART)
 COLLECTION := $(DISTDIR)/mrmat-kube_eng-$(VERSION).tar.gz
 
@@ -53,6 +56,7 @@ ANSIBLE_PLAYBOOK_EXEC = ANSIBLE_PYTHON_INTERPRETER=$(VENVDIR)/bin/python3 \
 							-e user_id="$(shell whoami)" \
 							-e cluster_name=$(CLUSTER_NAME) \
 							-e cert_manager_chart=$(CERT_MANAGER_CHART) \
+							-e edge_chart=$(EDGE_CHART) \
 							-e prometheus_chart=$(PROMETHEUS_CHART) \
 							-e alloy_chart=$(ALLOY_CHART) \
 							-e loki_chart=$(LOKI_CHART) \
@@ -189,6 +193,10 @@ charts: $(CHARTS)
 $(CERT_MANAGER_CHART): $(CERT_MANAGER_SOURCES) $(CHARTDIR)
 	$(helm) dep update $(HELMDIR)/kube-eng-cert-manager --skip-refresh
 	$(helm) package --version $(VERSION) --destination $(CHARTDIR) $(HELMDIR)/kube-eng-cert-manager
+
+$(EDGE_CHART): $(EDGE_SOURCES) $(CHARTDIR)
+	$(helm) dep update $(HELMDIR)/kube-eng-edge --skip-refresh
+	$(helm) package --version $(VERSION) --destination $(CHARTDIR) $(HELMDIR)/kube-eng-edge
 
 $(PROMETHEUS_CHART): $(PROMETHEUS_SOURCES) $(CHARTDIR)
 	$(helm) dep update $(HELMDIR)/kube-eng-prometheus --skip-refresh

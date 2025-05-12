@@ -8,6 +8,7 @@ pki_dir: ""
 admin_password: ""
 cluster_name: ""
 cert_manager_chart: ""
+edge_chart: ""
 prometheus_chart: ""
 alloy_chart: ""
 minio_operator_chart: ""
@@ -79,11 +80,15 @@ stack:
     enabled: true
     ns: stack
   edge:
-    enabled: false
-    ns: stack
+    enabled: true
+    ns: edge
     name: edge-ingress
+    istio: false
+    istio_gateway_api: true
+    istio_gateway_api_experimental: false
+    ingress: false
   prometheus:
-    enabled: false
+    enabled: true
     ns: stack
     hostname: prometheus
   alloy:
@@ -93,6 +98,7 @@ stack:
   loki:
     enabled: false
     ns: stack
+    hostname: loki
   keycloak:
     enabled: false
     ns: stack

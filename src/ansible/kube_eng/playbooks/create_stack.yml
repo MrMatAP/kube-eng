@@ -50,10 +50,10 @@
           spec:
             ca:
               secretName: cert-manager-ca
-    - name: Deploy cert-manager
+    - name: Deploy the cert-manager Helm chart
       kubernetes.core.helm:
         name: cert-manager
-        create_namespace: true
+        create_namespace: false
         release_namespace: "{{ stack.pki.ns }}"
         chart_ref: "{{ cert_manager_chart }}"
         wait: true
@@ -104,14 +104,70 @@
             name: "{{ stack.edge.ns }}"
             labels:
               istio-injection: enabled
-    - name: Deploy Edge Ingress
-      ansible.builtin.import_role:
-        name: mrmat.kube_eng.edge
-      vars:
-        kind: "{{ stack.edge.kind }}"
-        ns: "{{ stack.edge.ns }}"
-        cluster_name: "{{ cluster.name }}"
-        config_file: "{{ dist_dir }}/edge.yaml"
+    - name: Download the Gateway-API CRDs
+      ansible.builtin.get_url:
+        url: https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.2.1/standard-install.yaml
+        dest: "{{ dist_dir }}/gateway-api-crds.yaml"
+    - name: Apply the Gateway API CRDs
+      when: "cluster.gateway_api | bool == true"
+      kubernetes.core.k8s:
+        state: present
+        apply: true
+        src: "{{ dist_dir }}/gateway-api-crds.yaml"
+    - name: Download the Experimental Gateway-API CRDs
+      ansible.builtin.get_url:
+        url: https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.2.1/experimental-install.yaml
+        dest: "{{ dist_dir }}/experimental-gateway-api-crds.yaml"
+    - name: Apply the Experimental Gateway API CRDs
+      when: "cluster.gateway_api_experimental | bool == true"
+      kubernetes.core.k8s:
+        state: present
+        apply: true
+        src: "{{ dist_dir }}/experimental-gateway-api-crds.yaml"
+    - name: Deploy the Edge Helm chart
+      kubernetes.core.helm:
+        name: edge
+        create_namespace: false
+        release_namespace: "{{ stack.edge.ns }}"
+        chart_ref: "{{ edge_chart }}"
+        wait: true
+        values:
+          cluster:
+            control_plane_nodes: "{{ cluster.control_plane_nodes | int }}"
+            worker_nodes: "{{ cluster.worker_nodes | int }}"
+            mesh: "{{ cluster.mesh }}"
+            istio_profile: "{{ cluster.istio_profile }}"
+            gateway_api: "{{ cluster.gateway_api | bool }}"
+            gateway_api_experimental: "{{ cluster.gateway_api_experimental | bool }}"
+            name: "{{ cluster_name }}"
+            domain: "{{ cluster.domain }}"
+          edge:
+            name: "{{ stack.edge.name }}"
+            ns: "{{ stack.edge.ns }}"
+          istio: "{{ stack.edge.istio | bool }}"
+          istio_gateway_api: "{{ stack.edge.istio_gateway_api | bool }}"
+          istio_gateway_api_experimental: "{{ stack.edge.istio_gateway_api_experimental | bool }}"
+          prometheus:
+            enabled: "{{ stack.prometheus.enabled | bool }}"
+            hostname: "{{ stack.prometheus.hostname }}"
+          alloy:
+            enabled: "{{ stack.alloy.enabled | bool }}"
+            hostname: "{{ stack.alloy.hostname }}"
+          loki:
+            enabled: "{{ stack.loki.enabled | bool }}"
+            hostname: "{{ stack.loki.hostname }}"
+          keycloak:
+            enabled: "{{ stack.keycloak.enabled | bool }}"
+            hostname: "{{ stack.keycloak.hostname }}"
+          grafana:
+            enabled: "{{ stack.grafana.enabled | bool }}"
+            hostname: "{{ stack.grafana.hostname }}"
+          jaeger:
+            enabled: "{{ stack.jaeger.enabled | bool }}"
+            hostname: "{{ stack.jaeger.hostname }}"
+          kiali:
+            enabled: "{{ stack.kiali.enabled | bool }}"
+            hostname: "{{ stack.kiali.hostname }}"
 
   - name: Deploy Prometheus
     when: "stack.prometheus.enabled | bool == true"
@@ -140,10 +196,12 @@
             mesh: "{{ cluster.mesh }}"
             istio_profile: "{{ cluster.istio_profile }}"
             gateway_api: "{{ cluster.gateway_api | bool }}"
-            edge_ns: "{{ cluster.edge_ns }}"
-            edge: "{{ cluster.edge_name }}"
+            gateway_api_experimental: "{{ cluster.gateway_api_experimental | bool }}"
             name: "{{ cluster_name }}"
             domain: "{{ cluster.domain }}"
+          edge:
+            name: "{{ stack.edge.name }}"
+            ns: "{{ stack.edge.ns }}"
           route:
             hostname: "{{ stack.prometheus.hostname }}"
           overrides:
