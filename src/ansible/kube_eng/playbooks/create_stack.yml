@@ -2,6 +2,117 @@
 - name: Deploy the stack
   hosts: localhost
   tasks:
+
+  - name: Deploy PKI
+    when: "stack.pki.enabled | bool == true"
+    block:
+    - name: Create and label the PKI namespace
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: v1
+          kind: Namespace
+          metadata:
+            name: "{{ stack.pki.ns }}"
+            labels:
+              istio-injection: enabled
+    - name: Download the cert-manager CRDs
+      ansible.builtin.get_url:
+        url: https://github.com/cert-manager/cert-manager/releases/download/v1.17.1/cert-manager.crds.yaml
+        dest: "{{ dist_dir }}/cert-manager-crds.yaml"
+    - name: Apply the cert-manager CRDs
+      kubernetes.core.k8s:
+        state: present
+        apply: true
+        src: "{{ dist_dir }}/cert-manager-crds.yaml"
+    - name: Create a secret from the local CA files
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: v1
+          kind: Secret
+          type: Opaque
+          metadata:
+            name: cert-manager-ca
+            namespace: "{{ stack.pki.ns }}"
+          data:
+            tls.crt: "{{ lookup('ansible.builtin.file', '{{ pki_dir }}/ca.pem') | b64encode }}"
+            tls.key: "{{ lookup('ansible.builtin.file', '{{ pki_dir }}/ca.key') | b64encode }}"
+    - name: Declare the local CA as an issuer
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: cert-manager.io/v1
+          kind: ClusterIssuer
+          metadata:
+            name: ca-issuer
+            namespace: "{{ stack.pki.ns }}"
+          spec:
+            ca:
+              secretName: cert-manager-ca
+    - name: Deploy cert-manager
+      kubernetes.core.helm:
+        name: cert-manager
+        create_namespace: true
+        release_namespace: "{{ stack.pki.ns }}"
+        chart_ref: "{{ cert_manager_chart }}"
+        wait: true
+        values:
+          cluster:
+            control_plane_nodes: "{{ cluster.control_plane_nodes | int }}"
+            worker_nodes: "{{ cluster.worker_nodes | int }}"
+            mesh: "{{ cluster.mesh }}"
+            istio_profile: "{{ cluster.istio_profile }}"
+            gateway_api: "{{ cluster.gateway_api | bool }}"
+            gateway_api_experimental: "{{ cluster.gateway_api_experimental | bool }}"
+            name: "{{ cluster_name }}"
+            domain: "{{ cluster.domain }}"
+          edge:
+            name: "{{ stack.edge.name }}"
+            ns: "{{ stack.edge.ns }}"
+          overrides:
+            image:
+              repository: "{{ host.registry.name }}:5000/jetstack/cert-manager-controller"
+            webhook:
+              image:
+                repository: "{{ host.registry.name }}:5000/jetstack/cert-manager-webhook"
+            cainjector:
+              image:
+                repository: "{{ host.registry.name }}:5000/jetstack/cert-manager-cainjector"
+            acmesolver:
+              image:
+                repository: "{{ host.registry.name }}:5000/jetstack/cert-manager-acmesolver"
+            startupapicheck:
+              image:
+                repository: "{{ host.registry.name }}:5000/jetstack/cert-manager-startupapicheck"
+            namespace: "{{ stack.pki.ns }}"
+            config:
+              enableGatewayAPI: "{{ cluster.gateway_api | bool }}"
+            prometheus:
+              enabled: "{{ stack.prometheus.enabled | bool }}"
+
+  - name: Deploy Edge
+    when: "stack.edge.enabled | bool == true"
+    block:
+    - name: Create and label the Edge namespace
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: v1
+          kind: Namespace
+          metadata:
+            name: "{{ stack.edge.ns }}"
+            labels:
+              istio-injection: enabled
+    - name: Deploy Edge Ingress
+      ansible.builtin.import_role:
+        name: mrmat.kube_eng.edge
+      vars:
+        kind: "{{ stack.edge.kind }}"
+        ns: "{{ stack.edge.ns }}"
+        cluster_name: "{{ cluster.name }}"
+        config_file: "{{ dist_dir }}/edge.yaml"
+
   - name: Deploy Prometheus
     when: "stack.prometheus.enabled | bool == true"
     block:

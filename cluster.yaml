@@ -4,8 +4,10 @@
 # Variables within a dictionary must be edited straight in the cluster configuration file
 ---
 dist_dir: ""
+pki_dir: ""
 admin_password: ""
 cluster_name: ""
+cert_manager_chart: ""
 prometheus_chart: ""
 alloy_chart: ""
 minio_operator_chart: ""
@@ -21,13 +23,10 @@ user_id: ""
 cluster:
   control_plane_nodes: 1
   worker_nodes: 3
-  mesh: istio-experimental
-  istio_profile: minimal
+  mesh: istio
+  istio_profile: ambient
   gateway_api: true
-  cert_manager_ns: cert-manager
-  edge_ns: edge
-  edge_name: edge-ingress
-  edge: istio-gateway-api-experimental
+  gateway_api_experimental: false
   domain: local
 
 host:
@@ -43,10 +42,10 @@ host:
     enabled: true
     url: https://github.com/kubernetes-sigs/cloud-provider-kind/releases/download/v0.6.0/cloud-provider-kind_0.6.0_darwin_arm64.tar.gz
   cloud_provider_mdns:
-    enabled: true
-  resolver:
     enabled: false
-    forwarder: 8.8.8.8
+  bind:
+    enabled: true
+    forwarders: "8.8.8.8; 4.4.4.4; 2001:4860:4860::8888; 2001:4860:4860::8844;"
   pki:
     enabled: true
     name: local-pki
@@ -76,8 +75,15 @@ host:
       port: 9001
 
 stack:
-  prometheus:
+  pki:
     enabled: true
+    ns: stack
+  edge:
+    enabled: false
+    ns: stack
+    name: edge-ingress
+  prometheus:
+    enabled: false
     ns: stack
     hostname: prometheus
   alloy:
@@ -88,21 +94,21 @@ stack:
     enabled: false
     ns: stack
   keycloak:
-    enabled: true
+    enabled: false
     ns: stack
     hostname: keycloak
   grafana:
-    enabled: true
+    enabled: false
     ns: stack
     hostname: grafana
     client_id: grafana
     admin_user: admin
   jaeger:
-    enabled: true
+    enabled: false
     ns: stack
     hostname: jaeger
   kiali:
-    enabled: true
+    enabled: false
     ns: stack
     hostname: kiali
 
@@ -121,6 +127,23 @@ preheat:
   repository: istio
   image: proxyv2
   tag: 1.25.2
+# cert-manager
+- registry: quay.io
+  repository: jetstack
+  image: cert-manager-controller
+  tag: v1.17.1
+- registry: quay.io
+  repository: jetstack
+  image: cert-manager-webhook
+  tag: v1.17.1
+- registry: quay.io
+  repository: jetstack
+  image: cert-manager-cainjector
+  tag: v1.17.1
+- registry: quay.io
+  repository: jetstack
+  image: cert-manager-startupapicheck
+  tag: v1.17.1
 # Prometheus
 - registry: quay.io
   repository: prometheus-operator

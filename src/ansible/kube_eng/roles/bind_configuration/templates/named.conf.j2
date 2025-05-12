@@ -2,15 +2,15 @@
 // BIND configuration for a local nameserver
 
 options {
-    directory "{{ resolver_dir }}";
-    key-directory "{{ resolver_dir }}/keys";
-    managed-keys-directory "{{ resolver_dir }}/keys";
-    dump-file "{{ resolver_dir }}/named.dump";
-    memstatistics-file "{{ resolver_dir }}/named.memstats";
-    recursing-file "{{ resolver_dir }}/named.recursing";
-    statistics-file "{{ resolver_dir }}/named.stats";
-    secroots-file "{{ resolver_dir }}/named.secroots";
-    session-keyfile "{{ resolver_dir }}/keys/session.key";
+    directory "{{ bind_dir }}";
+    key-directory "{{ bind_dir }}/keys";
+    managed-keys-directory "{{ bind_dir }}/keys";
+    dump-file "{{ bind_dir }}/named.dump";
+    memstatistics-file "{{ bind_dir }}/named.memstats";
+    recursing-file "{{ bind_dir }}/named.recursing";
+    statistics-file "{{ bind_dir }}/named.stats";
+    secroots-file "{{ bind_dir }}/named.secroots";
+    session-keyfile "{{ bind_dir }}/keys/session.key";
 
     listen-on { 127.0.0.1; };
     listen-on-v6 { ::1; };
@@ -50,12 +50,12 @@ options {
     minimal-responses no;
 
     forwarders {
-        {{ forwarder }};
+        {{ forwarders }}
     };
 
 };
 
-include "{{ resolver_dir }}/keys/resolver.key";
+include "{{ bind_dir }}/keys/resolver.key";
 
 controls {
     inet 127.0.0.1 port 953 allow { localhost; } keys { "resolver-key"; };
@@ -67,7 +67,7 @@ statistics-channels {
 
 logging {
     channel "_updates_log" {
-        file "{{ resolver_dir }}/logs/updates.log" versions 3 size 5m;
+        file "{{ bind_dir }}/logs/updates.log" versions 3 size 5m;
         print-time yes;
         print-category yes;
         print-severity yes;
@@ -76,7 +76,7 @@ logging {
     category "update" { "_updates_log"; };
 
     channel "_queries_log" {
-        file "{{ resolver_dir }}/logs/queries.log" versions 3 size 5m;
+        file "{{ bind_dir }}/logs/queries.log" versions 3 size 5m;
         print-time yes;
         print-category yes;
         print-severity yes;
@@ -85,7 +85,7 @@ logging {
     category "query-errors" { "_queries_log"; };
 
     channel "_default_log" {
-        file "{{ resolver_dir }}/logs/bind.log" versions 3 size 5m;
+        file "{{ bind_dir }}/logs/bind.log" versions 3 size 5m;
         print-time yes;
         print-category yes;
         print-severity yes;
@@ -95,7 +95,7 @@ logging {
 
 zone "{{ domain }}." {
     type primary;
-    file "{{ resolver_dir }}/zones/db.{{ domain }}";
+    file "{{ bind_dir }}/zones/db.{{ domain }}";
     dnssec-policy default;
     allow-update { key resolver-key; };
 };

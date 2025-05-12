@@ -4,24 +4,24 @@ argument_specs:
   main:
     short_description: Template the resolver configuration
     options:
-      resolver_executable:
+      bind_executable:
         description: Path to the BIND executable
         type: str
         required: true
-      resolver_dir:
+      bind_dir:
         description: Path to the directory in which the resolver operates
         type: str
         required: true
-      forwarder:
+      forwarders:
         description: IP address where to forward DNS queries to
         type: str
         required: false
-        default: 8.8.8.8
+        default: "8.8.8.8; 4.4.4.4; 2001:4860:4860::8888; 2001:4860:4860::8844;"
       domain:
         description: Name of the domain to authoritatively host (exclude the dot at the end)
         type: str
         required: true
-      resolver_key:
+      bind_key:
         description: The DDNS update key used to dynamically update the local authoritative domain
         type: str
-        required: false
+        required: true
