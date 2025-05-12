@@ -1,0 +1,42 @@
+#
+# Default values for Kube Eng :: Edge
+
+cluster:
+  control_plane_nodes: 1
+  worker_nodes: 3
+  mesh: "istio"
+  istio_profile: "ambient"
+  gateway_api: true
+  name: "cluster"
+  domain: "local"
+
+edge:
+  ns: edge
+  name: edge-ingress
+
+istio: false
+istio_gateway_api: true
+istio_gateway_api_experimental: false
+ingress: false
+
+prometheus:
+  enabled: false
+  hostname: prometheus
+alloy:
+  enabled: false
+  hostname: alloy
+loki:
+  enabled: false
+  hostname: loki
+keycloak:
+  enabled: false
+  hostname: keycloak
+grafana:
+  enabled: false
+  hostname: grafana
+jaeger:
+  enabled: false
+  hostname: jaeger
+kiali:
+  enabled: false
+  hostname: kiali
