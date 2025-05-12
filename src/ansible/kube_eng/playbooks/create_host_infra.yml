@@ -3,7 +3,7 @@
   hosts: localhost
   tasks:
   - name: Create PKI infrastructure
-    when: "stack.pki.enabled | bool == true"
+    when: "stack.cert_manager.enabled | bool == true"
     block:
     - name: Create a directory for PKI
       ansible.builtin.file:
@@ -116,7 +116,31 @@
         restart_policy: always
         state: healthy
 
-  - name: Create an airgapped registry
+  - name: Preheat k8s yaml files for later
+    block:
+    - name: Create a directory for preheated files
+      ansible.builtin.file:
+        path: "{{ dist_dir }}/preheat"
+        state: directory
+    - name: Download the CRD for cert-manager
+      ansible.builtin.get_url:
+        url: "{{ stack.cert_manager.crd }}"
+        dest: "{{ dist_dir }}/preheat/cert-manager-crds.yaml"
+    - name: Download the Gateway-API CRDs
+      ansible.builtin.get_url:
+        url: "{{ stack.gateway_api.crd }}"
+        dest: "{{ dist_dir }}/preheat/gateway-api-crds.yaml"
+    - name: Download the Experimental Gateway-API CRDs
+      ansible.builtin.get_url:
+        url: "{{ stack.gateway_api.crd_experimental }}"
+        dest: "{{ dist_dir }}/preheat/experimental-gateway-api-crds.yaml"
+    - name: Download the KeyCloak Operator
+      ansible.builtin.get_url:
+        url: "https://raw.githubusercontent.com/keycloak/keycloak-k8s-resources/{{ stack.keycloak.operator_version }}/kubernetes/{{ item }}"
+        dest: "{{ dist_dir }}/preheat/{{ item }}"
+      loop: "{{ stack.keycloak.operator_yaml }}"
+
+  - name: Create an AirGap registry
     when: host.registry.enabled == true
     block:
     - name: Create an airgapped registry volume
@@ -138,3 +162,16 @@
           aliases: "{{ host.registry.name }}"
         restart_policy: always
         state: started
+    - name: Preheat the container image(s)
+      ansible.builtin.include_role:
+        name: mrmat.kube_eng.preheat_image
+      vars:
+        airgap_registry: "localhost:{{ host.registry.port }}"
+        registry: "{{ item.registry }}"
+        repository: "{{ item.repository }}"
+        image: "{{ item.image }}"
+        tag: "{{ item.tag }}"
+      loop: "{{ preheat }}"
+  - name: Preheat the kind node image
+    community.docker.docker_image_pull:
+      name: "docker.io/{{ cluster.node_image }}"
