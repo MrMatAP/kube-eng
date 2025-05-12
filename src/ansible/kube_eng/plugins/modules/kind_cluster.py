@@ -15,6 +15,11 @@ options:
         description: The name of the cluster
         required: true
         type: str
+    image:
+        description: The node image to use
+        required: false
+        default: docker.io/kindest/node:v1.32.2
+        type: str
     config_file:
         description: Path to the cluster configuration file
         required: false
@@ -64,6 +69,7 @@ from ansible.module_utils.basic import AnsibleModule
 def run_module():
     module_args = dict(
         name=dict(type='str', required=True),
+        image=dict(type='str', required=False, default='docker.io/kindest/node:v1.32.2'),
         config_file=dict(type='str', required=False),
         state=dict(type='str', required=False, default='present', choices=['present', 'absent']),
         tool_kind=dict(type='str', required=False, default='/opt/homebrew/bin/kind'),
@@ -100,6 +106,7 @@ def run_module():
                                               args=[module.params['tool_kind'],
                                                     'create', 'cluster', '-n',
                                                     module.params['name'],
+                                                    '--image', module.params['image'],
                                                     '--config', module.params['config_file']])
     result['msg'] = err
     result['changed'] = True

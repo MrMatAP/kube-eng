@@ -24,11 +24,10 @@ user_id: ""
 cluster:
   control_plane_nodes: 1
   worker_nodes: 3
+  node_image: "kindest/node:v1.32.2"
   mesh: istio
   istio_profile: ambient
-  gateway_api: true
-  gateway_api_experimental: false
-  domain: local
+  domain: k8s
 
 host:
   tools:
@@ -76,9 +75,15 @@ host:
       port: 9001
 
 stack:
-  pki:
+  gateway_api:
+    enabled: true
+    experimental: false
+    crd: https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.2.1/standard-install.yaml
+    crd_experimental: https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.2.1/experimental-install.yaml
+  cert_manager:
     enabled: true
     ns: stack
+    crd: https://github.com/cert-manager/cert-manager/releases/download/v1.17.1/cert-manager.crds.yaml
   edge:
     enabled: true
     ns: edge
@@ -103,6 +108,11 @@ stack:
     enabled: false
     ns: stack
     hostname: keycloak
+    operator_version: 26.2.2
+    operator_yaml:
+    - keycloaks.k8s.keycloak.org-v1.yml
+    - keycloakrealmimports.k8s.keycloak.org-v1.yml
+    - kubernetes.yml
   grafana:
     enabled: false
     ns: stack
@@ -125,6 +135,18 @@ preheat:
   image: coredns
   tag: v1.11.3
 # Istio
+- registry: docker.io
+  repository: istio
+  image: install-cni
+  tag: 1.26.0-distroless
+- registry: docker.io
+  repository: istio
+  image: pilot
+  tag: 1.26.0-distroless
+- registry: docker.io
+  repository: istio
+  image: ztunnel
+  tag: 1.26.0-distroless
 - registry: docker.io
   repository: istio
   image: pilot
