@@ -1,0 +1,15 @@
+# Argument requirements. See https://docs.ansible.com/ansible/latest/dev_guide/developing_program_flow_modules.html#argument-spec
+---
+argument_specs:
+  main:
+    short_description: Create a namespace
+    options:
+      name:
+        description: Name of the namespace
+        type: str
+        required: true
+      istio_profile:
+        description: The Istio profile
+        type: str
+        required: false
+        default: ambient

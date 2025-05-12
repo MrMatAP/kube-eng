@@ -2,29 +2,20 @@
 - name: Deploy the stack
   hosts: localhost
   tasks:
-
-  - name: Deploy PKI
-    when: "stack.pki.enabled | bool == true"
+  - name: Deploy cert-manager
+    when: "stack.cert_manager.enabled | bool == true"
     block:
-    - name: Create and label the PKI namespace
-      kubernetes.core.k8s:
-        state: present
-        definition:
-          apiVersion: v1
-          kind: Namespace
-          metadata:
-            name: "{{ stack.pki.ns }}"
-            labels:
-              istio-injection: enabled
-    - name: Download the cert-manager CRDs
-      ansible.builtin.get_url:
-        url: https://github.com/cert-manager/cert-manager/releases/download/v1.17.1/cert-manager.crds.yaml
-        dest: "{{ dist_dir }}/cert-manager-crds.yaml"
+    - name: Create and label the cert-manager namespace
+      ansible.builtin.import_role:
+        name: mrmat.kube_eng.create_namespace
+      vars:
+        name: "{{ stack.cert_manager.ns }}"
+        istio_profile: "{{ cluster.istio_profile }}"
     - name: Apply the cert-manager CRDs
       kubernetes.core.k8s:
         state: present
         apply: true
-        src: "{{ dist_dir }}/cert-manager-crds.yaml"
+        src: "{{ dist_dir }}/preheat/cert-manager-crds.yaml"
     - name: Create a secret from the local CA files
       kubernetes.core.k8s:
         state: present
@@ -34,7 +25,7 @@
           type: Opaque
           metadata:
             name: cert-manager-ca
-            namespace: "{{ stack.pki.ns }}"
+            namespace: "{{ stack.cert_manager.ns }}"
           data:
             tls.crt: "{{ lookup('ansible.builtin.file', '{{ pki_dir }}/ca.pem') | b64encode }}"
             tls.key: "{{ lookup('ansible.builtin.file', '{{ pki_dir }}/ca.key') | b64encode }}"
@@ -46,7 +37,7 @@
           kind: ClusterIssuer
           metadata:
             name: ca-issuer
-            namespace: "{{ stack.pki.ns }}"
+            namespace: "{{ stack.cert_manager.ns }}"
           spec:
             ca:
               secretName: cert-manager-ca
@@ -54,17 +45,13 @@
       kubernetes.core.helm:
         name: cert-manager
         create_namespace: false
-        release_namespace: "{{ stack.pki.ns }}"
+        release_namespace: "{{ stack.cert_manager.ns }}"
         chart_ref: "{{ cert_manager_chart }}"
         wait: true
         values:
           cluster:
-            control_plane_nodes: "{{ cluster.control_plane_nodes | int }}"
-            worker_nodes: "{{ cluster.worker_nodes | int }}"
             mesh: "{{ cluster.mesh }}"
-            istio_profile: "{{ cluster.istio_profile }}"
-            gateway_api: "{{ cluster.gateway_api | bool }}"
-            gateway_api_experimental: "{{ cluster.gateway_api_experimental | bool }}"
+            gateway_api: "{{ stack.gateway_api.enabled | bool }}"
             name: "{{ cluster_name }}"
             domain: "{{ cluster.domain }}"
           edge:
@@ -85,9 +72,9 @@
             startupapicheck:
               image:
                 repository: "{{ host.registry.name }}:5000/jetstack/cert-manager-startupapicheck"
-            namespace: "{{ stack.pki.ns }}"
+            namespace: "{{ stack.cert_manager.ns }}"
             config:
-              enableGatewayAPI: "{{ cluster.gateway_api | bool }}"
+              enableGatewayAPI: "{{ stack.gateway_api.enabled | bool }}"
             prometheus:
               enabled: "{{ stack.prometheus.enabled | bool }}"
 
@@ -95,35 +82,11 @@
     when: "stack.edge.enabled | bool == true"
     block:
     - name: Create and label the Edge namespace
-      kubernetes.core.k8s:
-        state: present
-        definition:
-          apiVersion: v1
-          kind: Namespace
-          metadata:
-            name: "{{ stack.edge.ns }}"
-            labels:
-              istio-injection: enabled
-    - name: Download the Gateway-API CRDs
-      ansible.builtin.get_url:
-        url: https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.2.1/standard-install.yaml
-        dest: "{{ dist_dir }}/gateway-api-crds.yaml"
-    - name: Apply the Gateway API CRDs
-      when: "cluster.gateway_api | bool == true"
-      kubernetes.core.k8s:
-        state: present
-        apply: true
-        src: "{{ dist_dir }}/gateway-api-crds.yaml"
-    - name: Download the Experimental Gateway-API CRDs
-      ansible.builtin.get_url:
-        url: https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.2.1/experimental-install.yaml
-        dest: "{{ dist_dir }}/experimental-gateway-api-crds.yaml"
-    - name: Apply the Experimental Gateway API CRDs
-      when: "cluster.gateway_api_experimental | bool == true"
-      kubernetes.core.k8s:
-        state: present
-        apply: true
-        src: "{{ dist_dir }}/experimental-gateway-api-crds.yaml"
+      ansible.builtin.import_role:
+        name: mrmat.kube_eng.create_namespace
+      vars:
+        name: "{{ stack.edge.ns }}"
+        istio_profile: "{{ cluster.istio_profile }}"
     - name: Deploy the Edge Helm chart
       kubernetes.core.helm:
         name: edge
@@ -133,20 +96,16 @@
         wait: true
         values:
           cluster:
-            control_plane_nodes: "{{ cluster.control_plane_nodes | int }}"
-            worker_nodes: "{{ cluster.worker_nodes | int }}"
             mesh: "{{ cluster.mesh }}"
-            istio_profile: "{{ cluster.istio_profile }}"
-            gateway_api: "{{ cluster.gateway_api | bool }}"
-            gateway_api_experimental: "{{ cluster.gateway_api_experimental | bool }}"
+            gateway_api: "{{ stack.gateway_api.enabled | bool }}"
             name: "{{ cluster_name }}"
             domain: "{{ cluster.domain }}"
           edge:
             name: "{{ stack.edge.name }}"
             ns: "{{ stack.edge.ns }}"
           istio: "{{ stack.edge.istio | bool }}"
-          istio_gateway_api: "{{ stack.edge.istio_gateway_api | bool }}"
-          istio_gateway_api_experimental: "{{ stack.edge.istio_gateway_api_experimental | bool }}"
+          istio_gateway_api: "{{ stack.gateway_api.enabled | bool }}"
+          istio_gateway_api_experimental: "{{ stack.gateway_api.experimental | bool }}"
           prometheus:
             enabled: "{{ stack.prometheus.enabled | bool }}"
             hostname: "{{ stack.prometheus.hostname }}"
@@ -173,15 +132,11 @@
     when: "stack.prometheus.enabled | bool == true"
     block:
     - name: Create and label the Prometheus namespace
-      kubernetes.core.k8s:
-        state: present
-        definition:
-          apiVersion: v1
-          kind: Namespace
-          metadata:
-            name: "{{ stack.prometheus.ns }}"
-            labels:
-              istio-injection: enabled
+      ansible.builtin.import_role:
+        name: mrmat.kube_eng.create_namespace
+      vars:
+        name: "{{ stack.prometheus.ns }}"
+        istio_profile: "{{ cluster.istio_profile }}"
     - name: Deploy the Prometheus Helm Chart
       kubernetes.core.helm:
         name: prometheus
@@ -191,12 +146,8 @@
         wait: true
         values:
           cluster:
-            control_plane_nodes: "{{ cluster.control_plane_nodes | int }}"
-            worker_nodes: "{{ cluster.worker_nodes | int }}"
             mesh: "{{ cluster.mesh }}"
-            istio_profile: "{{ cluster.istio_profile }}"
-            gateway_api: "{{ cluster.gateway_api | bool }}"
-            gateway_api_experimental: "{{ cluster.gateway_api_experimental | bool }}"
+            gateway_api: "{{ stack.gateway_api.enabled | bool }}"
             name: "{{ cluster_name }}"
             domain: "{{ cluster.domain }}"
           edge:
@@ -205,35 +156,29 @@
           route:
             hostname: "{{ stack.prometheus.hostname }}"
           overrides:
-            prometheus:
-              image: "{{ host.registry.name }}:5000/prometheus-operator/prometheus-config-reloader"
+            configmapReload:
+              prometheus:
+                image:
+                  repository: "{{ host.registry.name }}:5000/prometheus-operator/prometheus-config-reloader"
             server:
               image:
                 repository: "{{ host.registry.name }}:5000/prometheus/prometheus"
             kube-state-metrics:
               global:
                 imageRegistry: "{{ host.registry.name }}:5000"
-              image:
-                registry: "{{ host.registry.name }}:5000"
             prometheus-node-exporter:
               global:
                 imageRegistry: "{{ host.registry.name }}:5000"
-              image:
-                registry: "{{ host.registry.name }}:5000"
 
   - name: Deploy Alloy
     when: "stack.alloy.enabled | bool == true"
     block:
     - name: Create and label the Alloy namespace
-      kubernetes.core.k8s:
-        state: present
-        definition:
-          apiVersion: v1
-          kind: Namespace
-          metadata:
-            name: "{{ stack.alloy.ns }}"
-            labels:
-              istio-injection: enabled
+      ansible.builtin.import_role:
+        name: mrmat.kube_eng.create_namespace
+      vars:
+        name: "{{ stack.alloy.ns }}"
+        istio_profile: "{{ cluster.istio_profile }}"
     - name: Deploy the Alloy Helm Chart
       kubernetes.core.helm:
         name: alloy
@@ -247,11 +192,13 @@
             worker_nodes: "{{ cluster.worker_nodes | int }}"
             mesh: "{{ cluster.mesh }}"
             istio_profile: "{{ cluster.istio_profile }}"
-            gateway_api: "{{ cluster.gateway_api | bool }}"
-            edge_ns: "{{ cluster.edge_ns }}"
-            edge: "{{ cluster.edge_name }}"
+            gateway_api: "{{ stack.gateway_api.enabled | bool }}"
+            gateway_api_experimental: "{{ stack.gateway_api.experimental | bool }}"
             name: "{{ cluster_name }}"
             domain: "{{ cluster.domain }}"
+          edge:
+            name: "{{ stack.edge.name }}"
+            ns: "{{ stack.edge.ns }}"
           overrides:
             image:
               registry: "{{ host.registry.name }}:5000"
@@ -263,15 +210,11 @@
     when: "stack.loki.enabled | bool == true"
     block:
     - name: Create and label the Loki namespace
-      kubernetes.core.k8s:
-        state: present
-        definition:
-          apiVersion: v1
-          kind: Namespace
-          metadata:
-            name: "{{ stack.loki.ns }}"
-            labels:
-              istio-injection: enabled
+      ansible.builtin.import_role:
+        name: mrmat.kube_eng.create_namespace
+      vars:
+        name: "{{ stack.loki.ns }}"
+        istio_profile: "{{ cluster.istio_profile }}"
     - name: Deploy the Loki Helm chart
       kubernetes.core.helm:
         name: loki
@@ -285,26 +228,24 @@
             worker_nodes: "{{ cluster.worker_nodes | int }}"
             mesh: "{{ cluster.mesh }}"
             istio_profile: "{{ cluster.istio_profile }}"
-            gateway_api: "{{ cluster.gateway_api | bool }}"
-            edge_ns: "{{ cluster.edge_ns }}"
-            edge: "{{ cluster.edge_name }}"
+            gateway_api: "{{ stack.gateway_api.enabled | bool }}"
+            gateway_api_experimental: "{{ stack.gateway_api.experimental | bool }}"
             name: "{{ cluster_name }}"
             domain: "{{ cluster.domain }}"
+          edge:
+            name: "{{ stack.edge.name }}"
+            ns: "{{ stack.edge.ns }}"
 
-  - name: Deploy KeyCloak
+  - name: Deploy Keycloak
     when: "stack.keycloak.enabled | bool == true"
     block:
-    - name: Create and label the KeyCloak namespace
-      kubernetes.core.k8s:
-        state: present
-        definition:
-          apiVersion: v1
-          kind: Namespace
-          metadata:
-            name: "{{ stack.keycloak.ns }}"
-            labels:
-              istio-injection: enabled
-    - name: Deploy the KeyCloak Operator
+    - name: Create and label the Keycloak namespace
+      ansible.builtin.import_role:
+        name: mrmat.kube_eng.create_namespace
+      vars:
+        name: "{{ stack.keycloak.ns }}"
+        istio_profile: "{{ cluster.istio_profile }}"
+    - name: Deploy the Keycloak Operator CRDs
       kubernetes.core.k8s:
         src: "{{ item }}"
         namespace: "{{ stack.keycloak.ns }}"
@@ -312,10 +253,31 @@
         wait: true
         state: present
       loop:
-      - https://raw.githubusercontent.com/keycloak/keycloak-k8s-resources/26.2.2/kubernetes/keycloaks.k8s.keycloak.org-v1.yml
-      - https://raw.githubusercontent.com/keycloak/keycloak-k8s-resources/26.2.2/kubernetes/keycloakrealmimports.k8s.keycloak.org-v1.yml
-      - https://raw.githubusercontent.com/keycloak/keycloak-k8s-resources/26.2.2/kubernetes/kubernetes.yml
-    - name: Create a keycloak user in PostgreSQL
+      - "{{ dist_dir }}/preheat/keycloaks.k8s.keycloak.org-v1.yml"
+      - "{{ dist_dir }}/preheat/keycloakrealmimports.k8s.keycloak.org-v1.yml"
+    - name: Deploy the Keycloak Operator Helm chart
+      kubernetes.core.helm:
+        name: kubernetes-operator
+        create_namespace: false
+        release_namespace: "{{ stack.keycloak.ns }}"
+        chart_ref: "{{ keycloak_operator_chart }}"
+        wait: true
+        values:
+          cluster:
+            mesh: "{{ cluster.mesh }}"
+            istio_profile: "{{ cluster.istio_profile }}"
+            gateway_api: "{{ stack.gateway_api.enabled | bool }}"
+            gateway_api_experimental: "{{ stack.gateway_api.experimental | bool }}"
+            name: "{{ cluster_name }}"
+            domain: "{{ cluster.domain }}"
+          edge:
+            name: "{{ stack.edge.name }}"
+            ns: "{{ stack.edge.ns }}"
+          keycloak_operator:
+            repository: "{{ host.registry.name }}:5000/keycloak/keycloak-operator"
+          keycloak:
+            repository: "{{ host.registry.name }}:5000/keycloak/keycloak"
+    - name: Create a Keycloak user in PostgreSQL
       community.postgresql.postgresql_user:
         login_host: localhost
         login_port: "{{ host.postgresql.port | int }}"
@@ -339,24 +301,24 @@
         comment: "Keycloak Database"
         encoding: UTF-8
         state: present
-    - name: Deploy the KeyCloak Helm Chart
+    - name: Deploy the Keycloak Helm Chart
       kubernetes.core.helm:
         name: keycloak
-        create_namespace: true
+        create_namespace: false
         release_namespace: "{{ stack.keycloak.ns }}"
         chart_ref: "{{ keycloak_chart }}"
         wait: true
         values:
           cluster:
-            control_plane_nodes: "{{ cluster.control_plane_nodes | int }}"
-            worker_nodes: "{{ cluster.worker_nodes | int }}"
             mesh: "{{ cluster.mesh }}"
             istio_profile: "{{ cluster.istio_profile }}"
-            gateway_api: "{{ cluster.gateway_api | bool }}"
-            edge_ns: "{{ cluster.edge_ns }}"
-            edge: "{{ cluster.edge_name }}"
+            gateway_api: "{{ stack.gateway_api.enabled | bool }}"
+            gateway_api_experimental: "{{ stack.gateway_api.experimental | bool }}"
             name: "{{ cluster_name }}"
             domain: "{{ cluster.domain }}"
+          edge:
+            name: "{{ stack.edge.name }}"
+            ns: "{{ stack.edge.ns }}"
           keycloak:
             admin_password: "{{ admin_password }}"
             db_password: "{{ admin_password }}"
@@ -369,15 +331,11 @@
     when: "stack.grafana.enabled | bool == true"
     block:
     - name: Create and label the Grafana namespace
-      kubernetes.core.k8s:
-        state: present
-        definition:
-          apiVersion: v1
-          kind: Namespace
-          metadata:
-            name: "{{ stack.grafana.ns }}"
-            labels:
-              istio-injection: enabled
+      ansible.builtin.import_role:
+        name: mrmat.kube_eng.create_namespace
+      vars:
+        name: "{{ stack.grafana.ns }}"
+        istio_profile: "{{ cluster.istio_profile }}"
     - name: Register Grafana in Keycloak
       community.general.keycloak_client:
         auth_keycloak_url: "https://{{ stack.keycloak.hostname }}.{{ cluster_name }}.{{ cluster.domain }}"
@@ -456,11 +414,13 @@
             worker_nodes: "{{ cluster.worker_nodes | int }}"
             mesh: "{{ cluster.mesh }}"
             istio_profile: "{{ cluster.istio_profile }}"
-            gateway_api: "{{ cluster.gateway_api | bool }}"
-            edge_ns: "{{ cluster.edge_ns }}"
-            edge: "{{ cluster.edge_name }}"
+            gateway_api: "{{ stack.gateway_api.enabled| bool }}"
+            gateway_api_experimental: "{{ stack.gateway_api_experimental | bool }}"
             name: "{{ cluster_name }}"
             domain: "{{ cluster.domain }}"
+          edge:
+            name: "{{ stack.edge.name }}"
+            ns: "{{ stack.edge.ns }}"
           route:
             hostname: "{{ stack.grafana.hostname }}"
           overrides:
@@ -491,15 +451,11 @@
     when: "stack.jaeger.enabled | bool == true"
     block:
     - name: Create and label the Jaeger namespace
-      kubernetes.core.k8s:
-        state: present
-        definition:
-          apiVersion: v1
-          kind: Namespace
-          metadata:
-            name: "{{ stack.jaeger.ns }}"
-            labels:
-              istio-injection: enabled
+      ansible.builtin.import_role:
+        name: mrmat.kube_eng.create_namespace
+      vars:
+        name: "{{ stack.jaeger.ns }}"
+        istio_profile: "{{ cluster.istio_profile }}"
     - name: Deploy the OpenTelemetry Operator
       kubernetes.core.helm:
         name: otel-operator
@@ -510,7 +466,12 @@
         values:
           manager:
             collectorImage:
-              repository: otel/opentelemetry-collector-k8s
+              repository: "{{ host.registry.name }}:5000/open-telemetry/opentelemetry-operator/opentelemetry-operator"
+            image:
+              repository: "{{ host.registry.name }}:5000/open-telemetry/opentelemetry-operator/opentelemetry-operator"
+          kubeRBACProxy:
+            image:
+              repository: "{{ host.registry.name }}:5000/brancz/kube-rbac-proxy"
     - name: Deploy the Jaeger Helm Chart
       kubernetes.core.helm:
         name: jaeger
@@ -520,31 +481,29 @@
         wait: true
         values:
           cluster:
-            control_plane_nodes: "{{ cluster.control_plane_nodes | int }}"
-            worker_nodes: "{{ cluster.worker_nodes | int }}"
             mesh: "{{ cluster.mesh }}"
             istio_profile: "{{ cluster.istio_profile }}"
-            gateway_api: "{{ cluster.gateway_api | bool }}"
-            edge_ns: "{{ cluster.edge_ns }}"
-            edge: "{{ cluster.edge_name }}"
+            gateway_api: "{{ stack.gateway_api.enabled | bool }}"
+            gateway_api_experimental: "{{ stack.gateway_api.experimental | bool }}"
             name: "{{ cluster_name }}"
             domain: "{{ cluster.domain }}"
+          edge:
+            name: "{{ stack.edge.name }}"
+            ns: "{{ stack.edge.ns }}"
           route:
             hostname: "{{ stack.jaeger.hostname }}"
+          jaeger:
+            image: "{{ host.registry.name }}:5000/jaegertracing/jaeger:latest"
 
   - name: Deploy Kiali
     when: "stack.kiali.enabled | bool == true"
     block:
     - name: Create and label the Kiali namespace
-      kubernetes.core.k8s:
-        state: present
-        definition:
-          apiVersion: v1
-          kind: Namespace
-          metadata:
-            name: "{{ stack.kiali.ns }}"
-            labels:
-              istio-injection: enabled
+      ansible.builtin.import_role:
+        name: mrmat.kube_eng.create_namespace
+      vars:
+        name: "{{ stack.kiali.ns }}"
+        istio_profile: "{{ cluster.istio_profile }}"
     - name: Deploy the Kiali Operator
       kubernetes.core.helm:
         name: kiali-operator
@@ -566,15 +525,15 @@
         wait: true
         values:
           cluster:
-            control_plane_nodes: "{{ cluster.control_plane_nodes | int }}"
-            worker_nodes: "{{ cluster.worker_nodes | int }}"
             mesh: "{{ cluster.mesh }}"
             istio_profile: "{{ cluster.istio_profile }}"
-            gateway_api: "{{ cluster.gateway_api | bool }}"
-            edge_ns: "{{ cluster.edge_ns }}"
-            edge: "{{ cluster.edge_name }}"
+            gateway_api: "{{ stack.gateway_api.enabled | bool }}"
+            gateway_api_experimental: "{{ stack.gateway_api.experimental | bool }}"
             name: "{{ cluster_name }}"
             domain: "{{ cluster.domain }}"
+          edge:
+            name: "{{ stack.edge.name }}"
+            ns: "{{ stack.edge.ns }}"
           route:
             hostname: "{{ stack.kiali.hostname }}"
           integrations:

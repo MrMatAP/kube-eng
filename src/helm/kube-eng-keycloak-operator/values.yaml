@@ -1,0 +1,18 @@
+#
+# Default values for Kube Eng :: Keycloak
+
+cluster:
+  mesh: "istio"
+  istio_profile: "ambient"
+  gateway_api: true
+  name: "cluster"
+  domain: "local"
+
+edge:
+  ns: edge
+  name: edge-ingres
+
+keycloak_operator:
+  repository: quay.io/keycloak/keycloak-operator
+keycloak:
+  repository: quay.io/keycloak/keycloak
