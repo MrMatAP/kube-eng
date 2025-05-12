@@ -4,17 +4,17 @@
   tasks:
   - name: Copy the resolver launch configuration to its directory
     ansible.builtin.copy:
-      src: "{{ dist_dir }}/resolver/org.mrmat.kubeeng.resolver.plist"
-      dest: /Library/LaunchDaemons/org.mrmat.kubeeng.resolver.plist
+      src: "{{ dist_dir }}/bind/org.mrmat.kubeeng.bind.plist"
+      dest: /Library/LaunchDaemons/org.mrmat.kubeeng.bind.plist
       owner: root
       group: wheel
       mode: 0644
     become: true
 
   - name: Start the resolver
-    when: host.resolver.enabled == true
+    when: host.bind.enabled == true
     community.general.launchd:
-      name: org.mrmat.kubeeng.resolver
+      name: org.mrmat.kubeeng.bind
       enabled: true
       state: started
     become: true

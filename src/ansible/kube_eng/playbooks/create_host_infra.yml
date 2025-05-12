@@ -2,15 +2,50 @@
 - name: Create and configure the host infrastructure
   hosts: localhost
   tasks:
-  - name: Template the resolver configuration
+  - name: Create PKI infrastructure
+    when: "stack.pki.enabled | bool == true"
+    block:
+    - name: Create a directory for PKI
+      ansible.builtin.file:
+        path: "{{ pki_dir }}"
+        state: directory
+    - name: Create a private key for the local CA
+      community.crypto.openssl_privatekey:
+        path: "{{ pki_dir }}/ca.key"
+        type: ECC
+        curve: secp256r1
+        return_content: true
+        state: present
+    - name: Generate a CSR for the local CA
+      community.crypto.openssl_csr:
+        path: "{{ pki_dir }}/ca.csr"
+        privatekey_path: "{{ pki_dir }}/ca.key"
+        common_name: "{{ cluster_name }} Local CA"
+        key_usage_critical: true
+        key_usage:
+        - keyCertSign
+        - cRLSign
+        basic_constraints_critical: true
+        basic_constraints:
+        - "CA:TRUE"
+        - "pathlen:1"
+    - name: Create a self-signed local CA
+      community.crypto.x509_certificate:
+        path: "{{ pki_dir }}/ca.pem"
+        privatekey_path: "{{ pki_dir }}/ca.key"
+        csr_path: "{{ pki_dir }}/ca.csr"
+        provider: selfsigned
+        return_content: true
+
+  - name: Template the BIND resolver configuration
     ansible.builtin.import_role:
       name: mrmat.kube_eng.bind_configuration
     vars:
-      resolver_executable: "{{ host.tools.named }}"
-      resolver_dir: "{{ dist_dir }}/resolver"
-      forwarder: "{{ host.resolver.forwarder }}"
+      bind_executable: "{{ host.tools.named }}"
+      bind_dir: "{{ dist_dir }}/bind"
+      forwarders: "{{ host.bind.forwarders }}"
       domain: "{{ cluster_name }}.k8s"
-      resolver_key: "{{ admin_password }}"
+      bind_key: "{{ admin_password }}"
 
   - name: Template the cloud-provider-kind configuration
     ansible.builtin.import_role:
@@ -26,40 +61,6 @@
       cloud_provider_mdns_executable: "{{ cloud_provider_mdns }}"
       cloud_provider_mdns_dir: "{{ dist_dir }}/cloud-provider-mdns"
       cloud_provider_mdns_user: "{{ user_id }}"
-
-  - name: Create PKI infrastructure
-    block:
-    - name: Create a directory for PKI
-      ansible.builtin.file:
-        path: "{{ dist_dir }}/pki"
-        state: directory
-    - name: Create a private key for the local CA
-      community.crypto.openssl_privatekey:
-        path: "{{ dist_dir }}/pki/ca.key"
-        type: ECC
-        curve: secp256r1
-        return_content: true
-        state: present
-    - name: Generate a CSR for the local CA
-      community.crypto.openssl_csr:
-        path: "{{ dist_dir }}/pki/ca.csr"
-        privatekey_path: "{{ dist_dir }}/pki/ca.key"
-        common_name: "{{ cluster_name }} Local CA"
-        key_usage_critical: true
-        key_usage:
-        - keyCertSign
-        - cRLSign
-        basic_constraints_critical: true
-        basic_constraints:
-        - "CA:TRUE"
-        - "pathlen:1"
-    - name: Create a self-signed local CA
-      community.crypto.x509_certificate:
-        path: "{{ dist_dir }}/pki/ca.pem"
-        privatekey_path: "{{ dist_dir }}/pki/ca.key"
-        csr_path: "{{ dist_dir }}/pki/ca.csr"
-        provider: selfsigned
-        return_content: true
 
   - name: Create a local PostgreSQL database
     when: host.postgresql.enabled == true

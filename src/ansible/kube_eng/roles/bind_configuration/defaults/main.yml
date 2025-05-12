@@ -1,4 +1,4 @@
 #SPDX-License-Identifier: MIT-0
 ---
 # defaults file for bind_configuration
-forwarder: 8.8.8.8
+forwarders: "8.8.8.8; 4.4.4.4; 2001:4860:4860::8888; 2001:4860:4860::8844;"

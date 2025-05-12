@@ -3,16 +3,16 @@
 <plist version="1.0">
 <dict>
     <key>Label</key>
-    <string>org.mrmat.kubeeng.resolver</string>
+    <string>org.mrmat.kubeeng.bind</string>
 	<key>ProgramArguments</key>
 	<array>
-        <string>{{ resolver_executable }}</string>
+        <string>{{ bind_executable }}</string>
         <string>-f</string>
 		<string>-c</string>
-		<string>{{ resolver_dir }}/named.conf</string>
+		<string>{{ bind_dir }}/named.conf</string>
 	</array>
     <key>WorkingDirectory</key>
-    <string>{{ resolver_dir }}</string>
+    <string>{{ bind_dir }}</string>
     <key>KeepAlive</key>
     <true/>
 </dict>

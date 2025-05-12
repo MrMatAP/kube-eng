@@ -1,0 +1,40 @@
+#
+# Default values for Kube Eng :: cert-manager
+
+cluster:
+  control_plane_nodes: 1
+  worker_nodes: 3
+  mesh: "istio"
+  istio_profile: "ambient"
+  gateway_api: true
+  name: "cluster"
+  domain: "local"
+
+edge:
+  ns: edge
+  name: edge-ingress
+
+#
+# Dependency Chart overrides
+
+overrides:
+  global:
+    commonLabels:
+      sidecar.istio.io/inject: "false"
+  crds:
+    enabled: false
+    keep: true
+  replicaCount: 1
+  fullnameOverride: cert-manager
+  serviceAccount:
+    create: true
+    #name: sa-cert-manager
+  config:
+    enableGatewayAPI: true
+  prometheus:
+    enabled: true
+    servicemonitor:
+      enabled: false
+    podmonitor:
+      enabled: false
+
