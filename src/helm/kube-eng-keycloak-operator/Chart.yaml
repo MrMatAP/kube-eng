@@ -1,0 +1,6 @@
+apiVersion: v2
+name: kube-eng-keycloak-operator
+description: A Helm chart to install Keycloak Operator
+type: application
+version: 0.0.0
+appVersion: "26.2.2"

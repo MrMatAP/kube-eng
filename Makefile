@@ -30,6 +30,8 @@ ALLOY_SOURCES := $(shell find $(HELMDIR)/kube-eng-alloy)
 ALLOY_CHART := $(CHARTDIR)/kube-eng-alloy-$(VERSION).tgz
 LOKI_SOURCES := $(shell find $(HELMDIR)/kube-eng-loki)
 LOKI_CHART := $(CHARTDIR)/kube-eng-loki-$(VERSION).tgz
+KEYCLOAK_OPERATOR_SOURCES := $(shell find $(HELMDIR)/kube-eng-keycloak-operator)
+KEYCLOAK_OPERATOR_CHART := $(CHARTDIR)/kube-eng-keycloak-operator-$(VERSION).tgz
 KEYCLOAK_SOURCES := $(shell find $(HELMDIR)/kube-eng-keycloak)
 KEYCLOAK_CHART := $(CHARTDIR)/kube-eng-keycloak-$(VERSION).tgz
 GRAFANA_SOURCES := $(shell find $(HELMDIR)/kube-eng-grafana)
@@ -43,7 +45,7 @@ COLLECTION_SOURCES :=$(shell find $(SRCDIR)/ansible/kube_eng)
 
 CHARTS := $(CERT_MANAGER_CHART) $(EDGE_CHART) \
 		  $(PROMETHEUS_CHART) $(ALLOY_CHART) $(LOKI_CHART) $(GRAFANA_CHART) \
-		  $(KEYCLOAK_CHART) $(JAEGER_CHART) $(KIALI_CHART)
+		  $(KEYCLOAK_OPERATOR_CHART) $(KEYCLOAK_CHART) $(JAEGER_CHART) $(KIALI_CHART)
 COLLECTION := $(DISTDIR)/mrmat-kube_eng-$(VERSION).tar.gz
 
 ANSIBLE_PLAYBOOK_EXEC = ANSIBLE_PYTHON_INTERPRETER=$(VENVDIR)/bin/python3 \
@@ -60,6 +62,7 @@ ANSIBLE_PLAYBOOK_EXEC = ANSIBLE_PYTHON_INTERPRETER=$(VENVDIR)/bin/python3 \
 							-e prometheus_chart=$(PROMETHEUS_CHART) \
 							-e alloy_chart=$(ALLOY_CHART) \
 							-e loki_chart=$(LOKI_CHART) \
+							-e keycloak_operator_chart=$(KEYCLOAK_OPERATOR_CHART) \
 							-e keycloak_chart=$(KEYCLOAK_CHART) \
 							-e grafana_chart=$(GRAFANA_CHART) \
 							-e jaeger_chart=$(JAEGER_CHART) \
@@ -203,6 +206,9 @@ $(ALLOY_CHART): $(ALLOY_SOURCES) $(CHARTDIR)
 $(LOKI_CHART): $(LOKI_SOURCES) $(CHARTDIR)
 	$(helm) dep update $(HELMDIR)/kube-eng-loki --skip-refresh
 	$(helm) package --version $(VERSION) --destination $(CHARTDIR) $(HELMDIR)/kube-eng-loki
+
+$(KEYCLOAK_OPERATOR_CHART): $(KEYCLOAK_OPERATOR_SOURCES) $(CHARTDIR)
+	$(helm) package --version $(VERSION) --destination $(CHARTDIR) $(HELMDIR)/kube-eng-keycloak-operator
 
 $(KEYCLOAK_CHART): $(KEYCLOAK_SOURCES) $(CHARTDIR)
 	$(helm) package --version $(VERSION) --destination $(CHARTDIR) $(HELMDIR)/kube-eng-keycloak

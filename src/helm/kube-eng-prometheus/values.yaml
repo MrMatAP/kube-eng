@@ -2,10 +2,7 @@
 # Default values for Kube Eng :: Prometheus
 
 cluster:
-  control_plane_nodes: 1
-  worker_nodes: 3
   mesh: "istio"
-  istio_profile: "ambient"
   gateway_api: true
   name: "cluster"
   domain: "local"
@@ -27,9 +24,10 @@ overrides:
     server:
       create: true
       name: sa-prometheus
-  prometheus:
-    enabled: true
-    image: quay.io/prometheus-operator/prometheus-config-reloader
+  configmapReload:
+    prometheus:
+      image:
+        repository: quay.io/prometheus-operator/prometheus-config-reloader
   server:
     releaseNamespace: false
     image:
@@ -52,14 +50,10 @@ overrides:
     enabled: true
     global:
       imageRegistry: ""
-    image:
-      registry: "registry.k8s.io"
   prometheus-node-exporter:
     fullnameOverride: prometheus-node-exporter
     enabled: true
     global:
       imageRegistry: ""
-    image:
-      registry: "quay.io"
   prometheus-pushgateway:
     enabled: false

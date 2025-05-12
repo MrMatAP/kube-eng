@@ -1,0 +1,11 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: "{{ name }}"
+  labels:
+    {% if istio_profile == 'ambient' %}
+    istio.io/dataplane-mode: ambient
+    {% else %}
+    istio-injection: enabled
+    {% endif %}

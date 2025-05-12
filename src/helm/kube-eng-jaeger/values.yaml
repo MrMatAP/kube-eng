@@ -2,17 +2,20 @@
 # Default values for Kube Eng :: Jaeger
 
 cluster:
-  control_plane_nodes: 1
-  worker_nodes: 3
   mesh: "istio"
   istio_profile: "istio-experimental"
   gateway_api: true
-  edge_ns: edge
-  edge: edge-ingress
   name: "cluster"
   domain: "local"
+
+edge:
+  ns: edge
+  name: edge-ingress
 
 route:
   name: route-jaeger
   hostname: jaeger
   sectionName: jaeger
+
+jaeger:
+  image: jaegertracing/jaeger:latest

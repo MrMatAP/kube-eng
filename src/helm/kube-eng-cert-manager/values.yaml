@@ -2,10 +2,7 @@
 # Default values for Kube Eng :: cert-manager
 
 cluster:
-  control_plane_nodes: 1
-  worker_nodes: 3
   mesh: "istio"
-  istio_profile: "ambient"
   gateway_api: true
   name: "cluster"
   domain: "local"

@@ -53,3 +53,8 @@ spec:
   bootstrapAdmin:
     user:
       secret: keycloak-admin-secret
+  unsupported:
+    podTemplate:
+      metadata:
+        labels:
+          version: {{ .Chart.AppVersion }}
