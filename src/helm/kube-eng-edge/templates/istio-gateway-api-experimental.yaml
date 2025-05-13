@@ -1,5 +1,5 @@
 # Edge for Istio with the Gateway API
-{{- if .Values.istio_gateway_api_experimental }}
+{{- if eq $.Values.edge.kind "istio-gateway-api-experimental" }}
 ---
 apiVersion: gateway.networking.k8s.io/v1
 kind: Gateway

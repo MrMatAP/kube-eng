@@ -26,7 +26,7 @@ cluster:
   node_image: "kindest/node:v1.32.2"
   mesh: istio
   istio_profile: ambient
-  domain: local
+  domain: k8s
 
 host:
   tools:
@@ -75,7 +75,7 @@ host:
 
 stack:
   gateway_api:
-    enabled: true
+    enabled: false
     experimental: false
     crd: https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.2.1/standard-install.yaml
     crd_experimental: https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.2.1/experimental-install.yaml
@@ -87,13 +87,10 @@ stack:
     enabled: true
     ns: edge
     name: edge-ingress
-    istio: false
-    istio_gateway_api: true
-    istio_gateway_api_experimental: false
-    ingress: false
+    kind: traefik
   prometheus:
     enabled: true
-    ns: stack
+    ns: prometheus
     hostname: prometheus
   alloy:
     enabled: false
@@ -105,25 +102,25 @@ stack:
     hostname: loki
   keycloak:
     enabled: true
-    ns: stack
+    ns: keycloak
     hostname: keycloak
     operator_version: 26.2.2
     operator_yaml:
     - keycloaks.k8s.keycloak.org-v1.yml
     - keycloakrealmimports.k8s.keycloak.org-v1.yml
   grafana:
-    enabled: false
-    ns: stack
+    enabled: true
+    ns: grafana
     hostname: grafana
     client_id: grafana
     admin_user: admin
   jaeger:
     enabled: true
-    ns: stack
+    ns: jaeger
     hostname: jaeger
   kiali:
     enabled: true
-    ns: stack
+    ns: kiali
     hostname: kiali
 
 preheat:
@@ -170,6 +167,11 @@ preheat:
   repository: jetstack
   image: cert-manager-startupapicheck
   tag: v1.17.1
+# Edge
+- registry: docker.io
+  repository: library
+  image: traefik
+  tag: v3.4
 # Prometheus
 - registry: quay.io
   repository: prometheus-operator
@@ -240,3 +242,11 @@ preheat:
   repository: kiali
   image: kiali
   tag: v2.9.0
+- registry: quay.io
+  repository: kiali
+  image: kiali-operator
+  tag: v2.8.0
+- registry: quay.io
+  repository: kiali
+  image: kiali
+  tag: v2.8.0

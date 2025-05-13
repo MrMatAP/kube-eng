@@ -10,11 +10,11 @@ cluster:
 edge:
   ns: edge
   name: edge-ingress
+  kind: istio
 
-istio: false
-istio_gateway_api: true
-istio_gateway_api_experimental: false
-ingress: false
+traefik:
+  repository: docker.io/traefik
+  tag: v3.4
 
 prometheus:
   enabled: false

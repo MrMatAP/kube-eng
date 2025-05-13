@@ -14,31 +14,57 @@ spec:
       externalName: {{ .Values.route.hostname }}.{{ .Values.cluster.name }}.{{ .Values.cluster.domain }}
     cluster_wide_access: true
     ingress:
+      {{- if eq $.Values.edge.kind "traefik" }}
+      enabled: true
+      override_yaml:
+        metadata:
+          annotations:
+            cert-manager.io/cluster-issuer: ca-issuer
+            traefik.ingress.kubernetes.io/router.entrypoints: https
+            traefik.ingress.kubernetes.io/router.tls: "true"
+        spec:
+          tls:
+          - hosts:
+            - {{ .Values.route.hostname }}.{{ .Values.cluster.name }}.{{ .Values.cluster.domain }}
+            secretName: kiali-cert
+          rules:
+          - host: {{ .Values.route.hostname }}.{{ .Values.cluster.name }}.{{ .Values.cluster.domain }}
+            http:
+              paths:
+              - path: /
+                pathType: Prefix
+                backend:
+                  service:
+                    name: kiali
+                    port:
+                      number: 20001
+      {{- else }}
       enabled: false
+      {{- end }}
     instance_name: "kiali"
     namespace: "{{ .Release.Namespace }}"
     replicas: 1
     service_type: "ClusterIP"
   external_services:
     prometheus:
-      url: "http://prometheus.stack.svc.cluster.local"
+      url: "http://prometheus.{{ .Values.prometheus.ns }}.svc.cluster.local"
     grafana:
-      internal_url: "http://grafana-overrides.stack.svc.cluster.local"
-      external_url: "https://grafana.covenant.local"
+      internal_url: "http://grafana-overrides.{{ .Values.grafana.ns }}.svc.cluster.local"
+      external_url: "https://{{ .Values.grafana.hostname }}.{{ .Values.cluster.name }}.{{ .Values.cluster.domain }}"
       auth:
-        type: {{ .Values.integrations.grafana.auth.type }}
-        {{- if .Values.integrations.grafana.auth.token }}
-        token: {{ .Values.integrations.grafana.auth.token }}
+        type: {{ .Values.grafana.auth.type }}
+        {{- if .Values.grafana.auth.token }}
+        token: {{ .Values.grafana.auth.token }}
         {{- else }}
-        username: {{ .Values.integrations.grafana.auth.username }}
-        password: {{ .Values.integrations.grafana.auth.password }}
+        username: {{ .Values.grafana.auth.username }}
+        password: {{ .Values.grafana.auth.password }}
         {{- end}}
     istio:
-      ingress_gateway_namespace: "edge"
+      ingress_gateway_namespace: {{ .Values.edge.ns }}
       root_namespace: "istio-system"
     tracing:
       enabled: true
-      external_url: {{ .Values.integrations.tracing.external | quote }}
-      internal_url: {{ .Values.integrations.tracing.internal | quote }}
+      external_url: https://{{ .Values.jaeger.hostname }}.{{ .Values.cluster.name }}.{{ .Values.cluster.domain }}
+      internal_url: http://jaeger-collector-headless.{{ .Values.jaeger.ns }}.svc.cluster.local:16686/jaeger
       use_grpc: false
       provider: "jaeger"

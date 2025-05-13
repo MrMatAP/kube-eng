@@ -2,14 +2,15 @@
 # Default values for Kube Eng :: Prometheus
 
 cluster:
-  mesh: "istio"
+  mesh: istio
   gateway_api: true
-  name: "cluster"
-  domain: "local"
+  name: cluster
+  domain: local
 
 edge:
   ns: edge
   name: edge-ingress
+  kind: istio
 
 route:
   name: route-prometheus

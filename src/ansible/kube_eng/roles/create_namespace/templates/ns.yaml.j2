@@ -6,6 +6,7 @@ metadata:
   labels:
     {% if istio_profile == 'ambient' %}
     istio.io/dataplane-mode: ambient
-    {% else %}
+    {% elif istio_profile == 'minimal' %}
     istio-injection: enabled
+    {% else %}
     {% endif %}

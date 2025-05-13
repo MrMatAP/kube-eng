@@ -30,6 +30,8 @@ spec:
     port: {{ .Values.keycloak.managementPort }}
   proxy:
     headers: xforwarded
+  ingress:
+    enabled: false
   features:
     enabled:
     - account:v3
