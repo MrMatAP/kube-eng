@@ -1,11 +1,13 @@
 # Edge for Istio with the Gateway API
-{{- if .Values.istio_gateway_api }}
+{{- if eq $.Values.edge.kind "istio-gateway-api" }}
 ---
 apiVersion: gateway.networking.k8s.io/v1
 kind: Gateway
 metadata:
   name: edge-ingress
-  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "common.labels" . | nindent 4 }}
+    app.kubernetes.io/name: edge-ingress
   annotations:
     cert-manager.io/cluster-issuer: ca-issuer
 spec:

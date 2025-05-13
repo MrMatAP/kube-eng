@@ -103,9 +103,9 @@
           edge:
             name: "{{ stack.edge.name }}"
             ns: "{{ stack.edge.ns }}"
-          istio: "{{ stack.edge.istio | bool }}"
-          istio_gateway_api: "{{ stack.gateway_api.enabled | bool }}"
-          istio_gateway_api_experimental: "{{ stack.gateway_api.experimental | bool }}"
+            kind: "{{ stack.edge.kind }}"
+          traefik:
+            repository: "{{ host.registry.name }}:5000/library/traefik"
           prometheus:
             enabled: "{{ stack.prometheus.enabled | bool }}"
             hostname: "{{ stack.prometheus.hostname }}"
@@ -153,6 +153,7 @@
           edge:
             name: "{{ stack.edge.name }}"
             ns: "{{ stack.edge.ns }}"
+            kind: "{{ stack.edge.kind }}"
           route:
             hostname: "{{ stack.prometheus.hostname }}"
           overrides:
@@ -199,6 +200,7 @@
           edge:
             name: "{{ stack.edge.name }}"
             ns: "{{ stack.edge.ns }}"
+            kind: "{{ stack.edge.kind }}"
           overrides:
             image:
               registry: "{{ host.registry.name }}:5000"
@@ -235,6 +237,7 @@
           edge:
             name: "{{ stack.edge.name }}"
             ns: "{{ stack.edge.ns }}"
+            kind: "{{ stack.edge.kind }}"
 
   - name: Deploy Keycloak
     when: "stack.keycloak.enabled | bool == true"
@@ -244,7 +247,8 @@
         name: mrmat.kube_eng.create_namespace
       vars:
         name: "{{ stack.keycloak.ns }}"
-        istio_profile: "{{ cluster.istio_profile }}"
+        # TODO: Keycloak does not play nice with Istio ambient. We do not know why yet.
+        istio_profile: "none"
     - name: Deploy the Keycloak Operator CRDs
       kubernetes.core.k8s:
         src: "{{ item }}"
@@ -273,6 +277,7 @@
           edge:
             name: "{{ stack.edge.name }}"
             ns: "{{ stack.edge.ns }}"
+            kind: "{{ stack.edge.kind }}"
           keycloak_operator:
             repository: "{{ host.registry.name }}:5000/keycloak/keycloak-operator"
           keycloak:
@@ -319,6 +324,7 @@
           edge:
             name: "{{ stack.edge.name }}"
             ns: "{{ stack.edge.ns }}"
+            kind: "{{ stack.edge.kind }}"
           keycloak:
             admin_password: "{{ admin_password }}"
             db_password: "{{ admin_password }}"
@@ -410,17 +416,14 @@
         wait: true
         values:
           cluster:
-            control_plane_nodes: "{{ cluster.control_plane_nodes | int }}"
-            worker_nodes: "{{ cluster.worker_nodes | int }}"
             mesh: "{{ cluster.mesh }}"
-            istio_profile: "{{ cluster.istio_profile }}"
-            gateway_api: "{{ stack.gateway_api.enabled| bool }}"
-            gateway_api_experimental: "{{ stack.gateway_api_experimental | bool }}"
+            gateway_api: "{{ stack.gateway_api.enabled | bool }}"
             name: "{{ cluster_name }}"
             domain: "{{ cluster.domain }}"
           edge:
             name: "{{ stack.edge.name }}"
             ns: "{{ stack.edge.ns }}"
+            kind: "{{ stack.edge.kind }}"
           route:
             hostname: "{{ stack.grafana.hostname }}"
           overrides:
@@ -482,14 +485,13 @@
         values:
           cluster:
             mesh: "{{ cluster.mesh }}"
-            istio_profile: "{{ cluster.istio_profile }}"
             gateway_api: "{{ stack.gateway_api.enabled | bool }}"
-            gateway_api_experimental: "{{ stack.gateway_api.experimental | bool }}"
             name: "{{ cluster_name }}"
             domain: "{{ cluster.domain }}"
           edge:
             name: "{{ stack.edge.name }}"
             ns: "{{ stack.edge.ns }}"
+            kind: "{{ stack.edge.kind }}"
           route:
             hostname: "{{ stack.jaeger.hostname }}"
           jaeger:
@@ -526,22 +528,25 @@
         values:
           cluster:
             mesh: "{{ cluster.mesh }}"
-            istio_profile: "{{ cluster.istio_profile }}"
             gateway_api: "{{ stack.gateway_api.enabled | bool }}"
-            gateway_api_experimental: "{{ stack.gateway_api.experimental | bool }}"
             name: "{{ cluster_name }}"
             domain: "{{ cluster.domain }}"
           edge:
             name: "{{ stack.edge.name }}"
             ns: "{{ stack.edge.ns }}"
+            kind: "{{ stack.edge.kind }}"
           route:
             hostname: "{{ stack.kiali.hostname }}"
-          integrations:
-            tracing:
-              internal: "http://jaeger-collector-headless.{{ stack.jaeger.ns }}.svc.cluster.local:16686/jaeger"
-              external: "https://{{ stack.jaeger.hostname }}.{{ cluster_name }}.{{ cluster.domain }}"
-            grafana:
-              auth:
-                type: 'basic'
-                username: admin
-                password: "{{ admin_password }}"
+          prometheus:
+            hostname: "{{ stack.prometheus.hostname }}"
+            ns: "{{ stack.prometheus.ns }}"
+          jaeger:
+            hostname: "{{ stack.jaeger.hostname }}"
+            ns: "{{ stack.jaeger.ns }}"
+          grafana:
+            hostname: "{{ stack.grafana.hostname }}"
+            ns: "{{ stack.grafana.ns }}"
+            auth:
+              type: 'basic'
+              username: admin
+              password: "{{ admin_password }}"

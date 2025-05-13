@@ -2,15 +2,15 @@
 # Default values for Kube Eng :: Jaeger
 
 cluster:
-  mesh: "istio"
-  istio_profile: "istio-experimental"
+  mesh: istio
   gateway_api: true
-  name: "cluster"
-  domain: "local"
+  name: cluster
+  domain: local
 
 edge:
   ns: edge
   name: edge-ingress
+  kind: istio
 
 route:
   name: route-jaeger

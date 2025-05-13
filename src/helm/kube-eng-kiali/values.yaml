@@ -2,31 +2,37 @@
 # Default values for Kube Eng :: Kiali
 
 cluster:
-  control_plane_nodes: 1
-  worker_nodes: 3
-  mesh: "istio"
-  istio_profile: "istio-experimental"
+  mesh: istio
   gateway_api: true
-  edge_ns: edge
-  edge: edge-ingress
-  name: "cluster"
-  domain: "local"
+  name: cluster
+  domain: local
+
+edge:
+  ns: edge
+  name: edge-ingress
+  kind: istio
 
 route:
   name: route-kiali
   hostname: kiali
   sectionName: kiali
 
-integrations:
-  tracing:
-    internal: "http://jaeger-collector.stack.svc.cluster.local:16686/jaeger"
-    external: "https://jaeger.covenant.local"
-  grafana:
-    auth:
-      type: bearer
-      token: null
-      username: null
-      password: null
+prometheus:
+  ns: prometheus
+  hostname: prometheus
+
+jaeger:
+  ns: jaeger
+  hostname: jaeger
+
+grafana:
+  ns: grafana
+  hostname: grafana
+  auth:
+    type: bearer
+    token: null
+    username: null
+    password: null
 
 # To authenticate to Grafana, create a service account, set type to 'bearer' and specify the token.
 # alternatively, set token to 'basic' and specify username and password
