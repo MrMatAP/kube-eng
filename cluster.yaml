@@ -123,130 +123,54 @@ stack:
     ns: kiali
     hostname: kiali
 
+
 preheat:
 # Cluster
-- registry: registry.k8s.io
-  repository: coredns
-  image: coredns
-  tag: v1.11.3
+- image: docker.io/kindest/kindnetd:v20250214-acbabc1a
+- image: docker.io/kindest/local-path-provisioner:v20250214-acbabc1a
+- image: registry.k8s.io/coredns/coredns:v1.11.3
+- image: registry.k8s.io/etcd:3.5.16-0
+- image: registry.k8s.io/kube-apiserver-arm64:v1.32.2
+- image: registry.k8s.io/kube-apiserver:v1.32.2
+- image: registry.k8s.io/kube-controller-manager-arm64:v1.32.2
+- image: registry.k8s.io/kube-controller-manager:v1.32.2
+- image: registry.k8s.io/kube-proxy-arm64:v1.32.2
+- image: registry.k8s.io/kube-proxy:v1.32.2
+- image: registry.k8s.io/kube-scheduler-arm64:v1.32.2
+- image: registry.k8s.io/kube-scheduler:v1.32.2
 # Istio
-- registry: docker.io
-  repository: istio
-  image: install-cni
-  tag: 1.26.0-distroless
-- registry: docker.io
-  repository: istio
-  image: pilot
-  tag: 1.26.0-distroless
-- registry: docker.io
-  repository: istio
-  image: ztunnel
-  tag: 1.26.0-distroless
-- registry: docker.io
-  repository: istio
-  image: pilot
-  tag: 1.25.2
-- registry: docker.io
-  repository: istio
-  image: proxyv2
-  tag: 1.26.0-distroless
+- image: docker.io/istio/install-cni:1.26.0-distroless
+- image: docker.io/istio/pilot:1.26.0-distroless
+- image: docker.io/istio/ztunnel:1.26.0-distroless
+- image: docker.io/istio/proxyv2:1.26.0-distroless
 # cert-manager
-- registry: quay.io
-  repository: jetstack
-  image: cert-manager-controller
-  tag: v1.17.1
-- registry: quay.io
-  repository: jetstack
-  image: cert-manager-webhook
-  tag: v1.17.1
-- registry: quay.io
-  repository: jetstack
-  image: cert-manager-cainjector
-  tag: v1.17.1
-- registry: quay.io
-  repository: jetstack
-  image: cert-manager-startupapicheck
-  tag: v1.17.1
+- image: quay.io/jetstack/cert-manager-controller:v1.17.1
+- image: quay.io/jetstack/cert-manager-webhook:v1.17.1
+- image: quay.io/jetstack/cert-manager-cainjector:v1.17.1
+- image: quay.io/jetstack/cert-manager-startupapicheck:v1.17.1
 # Edge
-- registry: docker.io
-  repository: library
-  image: traefik
-  tag: v3.4
+- image: docker.io/library/traefik:v3.4
 # Prometheus
-- registry: quay.io
-  repository: prometheus-operator
-  image: prometheus-config-reloader
-  tag: v0.78.2
-- registry: quay.io
-  repository: prometheus
-  image: prometheus
-  tag: v3.0.1
-- registry: quay.io
-  repository: prometheus
-  image: node-exporter
-  tag: v1.8.2
-- registry: registry.k8s.io
-  repository: kube-state-metrics
-  image: kube-state-metrics
-  tag: v2.14.0
-# Alloy
-- registry: docker.io
-  repository: grafana
-  image: alloy
-  tag: v1.8.2
-- registry: quay.io
-  repository: prometheus-operator
-  image: prometheus-config-reloader
-  tag: v0.81.0
+- image: quay.io/prometheus-operator/prometheus-config-reloader:v0.78.2
+- image: quay.io/prometheus/prometheus:v3.0.1
+- image: quay.io/prometheus/node-exporter:v1.8.2
+- image: registry.k8s.io/kube-state-metrics/kube-state-metrics:v2.14.0
 # Keycloak
-- registry: quay.io
-  repository: keycloak
-  image: keycloak-operator
-  tag: 26.2.2
-- registry: quay.io
-  repository: keycloak
-  image: keycloak
-  tag: 26.2.2
+- image: quay.io/keycloak/keycloak-operator:26.2.2
+- image: quay.io/keycloak/keycloak:26.2.2
 # Grafana
-- registry: docker.io
-  repository: grafana
-  image: grafana
-  tag: 11.6.0
-- registry: docker.io
-  repository: library
-  image: busybox
-  tag: 1.31.1
-- registry: docker.io
-  repository: curlimages
-  image: curl
-  tag: 8.9.1
+- image: docker.io/grafana/grafana:11.6.0
+- image: docker.io/library/busybox:1.31.1
+- image: docker.io/curlimages/curl:8.9.1
 # Jaeger
-- registry: ghcr.io
-  repository: open-telemetry/opentelemetry-operator
-  image: opentelemetry-operator
-  tag: 0.124.0
-- registry: docker.io
-  repository: jaegertracing
-  image: jaeger
-  tag: latest
-- registry: quay.io
-  repository: brancz
-  image: kube-rbac-proxy
-  tag: v0.19.1
+- image: ghcr.io/open-telemetry/opentelemetry-operator/opentelemetry-operator:0.124.0
+- image: docker.io/jaegertracing/jaeger:latest
+- image: quay.io/brancz/kube-rbac-proxy:v0.19.1
 # Kiali
-- registry: quay.io
-  repository: kiali
-  image: kiali-operator
-  tag: v2.9.0
-- registry: quay.io
-  repository: kiali
-  image: kiali
-  tag: v2.9.0
-- registry: quay.io
-  repository: kiali
-  image: kiali-operator
-  tag: v2.8.0
-- registry: quay.io
-  repository: kiali
-  image: kiali
-  tag: v2.8.0
+- image: quay.io/kiali/kiali-operator:v2.9.0
+- image: quay.io/kiali/kiali:v2.9.0
+- image: quay.io/kiali/kiali-operator:v2.8.0
+- image: quay.io/kiali/kiali:v2.8.0
+# Alloy
+- image: docker.io/grafana/alloy:v1.8.2
+- image: quay.io/prometheus-operator/prometheus-config-reloader:v0.81.0

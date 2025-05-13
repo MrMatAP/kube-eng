@@ -167,11 +167,22 @@
         name: mrmat.kube_eng.preheat_image
       vars:
         airgap_registry: "localhost:{{ host.registry.port }}"
-        registry: "{{ item.registry }}"
-        repository: "{{ item.repository }}"
         image: "{{ item.image }}"
-        tag: "{{ item.tag }}"
       loop: "{{ preheat }}"
   - name: Preheat the kind node image
     community.docker.docker_image_pull:
       name: "docker.io/{{ cluster.node_image }}"
+
+  # TODO: coredns wants to be read from another place
+  - name: Bug - Make the coredns image available at the root of the airgap
+    community.docker.docker_image_pull:
+      name:  "localhost:{{ host.registry.port }}/coredns/coredns:v1.11.3"
+  - name: Bug - Re-tag the coredns image
+    community.docker.docker_image_tag:
+      name: "localhost:{{ host.registry.port }}/coredns/coredns:v1.11.3"
+      repository:
+      - "localhost:{{ host.registry.port }}/coredns:v1.11.3"
+  - name: Bug - Push the image into the air gapped repository
+    community.docker.docker_image_push:
+      name: "localhost:{{ host.registry.port }}/coredns"
+      tag: v1.11.3

@@ -35,3 +35,6 @@ You can stop the host infra services if you mind keeping them running permanentl
 * Kiali isn't integrated into Keycloak
 * Kiali can't authenticate to Grafana
 * Kiali is unable to pull traces from Jaeger
+* Keycloak doesn't play nice with Istio ztunnel
+* Kiali v2.9.0 is pulled on covenant, but v2.8.0 on nostromo and why don't know why
+* registry.k8s.io/coredns/coredns:v1.11.3 is being pulled as registry:5000/coredns:v1.11.3. We pull it specifically into that place

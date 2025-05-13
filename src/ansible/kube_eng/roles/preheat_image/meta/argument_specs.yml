@@ -9,19 +9,7 @@ argument_specs:
         type: str
         required: false
         default: "localhost:5001"
-      registry:
-        description: Remote registry of the image to preheat
-        type: str
-        required: true
-      repository:
-        description: Remote repository of the image to preheat
-        type: str
-        required: true
       image:
-        description: Unqualified image name to preheat
-        type: str
-        required: true
-      tag:
-        description: Tag of the image to preheat
+        description: The coordinates of the container image
         type: str
         required: true
