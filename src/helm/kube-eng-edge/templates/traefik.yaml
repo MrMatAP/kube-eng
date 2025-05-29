@@ -112,6 +112,8 @@ spec:
         - --entryPoints.http.address=:80
         - --entryPoints.https.address=:443
         - --providers.kubernetesingress
+        - --providers.kubernetesingress.ingressclass=traefik
+        - --providers.kubernetesingress.ingressendpoint.publishedservice=edge/traefik-web-service
         ports:
         - name: http
           containerPort: 80
