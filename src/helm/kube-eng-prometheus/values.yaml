@@ -11,6 +11,7 @@ edge:
   ns: edge
   name: edge-ingress
   kind: istio
+  ingress_class: traefik
 
 route:
   name: route-prometheus

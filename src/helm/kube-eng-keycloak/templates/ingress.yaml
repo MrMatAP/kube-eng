@@ -9,6 +9,7 @@ metadata:
     traefik.ingress.kubernetes.io/router.entrypoints: https
     traefik.ingress.kubernetes.io/router.tls: "true"
 spec:
+  ingressClassName: {{ .Values.edge.ingress_class }}
   tls:
   - hosts:
     - {{ .Values.route.hostname }}.{{ .Values.cluster.name }}.{{ .Values.cluster.domain }}
