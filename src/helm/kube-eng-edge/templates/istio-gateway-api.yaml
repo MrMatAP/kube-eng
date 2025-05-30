@@ -6,7 +6,7 @@ kind: Gateway
 metadata:
   name: edge-ingress
   labels:
-    {{- include "common.labels" . | nindent 4 }}
+    {{ include "common.labels" . | nindent 4 }}
     app.kubernetes.io/name: edge-ingress
   annotations:
     cert-manager.io/cluster-issuer: ca-issuer
