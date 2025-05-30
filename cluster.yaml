@@ -75,7 +75,7 @@ host:
 
 stack:
   gateway_api:
-    enabled: false
+    enabled: true
     experimental: false
     crd: https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.2.1/standard-install.yaml
     crd_experimental: https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.2.1/experimental-install.yaml
@@ -87,7 +87,8 @@ stack:
     enabled: true
     ns: edge
     name: edge-ingress
-    kind: istio
+    # kind can be 'istio', 'istio-gateway-api' or 'traefik'
+    kind: istio-gateway-api
   prometheus:
     enabled: true
     ns: prometheus
@@ -101,7 +102,7 @@ stack:
     ns: stack
     hostname: loki
   keycloak:
-    enabled: false
+    enabled: true
     ns: keycloak
     hostname: keycloak
     operator_version: 26.2.2
@@ -109,13 +110,13 @@ stack:
     - keycloaks.k8s.keycloak.org-v1.yml
     - keycloakrealmimports.k8s.keycloak.org-v1.yml
   grafana:
-    enabled: false
+    enabled: true
     ns: grafana
     hostname: grafana
     client_id: grafana
     admin_user: admin
   jaeger:
-    enabled: false
+    enabled: true
     ns: jaeger
     hostname: jaeger
   kiali:
