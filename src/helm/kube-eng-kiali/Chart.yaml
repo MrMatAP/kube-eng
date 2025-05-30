@@ -3,4 +3,4 @@ name: kube-eng-kiali
 description: A Helm chart to install Kiali
 type: application
 version: 0.0.0
-appVersion: "0.0.0"
+appVersion: "v2.10.0"

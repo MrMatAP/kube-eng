@@ -512,6 +512,7 @@
         create_namespace: false
         release_namespace: "{{ stack.kiali.ns }}"
         chart_ref: kiali/kiali-operator
+        chart_version: "{{ stack.kiali.version }}"
         wait: true
         values:
           cr:

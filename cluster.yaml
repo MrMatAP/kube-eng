@@ -25,7 +25,7 @@ cluster:
   worker_nodes: 3
   node_image: "kindest/node:v1.32.2"
   mesh: istio
-  istio_profile: ambient
+  istio_profile: minimal
   domain: k8s
 
 host:
@@ -43,7 +43,7 @@ host:
   cloud_provider_mdns:
     enabled: false
   bind:
-    enabled: true
+    enabled: false
     forwarders: "8.8.8.8; 4.4.4.4; 2001:4860:4860::8888; 2001:4860:4860::8844;"
   pki:
     enabled: true
@@ -81,13 +81,13 @@ stack:
     crd_experimental: https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.2.1/experimental-install.yaml
   cert_manager:
     enabled: true
-    ns: stack
+    ns: cert-manager
     crd: https://github.com/cert-manager/cert-manager/releases/download/v1.17.1/cert-manager.crds.yaml
   edge:
     enabled: true
     ns: edge
     name: edge-ingress
-    kind: traefik
+    kind: istio
   prometheus:
     enabled: true
     ns: prometheus
@@ -101,7 +101,7 @@ stack:
     ns: stack
     hostname: loki
   keycloak:
-    enabled: true
+    enabled: false
     ns: keycloak
     hostname: keycloak
     operator_version: 26.2.2
@@ -109,17 +109,18 @@ stack:
     - keycloaks.k8s.keycloak.org-v1.yml
     - keycloakrealmimports.k8s.keycloak.org-v1.yml
   grafana:
-    enabled: true
+    enabled: false
     ns: grafana
     hostname: grafana
     client_id: grafana
     admin_user: admin
   jaeger:
-    enabled: true
+    enabled: false
     ns: jaeger
     hostname: jaeger
   kiali:
     enabled: true
+    version: v2.10.0
     ns: kiali
     hostname: kiali
 
@@ -138,7 +139,10 @@ preheat:
 - image: registry.k8s.io/kube-proxy:v1.32.2
 - image: registry.k8s.io/kube-scheduler-arm64:v1.32.2
 - image: registry.k8s.io/kube-scheduler:v1.32.2
-# Istio
+# Istio (sidecar)
+- image: docker.io/istio/pilot:1.26.0
+- image: docker.io/istio/proxyv2:1.26.0
+# Istio (ambient)
 - image: docker.io/istio/install-cni:1.26.0-distroless
 - image: docker.io/istio/pilot:1.26.0-distroless
 - image: docker.io/istio/ztunnel:1.26.0-distroless
@@ -167,10 +171,8 @@ preheat:
 - image: docker.io/jaegertracing/jaeger:latest
 - image: quay.io/brancz/kube-rbac-proxy:v0.19.1
 # Kiali
-- image: quay.io/kiali/kiali-operator:v2.9.0
-- image: quay.io/kiali/kiali:v2.9.0
-- image: quay.io/kiali/kiali-operator:v2.8.0
-- image: quay.io/kiali/kiali:v2.8.0
+- image: quay.io/kiali/kiali-operator:v2.10.0
+- image: quay.io/kiali/kiali:v2.10.0
 # Alloy
 - image: docker.io/grafana/alloy:v1.8.2
 - image: quay.io/prometheus-operator/prometheus-config-reloader:v0.81.0
