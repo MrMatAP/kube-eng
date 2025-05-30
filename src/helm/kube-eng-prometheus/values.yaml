@@ -11,7 +11,6 @@ edge:
   ns: edge
   name: edge-ingress
   kind: istio
-  ingress_class: traefik
 
 route:
   name: route-prometheus
@@ -22,6 +21,10 @@ route:
 # Dependency Chart overrides
 
 overrides:
+  nameOverride: prometheus
+  commonMetaLabels:
+    app: prometheus
+    version: 26.0.1
   serviceAccounts:
     server:
       create: true
@@ -31,13 +34,13 @@ overrides:
       image:
         repository: quay.io/prometheus-operator/prometheus-config-reloader
   server:
+    fullnameOverride: prometheus
     releaseNamespace: false
     image:
       repository: quay.io/prometheus/prometheus
     extraFlags:
     - web.enable-lifecycle
     - web.enable-admin-api
-    fullnameOverride: prometheus
     ingress:
       enabled: false
     persistentVolume:
