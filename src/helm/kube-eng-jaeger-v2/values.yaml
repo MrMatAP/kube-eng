@@ -1,0 +1,22 @@
+#
+# Default values for Kube Eng :: Jaeger
+
+cluster:
+  mesh: istio
+  gateway_api: true
+  name: cluster
+  domain: local
+
+edge:
+  ns: edge
+  name: edge-ingress
+  kind: istio
+  ingress_class: traefik
+
+route:
+  name: route-jaeger
+  hostname: jaeger
+  sectionName: jaeger
+
+jaeger:
+  image: jaegertracing/jaeger:latest

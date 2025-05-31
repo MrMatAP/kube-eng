@@ -19,7 +19,7 @@ spec:
   rules:
   - backendRefs:
     - kind: Service
-      name: jaeger-query
+      name: jaeger-collector
       port: 16686
       weight: 1
     matches:

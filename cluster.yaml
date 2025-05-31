@@ -16,6 +16,7 @@ keycloak_operator_chart: ""
 keycloak_chart: ""
 grafana_chart: ""
 jaeger_chart: ""
+jaeger_v2_chart: ""
 kiali_chart: ""
 cloud_provider_mdns: ""
 user_id: ""
@@ -25,7 +26,7 @@ cluster:
   worker_nodes: 3
   node_image: "kindest/node:v1.32.2"
   mesh: istio
-  istio_profile: minimal
+  istio_profile: ambient
   domain: k8s
 
 host:
@@ -119,6 +120,10 @@ stack:
     enabled: true
     ns: jaeger
     hostname: jaeger
+  jaegerv2:
+    enabled: false
+    ns: jaeger
+    hostname: jaeger
   kiali:
     enabled: true
     version: v2.10.0
@@ -168,6 +173,13 @@ preheat:
 - image: docker.io/library/busybox:1.31.1
 - image: docker.io/curlimages/curl:8.9.1
 # Jaeger
+- image: docker.io/library/cassandra:3.11.6
+- image: docker.io/jaegertracing/jaeger-agent:1.53.0
+- image: docker.io/jaegertracing/jaeger-cassandra-schema:1.53.0
+- image: docker.io/jaegertracing/jaeger-collector:1.53.0
+- image: docker.io/jaegertracing/jaeger-query:1.53.0
+- image: docker.io/jaegertracing/example-hotrod:1.53.0
+# Jaeger v2
 - image: ghcr.io/open-telemetry/opentelemetry-operator/opentelemetry-operator:0.124.0
 - image: docker.io/jaegertracing/jaeger:latest
 - image: quay.io/brancz/kube-rbac-proxy:v0.19.1

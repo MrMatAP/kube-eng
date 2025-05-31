@@ -38,6 +38,8 @@ GRAFANA_SOURCES := $(shell find $(HELMDIR)/kube-eng-grafana)
 GRAFANA_CHART := $(CHARTDIR)/kube-eng-grafana-$(VERSION).tgz
 JAEGER_SOURCES := $(shell find $(HELMDIR)/kube-eng-jaeger)
 JAEGER_CHART := $(CHARTDIR)/kube-eng-jaeger-$(VERSION).tgz
+JAEGER_V2_SOURCES := $(shell find $(HELMDIR)/kube-eng-jaeger-v2)
+JAEGER_V2_CHART := $(CHARTDIR)/kube-eng-jaeger-v2-$(VERSION).tgz
 KIALI_SOURCES := $(shell find $(HELMDIR)/kube-eng-kiali)
 KIALI_CHART := $(CHARTDIR)/kube-eng-kiali-$(VERSION).tgz
 
@@ -45,7 +47,9 @@ COLLECTION_SOURCES :=$(shell find $(SRCDIR)/ansible/kube_eng)
 
 CHARTS := $(CERT_MANAGER_CHART) $(EDGE_CHART) \
 		  $(PROMETHEUS_CHART) $(ALLOY_CHART) $(LOKI_CHART) $(GRAFANA_CHART) \
-		  $(KEYCLOAK_OPERATOR_CHART) $(KEYCLOAK_CHART) $(JAEGER_CHART) $(KIALI_CHART)
+		  $(KEYCLOAK_OPERATOR_CHART) $(KEYCLOAK_CHART) \
+		  $(JAEGER_CHART) $(JAEGER_V2_CHART) \
+		  $(KIALI_CHART)
 COLLECTION := $(DISTDIR)/mrmat-kube_eng-$(VERSION).tar.gz
 
 ANSIBLE_PLAYBOOK_EXEC = ANSIBLE_PYTHON_INTERPRETER=$(VENVDIR)/bin/python3 \
@@ -66,6 +70,7 @@ ANSIBLE_PLAYBOOK_EXEC = ANSIBLE_PYTHON_INTERPRETER=$(VENVDIR)/bin/python3 \
 							-e keycloak_chart=$(KEYCLOAK_CHART) \
 							-e grafana_chart=$(GRAFANA_CHART) \
 							-e jaeger_chart=$(JAEGER_CHART) \
+							-e jaeger_v2_chart=$(JAEGER_V2_CHART) \
 							-e kiali_chart=$(KIALI_CHART)
 
 
@@ -158,6 +163,7 @@ host-infra: $(COLLECTION)
 	$(helm) repo add prometheus-community https://prometheus-community.github.io/helm-charts
 	$(helm) repo add grafana https://grafana.github.io/helm-charts
 	$(helm) repo add open-telemetry https://open-telemetry.github.io/opentelemetry-helm-charts
+	$(helm) repo add jaegertracing https://jaegertracing.github.io/helm-charts
 	$(helm) repo add kiali https://kiali.org/helm-charts
 	$(ANSIBLE_PLAYBOOK_EXEC) mrmat.kube_eng.create_host_infra
 
@@ -224,7 +230,11 @@ $(GRAFANA_CHART): $(GRAFANA_SOURCES) $(CHARTDIR)
 	$(helm) package --version $(VERSION) --destination $(CHARTDIR) $(HELMDIR)/kube-eng-grafana
 
 $(JAEGER_CHART): $(JAEGER_SOURCES) $(CHARTDIR)
+	$(helm) dep update $(HELMDIR)/kube-eng-jaeger --skip-refresh
 	$(helm) package --version $(VERSION) --destination $(CHARTDIR) $(HELMDIR)/kube-eng-jaeger
+
+$(JAEGER_V2_CHART): $(JAEGER_V2_SOURCES) $(CHARTDIR)
+	$(helm) package --version $(VERSION) --destination $(CHARTDIR) $(HELMDIR)/kube-eng-jaeger-v2
 
 $(KIALI_CHART): $(KIALI_SOURCES) $(CHARTDIR)
 	$(helm) dep update $(HELMDIR)/kube-eng-kiali --skip-refresh
