@@ -65,6 +65,6 @@ spec:
     tracing:
       enabled: true
       external_url: https://{{ .Values.jaeger.hostname }}.{{ .Values.cluster.name }}.{{ .Values.cluster.domain }}
-      internal_url: http://jaeger-collector-headless.{{ .Values.jaeger.ns }}.svc.cluster.local:16686/jaeger
-      use_grpc: false
+      internal_url: http://jaeger-query.{{ .Values.jaeger.ns }}.svc.cluster.local:16685
+      use_grpc: true
       provider: "jaeger"
