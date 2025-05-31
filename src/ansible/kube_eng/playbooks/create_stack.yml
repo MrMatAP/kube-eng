@@ -459,22 +459,6 @@
       vars:
         name: "{{ stack.jaeger.ns }}"
         istio_profile: "{{ cluster.istio_profile }}"
-    - name: Deploy the OpenTelemetry Operator
-      kubernetes.core.helm:
-        name: otel-operator
-        create_namespace: false
-        release_namespace: "{{ stack.jaeger.ns }}"
-        chart_ref: open-telemetry/opentelemetry-operator
-        wait: true
-        values:
-          manager:
-            collectorImage:
-              repository: "{{ host.registry.name }}:5000/open-telemetry/opentelemetry-operator/opentelemetry-operator"
-            image:
-              repository: "{{ host.registry.name }}:5000/open-telemetry/opentelemetry-operator/opentelemetry-operator"
-          kubeRBACProxy:
-            image:
-              repository: "{{ host.registry.name }}:5000/brancz/kube-rbac-proxy"
     - name: Deploy the Jaeger Helm Chart
       kubernetes.core.helm:
         name: jaeger
@@ -494,6 +478,62 @@
             kind: "{{ stack.edge.kind }}"
           route:
             hostname: "{{ stack.jaeger.hostname }}"
+          overrides:
+            global:
+              imageRegistry: "{{ host.registry.name }}:5000"
+            storage:
+              cassandra:
+                password: "{{ admin_password }}"
+            cassandra:
+              image:
+                repo: "{{ host.registry.name }}:5000/library/cassandra"
+
+
+
+  - name: Deploy Jaeger v2
+    when: "stack.jaegerv2.enabled | bool == true"
+    block:
+    - name: Create and label the Jaeger v2 namespace
+      ansible.builtin.import_role:
+        name: mrmat.kube_eng.create_namespace
+      vars:
+        name: "{{ stack.jaegerv2.ns }}"
+        istio_profile: "{{ cluster.istio_profile }}"
+    - name: Deploy the OpenTelemetry Operator
+      kubernetes.core.helm:
+        name: otel-operator
+        create_namespace: false
+        release_namespace: "{{ stack.jaegerv2.ns }}"
+        chart_ref: open-telemetry/opentelemetry-operator
+        wait: true
+        values:
+          manager:
+            collectorImage:
+              repository: "{{ host.registry.name }}:5000/open-telemetry/opentelemetry-operator/opentelemetry-operator"
+            image:
+              repository: "{{ host.registry.name }}:5000/open-telemetry/opentelemetry-operator/opentelemetry-operator"
+          kubeRBACProxy:
+            image:
+              repository: "{{ host.registry.name }}:5000/brancz/kube-rbac-proxy"
+    - name: Deploy the Jaeger v2 Helm Chart
+      kubernetes.core.helm:
+        name: jaeger
+        create_namespace: false
+        release_namespace: "{{ stack.jaegerv2.ns }}"
+        chart_ref: "{{ jaegerv2_chart }}"
+        wait: true
+        values:
+          cluster:
+            mesh: "{{ cluster.mesh }}"
+            gateway_api: "{{ stack.gateway_api.enabled | bool }}"
+            name: "{{ cluster_name }}"
+            domain: "{{ cluster.domain }}"
+          edge:
+            name: "{{ stack.edge.name }}"
+            ns: "{{ stack.edge.ns }}"
+            kind: "{{ stack.edge.kind }}"
+          route:
+            hostname: "{{ stack.jaegerv2.hostname }}"
           jaeger:
             image: "{{ host.registry.name }}:5000/jaegertracing/jaeger:latest"
 

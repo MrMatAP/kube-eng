@@ -11,12 +11,84 @@ edge:
   ns: edge
   name: edge-ingress
   kind: istio
-  ingress_class: traefik
 
 route:
   name: route-jaeger
   hostname: jaeger
   sectionName: jaeger
 
-jaeger:
-  image: jaegertracing/jaeger:latest
+overrides:
+  global:
+    imageRegistry: null
+  provisionDataStore:
+    cassandra: false
+    elasticsearch: false
+    kafka: false
+  nameOverride: jaeger
+  allInOne:
+    enabled: true
+    service:
+      headless: false
+  storage:
+    type: badger
+    cassandra:
+      password: null
+      keyspace: jaeger
+  cassandra:
+    persistence:
+      enabled: true
+      size: 1Gi
+    image:
+      repo: cassandra
+    config:
+      cluster_size: 1
+      seed_size: 0
+    serviceAccount:
+      create: true
+      name: jaeger-cassandra-sa
+  agent:
+    enabled: false
+    serviceAccount:
+      create: true
+      name: jaeger-agent-sa
+    podLabels:
+      app: jaeger
+  collector:
+    enabled: false
+    ingress:
+      enabled: false
+    serviceAccount:
+      create: true
+      name: jaeger-collector-sa
+    podLabels:
+      app: jaeger
+    service:
+      otlp:
+        grpc:
+          name: otlp-grpc
+          port: 4317
+        http:
+          name: otlp-http
+          port: 4318
+  query:
+    enabled: false
+    ingress:
+      enabled: false
+    serviceAccount:
+      create: true
+      name: jaeger-query-sa
+    podLabels:
+      app: jaeger
+  spark:
+    enabled: false
+  esRollover:
+    enabled: false
+  esLookback:
+    enabled: false
+  hotrod:
+    enabled: false
+    ingress:
+      enabled: false
+    serviceAccount:
+      create: true
+      name: jaeger-hotrod-sa
