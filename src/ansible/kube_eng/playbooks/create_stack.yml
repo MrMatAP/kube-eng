@@ -46,7 +46,7 @@
         name: cert-manager
         create_namespace: false
         release_namespace: "{{ stack.cert_manager.ns }}"
-        chart_ref: "{{ cert_manager_chart }}"
+        chart_ref: "{{ chart_cert_manager }}"
         wait: true
         values:
           cluster:
@@ -92,7 +92,7 @@
         name: edge
         create_namespace: false
         release_namespace: "{{ stack.edge.ns }}"
-        chart_ref: "{{ edge_chart }}"
+        chart_ref: "{{ chart_edge }}"
         wait: true
         values:
           cluster:
@@ -142,7 +142,7 @@
         name: prometheus
         create_namespace: false
         release_namespace: "{{ stack.prometheus.ns }}"
-        chart_ref: "{{ prometheus_chart }}"
+        chart_ref: "{{ chart_prometheus }}"
         wait: true
         values:
           cluster:
@@ -185,7 +185,7 @@
         name: alloy
         create_namespace: false
         release_namespace: "{{ stack.alloy.ns }}"
-        chart_ref: "{{ alloy_chart }}"
+        chart_ref: "{{ chart_alloy }}"
         wait: true
         values:
           cluster:
@@ -222,7 +222,7 @@
         name: loki
         create_namespace: false
         release_namespace: "{{ stack.loki.ns }}"
-        chart_ref: "{{ loki_chart }}"
+        chart_ref: "{{ chart_loki }}"
         wait: true
         values:
           cluster:
@@ -264,7 +264,7 @@
         name: kubernetes-operator
         create_namespace: false
         release_namespace: "{{ stack.keycloak.ns }}"
-        chart_ref: "{{ keycloak_operator_chart }}"
+        chart_ref: "{{ chart_keycloak_operator }}"
         wait: true
         values:
           cluster:
@@ -311,7 +311,7 @@
         name: keycloak
         create_namespace: false
         release_namespace: "{{ stack.keycloak.ns }}"
-        chart_ref: "{{ keycloak_chart }}"
+        chart_ref: "{{ chart_keycloak }}"
         wait: true
         values:
           cluster:
@@ -412,7 +412,7 @@
         name: grafana
         create_namespace: false
         release_namespace: "{{ stack.grafana.ns }}"
-        chart_ref: "{{ grafana_chart }}"
+        chart_ref: "{{ chart_grafana }}"
         wait: true
         values:
           cluster:
@@ -464,7 +464,7 @@
         name: jaeger
         create_namespace: false
         release_namespace: "{{ stack.jaeger.ns }}"
-        chart_ref: "{{ jaeger_chart }}"
+        chart_ref: "{{ chart_jaeger }}"
         wait: true
         values:
           cluster:
@@ -520,7 +520,7 @@
         name: jaeger
         create_namespace: false
         release_namespace: "{{ stack.jaegerv2.ns }}"
-        chart_ref: "{{ jaegerv2_chart }}"
+        chart_ref: "{{ chart_jaeger_v2 }}"
         wait: true
         values:
           cluster:
@@ -564,7 +564,7 @@
         name: kiali
         create_namespace: false
         release_namespace: "{{ stack.kiali.ns }}"
-        chart_ref: "{{ kiali_chart }}"
+        chart_ref: "{{ chart_kiali }}"
         wait: true
         values:
           cluster:
