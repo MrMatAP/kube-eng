@@ -4,7 +4,7 @@ argument_specs:
   main:
     short_description: Template the cloud-provider-mdns configuration
     options:
-      cloud_provider_mdns_executable:
+      tool_cloud_provider_mdns:
         description: Path to the cloud-provider-mdns executable
         type: str
         required: true
