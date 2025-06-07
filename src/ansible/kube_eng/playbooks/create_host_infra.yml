@@ -58,7 +58,7 @@
     ansible.builtin.import_role:
       name: mrmat.kube_eng.cloud_provider_mdns_configuration
     vars:
-      cloud_provider_mdns_executable: "{{ cloud_provider_mdns }}"
+      tool_cloud_provider_mdns: "{{ host_tool_cloud_provider_mdns }}"
       cloud_provider_mdns_dir: "{{ dist_dir }}/cloud-provider-mdns"
       cloud_provider_mdns_user: "{{ user_id }}"
 

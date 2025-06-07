@@ -18,7 +18,6 @@ grafana_chart: ""
 jaeger_chart: ""
 jaeger_v2_chart: ""
 kiali_chart: ""
-cloud_provider_mdns: ""
 user_id: ""
 
 host_tool_kind: /opt/homebrew/bin/kind
@@ -27,6 +26,7 @@ host_tool_kubectl: /opt/homebrew/bin/kubectl
 host_tool_kustomize: /opt/homebrew/bin/kustomize
 host_tool_docker: /usr/local/bin/docker
 host_tool_named: /opt/homebrew/sbin/named
+host_tool_cloud_provider_mdns: ""
 
 cluster:
   control_plane_nodes: 1

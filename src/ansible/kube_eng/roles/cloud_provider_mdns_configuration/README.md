@@ -11,11 +11,11 @@ None
 Role Variables
 --------------
 
-| Variable                       | Type | Required | Default | Description                                                     |
-|--------------------------------|------|----------|---------|-----------------------------------------------------------------|
-| cloud_provider_mdns_executable | str  | false    | N/A     | Path to the cloud-provider-mdns executable                      |
-| cloud_provider_mdns_dir        | str  | true     | N/A     | Path to the the directory in which cloud-provider-mdns operates |
-| cloud_provider_mdns_user       | str  | true     | N/A     | User to run cloud-provider-mdns with                            |
+| Variable                 | Type | Required | Default | Description                                                     |
+|--------------------------|------|----------|---------|-----------------------------------------------------------------|
+| tool_cloud_provider_mdns | str  | false    | N/A     | Path to the cloud-provider-mdns executable                      |
+| cloud_provider_mdns_dir  | str  | true     | N/A     | Path to the the directory in which cloud-provider-mdns operates |
+| cloud_provider_mdns_user | str  | true     | N/A     | User to run cloud-provider-mdns with                            |
 
 
 Dependencies
