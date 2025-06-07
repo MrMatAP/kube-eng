@@ -180,12 +180,6 @@ host-infra-stop: $(COLLECTION)
 	$(ANSIBLE_PLAYBOOK_EXEC) --ask-become-pass mrmat.kube_eng.stop_host_infra
 
 #
-# Preheat
-
-preheat: $(COLLECTION)
-	$(ANSIBLE_PLAYBOOK_EXEC) mrmat.kube_eng.preheat
-
-#
 # Cluster installation
 
 cluster: $(COLLECTION)
