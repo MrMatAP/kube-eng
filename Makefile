@@ -67,17 +67,17 @@ ANSIBLE_PLAYBOOK_EXEC = ANSIBLE_PYTHON_INTERPRETER=$(VENVDIR)/bin/python3 \
 							-e host_tool_kustomize=$(kustomize) \
 							-e host_tool_docker=$(docker) \
 							-e host_tool_named=$(named) \
-							-e cert_manager_chart=$(CERT_MANAGER_CHART) \
-							-e edge_chart=$(EDGE_CHART) \
-							-e prometheus_chart=$(PROMETHEUS_CHART) \
-							-e alloy_chart=$(ALLOY_CHART) \
-							-e loki_chart=$(LOKI_CHART) \
-							-e keycloak_operator_chart=$(KEYCLOAK_OPERATOR_CHART) \
-							-e keycloak_chart=$(KEYCLOAK_CHART) \
-							-e grafana_chart=$(GRAFANA_CHART) \
-							-e jaeger_chart=$(JAEGER_CHART) \
-							-e jaeger_v2_chart=$(JAEGER_V2_CHART) \
-							-e kiali_chart=$(KIALI_CHART)
+							-e chart_cert_manager=$(CERT_MANAGER_CHART) \
+							-e chart_edge=$(EDGE_CHART) \
+							-e chart_prometheus=$(PROMETHEUS_CHART) \
+							-e chart_keycloak_operator=$(KEYCLOAK_OPERATOR_CHART) \
+							-e chart_keycloak=$(KEYCLOAK_CHART) \
+							-e chart_grafana=$(GRAFANA_CHART) \
+							-e chart_jaeger=$(JAEGER_CHART) \
+							-e chart_kiali=$(KIALI_CHART) \
+							-e chart_alloy=$(ALLOY_CHART) \
+							-e chart_loki=$(LOKI_CHART) \
+							-e chart_jaeger_v2=$(JAEGER_V2_CHART)
 
 
 .PHONY: clean dist all collection

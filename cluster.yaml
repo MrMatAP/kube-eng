@@ -7,17 +7,6 @@ dist_dir: ""
 pki_dir: ""
 admin_password: ""
 cluster_name: ""
-cert_manager_chart: ""
-edge_chart: ""
-prometheus_chart: ""
-alloy_chart: ""
-loki_chart: ""
-keycloak_operator_chart: ""
-keycloak_chart: ""
-grafana_chart: ""
-jaeger_chart: ""
-jaeger_v2_chart: ""
-kiali_chart: ""
 user_id: ""
 
 host_tool_kind: /opt/homebrew/bin/kind
@@ -27,6 +16,19 @@ host_tool_kustomize: /opt/homebrew/bin/kustomize
 host_tool_docker: /usr/local/bin/docker
 host_tool_named: /opt/homebrew/sbin/named
 host_tool_cloud_provider_mdns: ""
+
+chart_cert_manager: ""
+chart_edge: ""
+chart_prometheus: ""
+chart_keycloak_operator: ""
+chart_keycloak: ""
+chart_grafana: ""
+chart_jaeger: ""
+chart_kiali: ""
+chart_alloy: ""
+chart_loki: ""
+chart_jaeger_v2: ""
+
 
 cluster:
   control_plane_nodes: 1
