@@ -18,7 +18,7 @@ options:
     image:
         description: The node image to use
         required: false
-        default: docker.io/kindest/node:v1.32.2
+        default: ""
         type: str
     config_file:
         description: Path to the cluster configuration file
@@ -69,7 +69,7 @@ from ansible.module_utils.basic import AnsibleModule
 def run_module():
     module_args = dict(
         name=dict(type='str', required=True),
-        image=dict(type='str', required=False, default='docker.io/kindest/node:v1.32.2'),
+        image=dict(type='str', required=False, default=''),
         config_file=dict(type='str', required=False),
         state=dict(type='str', required=False, default='present', choices=['present', 'absent']),
         tool_kind=dict(type='str', required=False, default='/opt/homebrew/bin/kind'),
@@ -102,12 +102,14 @@ def run_module():
                                                     'delete', 'cluster', '-n',
                                                     module.params['name']])
         case 'present':
-            rc, out, err = module.run_command(check_rc=True,
-                                              args=[module.params['tool_kind'],
-                                                    'create', 'cluster', '-n',
-                                                    module.params['name'],
-                                                    '--image', module.params['image'],
-                                                    '--config', module.params['config_file']])
+            kind_command = [
+                module.params['tool_kind'],
+                'create', 'cluster',
+                '--name', module.params['name'],
+                '--config', module.params['config_file']]
+            if module.params['image'] != '':
+                kind_command.extend(['--image', module.params['image']])
+            rc, out, err = module.run_command(check_rc=True,args=kind_command)
     result['msg'] = err
     result['changed'] = True
     if rc != 0:
