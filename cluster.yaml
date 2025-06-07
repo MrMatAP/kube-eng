@@ -21,6 +21,13 @@ kiali_chart: ""
 cloud_provider_mdns: ""
 user_id: ""
 
+host_tool_kind: /opt/homebrew/bin/kind
+host_tool_istioctl: /opt/homebrew/bin/istioctl
+host_tool_kubectl: /opt/homebrew/bin/kubectl
+host_tool_kustomize: /opt/homebrew/bin/kustomize
+host_tool_docker: /usr/local/bin/docker
+host_tool_named: /opt/homebrew/sbin/named
+
 cluster:
   control_plane_nodes: 1
   worker_nodes: 3
@@ -30,14 +37,6 @@ cluster:
   domain: k8s
 
 host:
-  tools:
-    kind: /opt/homebrew/bin/kind
-    istioctl: /opt/homebrew/bin/istioctl
-    kubectl: /opt/homebrew/bin/kubectl
-    kustomize: /opt/homebrew/bin/kustomize
-    docker: /usr/local/bin/docker
-    named: /opt/homebrew/sbin/named
-    step: /opt/homebrew/bin/step
   cloud_provider_kind:
     enabled: true
     url: https://github.com/kubernetes-sigs/cloud-provider-kind/releases/download/v0.6.0/cloud-provider-kind_0.6.0_darwin_arm64.tar.gz

@@ -41,7 +41,7 @@
     ansible.builtin.import_role:
       name: mrmat.kube_eng.bind_configuration
     vars:
-      bind_executable: "{{ host.tools.named }}"
+      bind_executable: "{{ host_tool_named }}"
       bind_dir: "{{ dist_dir }}/bind"
       forwarders: "{{ host.bind.forwarders }}"
       domain: "{{ cluster_name }}.k8s"
