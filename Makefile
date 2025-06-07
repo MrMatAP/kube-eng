@@ -61,6 +61,12 @@ ANSIBLE_PLAYBOOK_EXEC = ANSIBLE_PYTHON_INTERPRETER=$(VENVDIR)/bin/python3 \
 							-e cloud_provider_mdns=$(cloud-provider-mdns) \
 							-e user_id="$(shell whoami)" \
 							-e cluster_name=$(CLUSTER_NAME) \
+							-e host_tool_kind=$(kind) \
+							-e host_tool_istioctl=$(istioctl) \
+							-e host_tool_kubectl=$(kubectl) \
+							-e host_tool_kustomize=$(kustomize) \
+							-e host_tool_docker=$(docker) \
+							-e host_tool_named=$(named) \
 							-e cert_manager_chart=$(CERT_MANAGER_CHART) \
 							-e edge_chart=$(EDGE_CHART) \
 							-e prometheus_chart=$(PROMETHEUS_CHART) \

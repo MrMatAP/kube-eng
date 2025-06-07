@@ -15,15 +15,15 @@
     mrmat.kube_eng.kind_cluster:
       name: "{{ cluster_name }}"
       config_file: "{{ dist_dir }}/kind-config.yaml"
-      tool_kind: "{{ host.tools.kind }}"
+      tool_kind: "{{ host_tool_kind }}"
       state: present
 
   - name: Install Istio
     when: "cluster.mesh == 'istio'"
     mrmat.kube_eng.istio:
       profile: "{{ cluster.istio_profile | default('minimal') }}"
-      tool_kubectl: "{{ host.tools.kubectl }}"
-      tool_istioctl: "{{ host.tools.istioctl }}"
+      tool_kubectl: "{{ host_tool_kubectl }}"
+      tool_istioctl: "{{ host_tool_istioctl }}"
       hub: "{{ host.registry.name }}:5000/istio"
       state: present
 
