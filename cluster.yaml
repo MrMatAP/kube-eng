@@ -43,7 +43,7 @@ host:
     enabled: true
     url: https://github.com/kubernetes-sigs/cloud-provider-kind/releases/download/v0.6.0/cloud-provider-kind_0.6.0_darwin_arm64.tar.gz
   cloud_provider_mdns:
-    enabled: false
+    enabled: true
   bind:
     enabled: false
     forwarders: "8.8.8.8; 4.4.4.4; 2001:4860:4860::8888; 2001:4860:4860::8844;"
@@ -55,7 +55,7 @@ host:
     enabled: true
     name: registry
     port: 5001
-    image: "registry:2"
+    image: "ghcr.io/project-zot/zot-linux-arm64:v2.1.4"
     volume:
       name: "registry-volume"
   postgresql:
@@ -130,63 +130,3 @@ stack:
     version: v2.10.0
     ns: kiali
     hostname: kiali
-
-
-preheat:
-# Cluster
-- image: docker.io/kindest/kindnetd:v20250214-acbabc1a
-- image: docker.io/kindest/local-path-provisioner:v20250214-acbabc1a
-- image: registry.k8s.io/coredns/coredns:v1.11.3
-- image: registry.k8s.io/etcd:3.5.16-0
-- image: registry.k8s.io/kube-apiserver-arm64:v1.32.2
-- image: registry.k8s.io/kube-apiserver:v1.32.2
-- image: registry.k8s.io/kube-controller-manager-arm64:v1.32.2
-- image: registry.k8s.io/kube-controller-manager:v1.32.2
-- image: registry.k8s.io/kube-proxy-arm64:v1.32.2
-- image: registry.k8s.io/kube-proxy:v1.32.2
-- image: registry.k8s.io/kube-scheduler-arm64:v1.32.2
-- image: registry.k8s.io/kube-scheduler:v1.32.2
-# Istio (sidecar)
-- image: docker.io/istio/pilot:1.26.0
-- image: docker.io/istio/proxyv2:1.26.0
-# Istio (ambient)
-- image: docker.io/istio/install-cni:1.26.0-distroless
-- image: docker.io/istio/pilot:1.26.0-distroless
-- image: docker.io/istio/ztunnel:1.26.0-distroless
-- image: docker.io/istio/proxyv2:1.26.0-distroless
-# cert-manager
-- image: quay.io/jetstack/cert-manager-controller:v1.17.1
-- image: quay.io/jetstack/cert-manager-webhook:v1.17.1
-- image: quay.io/jetstack/cert-manager-cainjector:v1.17.1
-- image: quay.io/jetstack/cert-manager-startupapicheck:v1.17.1
-# Edge
-- image: docker.io/library/traefik:v3.4
-# Prometheus
-- image: quay.io/prometheus-operator/prometheus-config-reloader:v0.78.2
-- image: quay.io/prometheus/prometheus:v3.0.1
-- image: quay.io/prometheus/node-exporter:v1.8.2
-- image: registry.k8s.io/kube-state-metrics/kube-state-metrics:v2.14.0
-# Keycloak
-- image: quay.io/keycloak/keycloak-operator:26.2.2
-- image: quay.io/keycloak/keycloak:26.2.2
-# Grafana
-- image: docker.io/grafana/grafana:11.6.0
-- image: docker.io/library/busybox:1.31.1
-- image: docker.io/curlimages/curl:8.9.1
-# Jaeger
-- image: docker.io/library/cassandra:3.11.6
-- image: docker.io/jaegertracing/jaeger-agent:1.53.0
-- image: docker.io/jaegertracing/jaeger-cassandra-schema:1.53.0
-- image: docker.io/jaegertracing/jaeger-collector:1.53.0
-- image: docker.io/jaegertracing/jaeger-query:1.53.0
-- image: docker.io/jaegertracing/example-hotrod:1.53.0
-# Jaeger v2
-- image: ghcr.io/open-telemetry/opentelemetry-operator/opentelemetry-operator:0.124.0
-- image: docker.io/jaegertracing/jaeger:latest
-- image: quay.io/brancz/kube-rbac-proxy:v0.19.1
-# Kiali
-- image: quay.io/kiali/kiali-operator:v2.10.0
-- image: quay.io/kiali/kiali:v2.10.0
-# Alloy
-- image: docker.io/grafana/alloy:v1.8.2
-- image: quay.io/prometheus-operator/prometheus-config-reloader:v0.81.0

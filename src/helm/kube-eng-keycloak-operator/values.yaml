@@ -11,8 +11,3 @@ cluster:
 edge:
   ns: edge
   name: edge-ingres
-
-keycloak_operator:
-  repository: quay.io/keycloak/keycloak-operator
-keycloak:
-  repository: quay.io/keycloak/keycloak

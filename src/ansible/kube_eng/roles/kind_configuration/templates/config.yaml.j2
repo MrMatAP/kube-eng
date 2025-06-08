@@ -1,0 +1,20 @@
+---
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+nodes:
+{% for cp in range(0, control_plane_nodes | int) %}
+- role: control-plane
+  extraMounts:
+  - containerPath: /etc/containerd/certs.d
+    hostPath: "{{ directory }}/certs.d"
+{% endfor %}
+{% for worker in range(0, worker_nodes | int) %}
+- role: worker
+  extraMounts:
+  - containerPath: /etc/containerd/certs.d
+    hostPath: "{{ directory }}/certs.d"
+{% endfor %}
+containerdConfigPatches:
+- |-
+  [plugins."io.containerd.grpc.v1.cri".registry]
+    config_path = "/etc/containerd/certs.d"

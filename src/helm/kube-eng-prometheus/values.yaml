@@ -29,15 +29,9 @@ overrides:
     server:
       create: true
       name: sa-prometheus
-  configmapReload:
-    prometheus:
-      image:
-        repository: quay.io/prometheus-operator/prometheus-config-reloader
   server:
     fullnameOverride: prometheus
     releaseNamespace: false
-    image:
-      repository: quay.io/prometheus/prometheus
     extraFlags:
     - web.enable-lifecycle
     - web.enable-admin-api
@@ -53,12 +47,8 @@ overrides:
     enabled: false
   kube-state-metrics:
     enabled: true
-    global:
-      imageRegistry: ""
   prometheus-node-exporter:
     fullnameOverride: prometheus-node-exporter
     enabled: true
-    global:
-      imageRegistry: ""
   prometheus-pushgateway:
     enabled: false

@@ -2,13 +2,10 @@
 ---
 - name: Create directories for cloud-provider-mdns
   ansible.builtin.file:
-    path: "{{ item }}"
+    path: "{{ directory }}"
     state: directory
-  loop:
-  - "{{ cloud_provider_mdns_dir }}"
-  - "{{ cloud_provider_mdns_dir }}/logs"
 
 - name: Template the cloud-provider-mdns configuration
   ansible.builtin.template:
     src: templates/org.mrmat.kubeeng.cloudprovidermdns.plist.j2
-    dest: "{{ cloud_provider_mdns_dir }}/org.mrmat.kubeeng.cloudprovidermdns.plist"
+    dest: "{{ directory }}/org.mrmat.kubeeng.cloudprovidermdns.plist"

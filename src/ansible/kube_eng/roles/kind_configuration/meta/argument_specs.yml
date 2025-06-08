@@ -14,8 +14,12 @@ argument_specs:
         type: int
         required: false
         default: 3
-      config_file:
-        description: Path to the configuration file to template
+      directory:
+        description: Path to the directory to kind configuration
+        type: str
+        required: true
+      ca_file_path:
+        description: Path to the CA trust file which has signed the air gapped registry certificate
         type: str
         required: true
       airgap_registry_name:

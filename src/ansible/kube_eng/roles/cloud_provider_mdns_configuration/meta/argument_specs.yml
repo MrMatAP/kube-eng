@@ -8,11 +8,11 @@ argument_specs:
         description: Path to the cloud-provider-mdns executable
         type: str
         required: true
-      cloud_provider_mdns_dir:
+      directory:
         description: Path to the directory in which cloud-provider-mdns operates
         type: str
         required: true
-      cloud_provider_mdns_user:
+      user:
         description: Username to run cloud-provider-mdns with
         type: str
         required: true

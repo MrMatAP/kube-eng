@@ -17,9 +17,6 @@ route:
   sectionName: loki
 
 overrides:
-  global:
-    image:
-      registry: null
   fullnameOverride: loki
   deploymentMode: SingleBinary
   loki:

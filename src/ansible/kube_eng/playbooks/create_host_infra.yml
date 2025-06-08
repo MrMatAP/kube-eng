@@ -59,8 +59,8 @@
       name: mrmat.kube_eng.cloud_provider_mdns_configuration
     vars:
       tool_cloud_provider_mdns: "{{ host_tool_cloud_provider_mdns }}"
-      cloud_provider_mdns_dir: "{{ dist_dir }}/cloud-provider-mdns"
-      cloud_provider_mdns_user: "{{ user_id }}"
+      directory: "{{ dist_dir }}/cloud-provider-mdns"
+      user: "{{ user_id }}"
 
   - name: Create a local PostgreSQL database
     when: host.postgresql.enabled == true
@@ -140,49 +140,67 @@
         dest: "{{ dist_dir }}/preheat/{{ item }}"
       loop: "{{ stack.keycloak.operator_yaml }}"
 
-  - name: Create an AirGap registry
+  - name: Create an air gapped registry
     when: host.registry.enabled == true
     block:
-    - name: Create an airgapped registry volume
+    - name: Configure the air gapped registry
+      ansible.builtin.import_role:
+        name: mrmat.kube_eng.registry_configuration
+      vars:
+        directory: "{{ dist_dir }}/registry"
+    - name: Create a private key for the air gapped registry
+      community.crypto.openssl_privatekey:
+        path: "{{ dist_dir }}/registry/registry.key"
+        type: ECC
+        curve: secp256r1
+        state: present
+    - name: Generate a CSR for the air gapped registry
+      community.crypto.openssl_csr:
+        path: "{{ dist_dir }}/registry/registry.csr"
+        privatekey_path: "{{ dist_dir }}/registry/registry.key"
+        common_name: "{{ cluster_name }} Registry"
+        subject_alt_name:
+        - "DNS:{{ host.registry.name }}"
+        - "DNS:localhost"
+        basic_constraints_critical: true
+        basic_constraints:
+        - "CA:FALSE"
+    - name: Create a self-signed local CA
+      community.crypto.x509_certificate:
+        path: "{{ dist_dir }}/registry/registry.pem"
+        csr_path: "{{ dist_dir }}/registry/registry.csr"
+        ownca_path: "{{ pki_dir }}/ca.pem"
+        ownca_privatekey_path: "{{ pki_dir }}/ca.key"
+        ownca_not_after: "+825d"
+        provider: ownca
+    - name: Create a volume for the air gapped registry
       community.docker.docker_volume:
         name: "{{ host.registry.volume.name }}"
         state: present
-    - name: Create an airgapped registry
+    - name: Create the air gapped OCI registry container
       community.docker.docker_container:
         name: "{{ host.registry.name }}"
         image: "{{ host.registry.image }}"
         restart: true
-        ports:
-        - "127.0.0.1:{{ host.registry.port | int }}:5000"
         mounts:
         - source: "{{ host.registry.volume.name }}"
-          target: /var/lib/registry
+          target: /data
+        - source: "{{ dist_dir }}/registry/config.json"
+          target: /etc/zot/config.json
+          read_only: true
+          type: bind
+        - source: "{{ dist_dir }}/registry/registry.key"
+          target: /etc/zot/registry.key
+          read_only: true
+          type: bind
+        - source: "{{ dist_dir }}/registry/registry.pem"
+          target: /etc/zot/registry.pem
+          read_only: true
+          type: bind
+        ports:
+        - "127.0.0.1:{{ host.registry.port | int }}:443"
         networks:
         - name: kind
           aliases: "{{ host.registry.name }}"
         restart_policy: always
         state: started
-    - name: Preheat the container image(s)
-      ansible.builtin.include_role:
-        name: mrmat.kube_eng.preheat_image
-      vars:
-        airgap_registry: "localhost:{{ host.registry.port }}"
-        image: "{{ item.image }}"
-      loop: "{{ preheat }}"
-  - name: Preheat the kind node image
-    community.docker.docker_image_pull:
-      name: "docker.io/{{ cluster.node_image }}"
-
-  # TODO: coredns wants to be read from another place
-  - name: Bug - Make the coredns image available at the root of the airgap
-    community.docker.docker_image_pull:
-      name:  "localhost:{{ host.registry.port }}/coredns/coredns:v1.11.3"
-  - name: Bug - Re-tag the coredns image
-    community.docker.docker_image_tag:
-      name: "localhost:{{ host.registry.port }}/coredns/coredns:v1.11.3"
-      repository:
-      - "localhost:{{ host.registry.port }}/coredns:v1.11.3"
-  - name: Bug - Push the image into the air gapped repository
-    community.docker.docker_image_push:
-      name: "localhost:{{ host.registry.port }}/coredns"
-      tag: v1.11.3

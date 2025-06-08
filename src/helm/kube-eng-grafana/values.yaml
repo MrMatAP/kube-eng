@@ -22,8 +22,6 @@ route:
 # Dependency Chart overrides
 
 overrides:
-  global:
-    imageRegistry: null
   replicas: 1
   extraLabels:
     app: grafana

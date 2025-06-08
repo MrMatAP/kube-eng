@@ -58,7 +58,6 @@ ANSIBLE_PLAYBOOK_EXEC = ANSIBLE_PYTHON_INTERPRETER=$(VENVDIR)/bin/python3 \
 							-e dist_dir=$(DISTDIR) \
 							-e pki_dir=$(PKIDIR) \
 							-e admin_password="$(shell cat $(admin-password-file))" \
-							-e cloud_provider_mdns=$(cloud-provider-mdns) \
 							-e user_id="$(shell whoami)" \
 							-e cluster_name=$(CLUSTER_NAME) \
 							-e host_tool_kind=$(kind) \
@@ -67,6 +66,7 @@ ANSIBLE_PLAYBOOK_EXEC = ANSIBLE_PYTHON_INTERPRETER=$(VENVDIR)/bin/python3 \
 							-e host_tool_kustomize=$(kustomize) \
 							-e host_tool_docker=$(docker) \
 							-e host_tool_named=$(named) \
+							-e host_tool_cloud_provider_mdns=$(cloud-provider-mdns) \
 							-e chart_cert_manager=$(CERT_MANAGER_CHART) \
 							-e chart_edge=$(EDGE_CHART) \
 							-e chart_prometheus=$(PROMETHEUS_CHART) \

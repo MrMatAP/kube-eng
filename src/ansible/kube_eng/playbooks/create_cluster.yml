@@ -8,13 +8,14 @@
     vars:
       control_plane_nodes: "{{ cluster.control_plane_nodes | int }}"
       worker_nodes: "{{ cluster.worker_nodes | int }}"
-      config_file: "{{ dist_dir }}/kind-config.yaml"
+      directory: "{{ dist_dir }}/kind"
+      ca_file_path: "{{ pki_dir }}/ca.pem"
       airgap_registry_name: "{{ host.registry.name }}"
 
   - name: Create the cluster
     mrmat.kube_eng.kind_cluster:
       name: "{{ cluster_name }}"
-      config_file: "{{ dist_dir }}/kind-config.yaml"
+      config_file: "{{ dist_dir }}/kind/config.yaml"
       tool_kind: "{{ host_tool_kind }}"
       state: present
 

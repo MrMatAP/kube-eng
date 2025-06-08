@@ -58,20 +58,6 @@
             name: "{{ stack.edge.name }}"
             ns: "{{ stack.edge.ns }}"
           overrides:
-            image:
-              repository: "{{ host.registry.name }}:5000/jetstack/cert-manager-controller"
-            webhook:
-              image:
-                repository: "{{ host.registry.name }}:5000/jetstack/cert-manager-webhook"
-            cainjector:
-              image:
-                repository: "{{ host.registry.name }}:5000/jetstack/cert-manager-cainjector"
-            acmesolver:
-              image:
-                repository: "{{ host.registry.name }}:5000/jetstack/cert-manager-acmesolver"
-            startupapicheck:
-              image:
-                repository: "{{ host.registry.name }}:5000/jetstack/cert-manager-startupapicheck"
             namespace: "{{ stack.cert_manager.ns }}"
             config:
               enableGatewayAPI: "{{ stack.gateway_api.enabled | bool }}"
@@ -104,8 +90,6 @@
             name: "{{ stack.edge.name }}"
             ns: "{{ stack.edge.ns }}"
             kind: "{{ stack.edge.kind }}"
-          traefik:
-            repository: "{{ host.registry.name }}:5000/library/traefik"
           prometheus:
             enabled: "{{ stack.prometheus.enabled | bool }}"
             hostname: "{{ stack.prometheus.hostname }}"
@@ -156,20 +140,6 @@
             kind: "{{ stack.edge.kind }}"
           route:
             hostname: "{{ stack.prometheus.hostname }}"
-          overrides:
-            configmapReload:
-              prometheus:
-                image:
-                  repository: "{{ host.registry.name }}:5000/prometheus-operator/prometheus-config-reloader"
-            server:
-              image:
-                repository: "{{ host.registry.name }}:5000/prometheus/prometheus"
-            kube-state-metrics:
-              global:
-                imageRegistry: "{{ host.registry.name }}:5000"
-            prometheus-node-exporter:
-              global:
-                imageRegistry: "{{ host.registry.name }}:5000"
 
   - name: Deploy Alloy
     when: "stack.alloy.enabled | bool == true"
@@ -201,12 +171,6 @@
             name: "{{ stack.edge.name }}"
             ns: "{{ stack.edge.ns }}"
             kind: "{{ stack.edge.kind }}"
-          overrides:
-            image:
-              registry: "{{ host.registry.name }}:5000"
-            configReloader:
-              image:
-                registry: "{{ host.registry.name }}:5000"
 
   - name: Deploy Loki
     when: "stack.loki.enabled | bool == true"
@@ -278,10 +242,7 @@
             name: "{{ stack.edge.name }}"
             ns: "{{ stack.edge.ns }}"
             kind: "{{ stack.edge.kind }}"
-          keycloak_operator:
-            repository: "{{ host.registry.name }}:5000/keycloak/keycloak-operator"
-          keycloak:
-            repository: "{{ host.registry.name }}:5000/keycloak/keycloak"
+
     - name: Create a Keycloak user in PostgreSQL
       community.postgresql.postgresql_user:
         login_host: localhost
@@ -427,8 +388,6 @@
           route:
             hostname: "{{ stack.grafana.hostname }}"
           overrides:
-            global:
-              imageRegistry: "{{ host.registry.name }}:5000"
             adminUser: "{{ stack.grafana.admin_user }}"
             adminPassword: "{{ admin_password }}"
             envRenderSecret:
@@ -479,15 +438,9 @@
           route:
             hostname: "{{ stack.jaeger.hostname }}"
           overrides:
-            global:
-              imageRegistry: "{{ host.registry.name }}:5000"
             storage:
               cassandra:
                 password: "{{ admin_password }}"
-            cassandra:
-              image:
-                repo: "{{ host.registry.name }}:5000/library/cassandra"
-
 
 
   - name: Deploy Jaeger v2
@@ -506,15 +459,7 @@
         release_namespace: "{{ stack.jaegerv2.ns }}"
         chart_ref: open-telemetry/opentelemetry-operator
         wait: true
-        values:
-          manager:
-            collectorImage:
-              repository: "{{ host.registry.name }}:5000/open-telemetry/opentelemetry-operator/opentelemetry-operator"
-            image:
-              repository: "{{ host.registry.name }}:5000/open-telemetry/opentelemetry-operator/opentelemetry-operator"
-          kubeRBACProxy:
-            image:
-              repository: "{{ host.registry.name }}:5000/brancz/kube-rbac-proxy"
+
     - name: Deploy the Jaeger v2 Helm Chart
       kubernetes.core.helm:
         name: jaeger
@@ -534,8 +479,6 @@
             kind: "{{ stack.edge.kind }}"
           route:
             hostname: "{{ stack.jaegerv2.hostname }}"
-          jaeger:
-            image: "{{ host.registry.name }}:5000/jaegertracing/jaeger:latest"
 
   - name: Deploy Kiali
     when: "stack.kiali.enabled | bool == true"
