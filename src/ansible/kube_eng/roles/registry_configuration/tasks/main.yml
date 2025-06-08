@@ -1,0 +1,13 @@
+#SPDX-License-Identifier: MIT-0
+---
+# tasks file for registry_configuration
+
+- name: Create a directory for air gapped registry configuration
+  ansible.builtin.file:
+    path: "{{ directory }}"
+    state: directory
+
+- name: Template the air gapped registry configuration
+  ansible.builtin.copy:
+    src: files/config.json
+    dest: "{{ directory }}/config.json"

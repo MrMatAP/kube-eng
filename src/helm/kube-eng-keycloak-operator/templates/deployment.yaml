@@ -4,7 +4,7 @@ kind: Deployment
 metadata:
   name: keycloak-operator
   labels:
-    {{- include "common.labels" . | nindent 4 }}
+    {{ include "common.labels" . | nindent 4 }}
     app.kubernetes.io/name: keycloak-operator
 spec:
   replicas: 1
@@ -14,7 +14,7 @@ spec:
   template:
     metadata:
       labels:
-        app.kubernetes.io/version: 26.2.2
+        app.kubernetes.io/version: {{ .Chart.AppVersion }}
         app.kubernetes.io/name: keycloak-operator
     spec:
       containers:
@@ -24,8 +24,8 @@ spec:
             fieldRef:
               fieldPath: metadata.namespace
         - name: RELATED_IMAGE_KEYCLOAK
-          value: {{ .Values.keycloak.repository }}:{{ .Chart.AppVersion }}
-        image: {{ .Values.keycloak_operator.repository }}:{{ .Chart.AppVersion }}
+          value: "quay.io/keycloak/keycloak:{{ .Chart.AppVersion }}"
+        image: "quay.io/keycloak/keycloak-operator:{{ .Chart.AppVersion }}"
         imagePullPolicy: Always
         livenessProbe:
           failureThreshold: 3

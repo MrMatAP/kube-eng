@@ -14,8 +14,8 @@ Role Variables
 | Variable                 | Type | Required | Default | Description                                                     |
 |--------------------------|------|----------|---------|-----------------------------------------------------------------|
 | tool_cloud_provider_mdns | str  | false    | N/A     | Path to the cloud-provider-mdns executable                      |
-| cloud_provider_mdns_dir  | str  | true     | N/A     | Path to the the directory in which cloud-provider-mdns operates |
-| cloud_provider_mdns_user | str  | true     | N/A     | User to run cloud-provider-mdns with                            |
+| directory                | str  | true     | N/A     | Path to the the directory in which cloud-provider-mdns operates |
+| user                     | str  | true     | N/A     | User to run cloud-provider-mdns with                            |
 
 
 Dependencies
@@ -36,7 +36,8 @@ Example Playbook
     name: mrmat.kube_eng.cloud_provider_mdns_configuration
   vars:
     cloud_provider_mdns_executable: "{{ cloud_provider_mdns }}"
-    cloud_provider_mdns_dir: "{{ dist_dir }}/cloud-provider-mdns"
+    directory: "{{ dist_dir }}/cloud-provider-mdns"
+    user: "{{ user_id }}"
 ```
 
 License

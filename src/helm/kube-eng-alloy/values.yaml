@@ -28,10 +28,5 @@ overrides:
     replicas: 1
   ingress:
     enabled: false
-  image:
-    registry: "docker.io"
   serviceAccount:
     name: sa-alloy
-  configReloader:
-    image:
-      registry: "quay.io"

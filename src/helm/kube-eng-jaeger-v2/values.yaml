@@ -17,6 +17,3 @@ route:
   name: route-jaeger
   hostname: jaeger
   sectionName: jaeger
-
-jaeger:
-  image: jaegertracing/jaeger:latest

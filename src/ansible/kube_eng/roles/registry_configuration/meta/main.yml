@@ -1,7 +1,7 @@
 #SPDX-License-Identifier: MIT-0
 galaxy_info:
   author: MrMatAP
-  description: Preheat an image into the local airgapped registry
+  description: Template the air gapped registry configuration
   company: The MrMat Organisation
   license: MIT
   min_ansible_version: 2.1
