@@ -65,3 +65,4 @@ $ docker pull localhost:5001/postgres:15
 * Kiali is unable to pull traces from Jaeger
 * We currently have no way to synchronise stack.kiali.version with the AppVersion in the Kiali Helm chart
 * Keycloak doesn't play nice with Istio ztunnel
+* GitHub Actions don't build/tag releases upon merge into main just yet
