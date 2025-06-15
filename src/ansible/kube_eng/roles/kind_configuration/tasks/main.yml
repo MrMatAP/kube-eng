@@ -12,17 +12,14 @@
     src: templates/config.yaml.j2
     dest: "{{ directory }}/config.yaml"
 
-- name: Create a directory for the upstream registry override
-  ansible.builtin.file:
-    path: "{{ directory }}/certs.d/_default"
-    state: directory
-
-- name: Template the upstream override configuration
-  ansible.builtin.template:
-    src: templates/hosts.toml.j2
-    dest: "{{ directory }}/certs.d/_default/hosts.toml"
-
-- name: Copy the local CA into the containerd configuration
-  ansible.builtin.copy:
-    src: "{{ ca_file_path }}"
-    dest: "{{ directory }}/certs.d/_default/ca.pem"
+- name: Create directory overrides for specific upstreams
+  ansible.builtin.include_tasks: upstream.yml
+  loop_control:
+    loop_var: upstream
+  loop:
+  - _default
+  - k8s.gcr.io
+  - registry.k8s.io
+  - docker.io
+  - quay.io
+  - ghcr.io

@@ -7,14 +7,21 @@ nodes:
   extraMounts:
   - containerPath: /etc/containerd/certs.d
     hostPath: "{{ directory }}/certs.d"
+  - containerPath: /usr/local/share/ca-certificates/kube-eng/ca.crt
+    hostPath: "{{ ca_file_path }}"
 {% endfor %}
 {% for worker in range(0, worker_nodes | int) %}
 - role: worker
   extraMounts:
   - containerPath: /etc/containerd/certs.d
     hostPath: "{{ directory }}/certs.d"
+  - containerPath: /usr/local/share/ca-certificates/kube-eng/ca.crt
+    hostPath: "{{ ca_file_path }}"
 {% endfor %}
 containerdConfigPatches:
 - |-
-  [plugins."io.containerd.grpc.v1.cri".registry]
-    config_path = "/etc/containerd/certs.d"
+  [plugins.'io.containerd.cri.v1.images']
+    use_local_image_pull = true
+- |-
+  [plugins.'io.containerd.cri.v1.images'.registry]
+    config_path = '/etc/containerd/certs.d'

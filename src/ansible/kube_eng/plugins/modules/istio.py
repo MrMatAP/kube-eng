@@ -17,11 +17,6 @@ options:
         type: str
         choices: ['default', 'demo', 'minimal', 'remote', 'ambient', 'empty', 'preview']
         default: minimal
-    hub:
-        description: The image registry for istio images
-        required: false
-        type: str
-        default: docker.io/istio
     alpha_gateway_api:
         description: Enable support for the alpha gateway api
         type: bool
@@ -87,7 +82,6 @@ from ansible.module_utils.basic import AnsibleModule
 def run_module():
     module_args = dict(
         profile=dict(type='str', required=False, choices=['default', 'minimal', 'remote', 'ambient', 'empty', 'preview'], default='minimal'),
-        hub=dict(type='str', required=False, default='docker.io/istio'),
         namespace=dict(type='str', required=False, default='istio-system'),
         alpha_gateway_api=dict(type='bool', required=False, default=False),
         tracing=dict(type='bool', required=False, default=False),
@@ -114,8 +108,7 @@ def run_module():
 
     if rc == 1 and module.params['state'] == 'present':
         args = [module.params['tool_istioctl'], 'install', '-y',
-                '--set', f'profile={module.params["profile"]}',
-                '--set', f'hub={module.params["hub"]}',]
+                '--set', f'profile={module.params["profile"]}']
         if module.params['alpha_gateway_api']:
             args.extend(['--set', f'values.pilot.env.PILOT_ENABLE_ALPHA_GATEWAY_API=true'])
         if module.params['tracing']:

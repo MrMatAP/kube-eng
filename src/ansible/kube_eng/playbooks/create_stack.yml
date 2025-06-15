@@ -500,8 +500,6 @@
         values:
           cr:
             create: false
-          image:
-            repo: "{{ host.registry.name }}:5000/kiali/kiali-operator"
     - name: Deploy the Kiali Helm Chart
       kubernetes.core.helm:
         name: kiali
