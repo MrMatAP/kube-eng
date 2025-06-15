@@ -52,7 +52,7 @@
           "tlsVerify": true
         },
         {
-          "urls": ["https://docker.io"],
+          "urls": [ "https://docker.io" ],
           "onDemand": true,
           "tlsVerify": true
         },

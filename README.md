@@ -32,16 +32,19 @@ A local CA certificate is created when host.pki.enabled is set to true in `clust
 are stored in `var/pki` rather than in `.dist` to avoid accidentally deleting it. Add the local CA to the trust configuration
 of your host before you deploy the stack.
 
+The CA and its private key are registered in the clusters cert-manager configuration for issuing certificates.
+
 ### Air gapped registry
 
 An air gapped OCI registry is created when host.registry.enabled is set to true in `cluster.yaml`. The cluster uses this
 registry as a pass-through mirror for any image it attempts to pull, with the benefit of avoiding rate limits in the 
 upstream registries as you hack on your cluster. 
 
-The registry is known by the host as 'localhost:5001' and by the Kubernetes cluster as 'registry' on the default port 443. A web UI is available
-at [https://localhost:5001](https://localhost:5001). The TLS certificate is created using the PKI infrastructure the host
-infrastructure target also creates, you can therefore trust the generated local CA once and equally connect to the
-infrastructure you're hosting in the cluster as well as the registry.
+Your hosts knows the registry as localhost on port 5001. The Kubernetes cluster knows it as 'registry' on the default 
+port 443 because the registry container is attached to the same 'kind' docker network the cluster itself is connected to. 
+Docker ensures that container names are known within that network.
+A web UI is available at [https://localhost:5001](https://localhost:5001). The TLS certificate for this site is created using the same PKI that
+`make host-infra` establishes so once you trust the CA generated there you're good to go for the registry as well.
 
 ```shell
 # Pushing an image locally
@@ -55,6 +58,9 @@ image: registry/some/path/awesome-app:v1.0.0
 $ docker pull localhost:5001/postgres:15
 ```
 
+> There is no need to adjust the image configuration of the included or any extra deployments. The cluster's containerd
+> configuration is preconfigured to mirror them through the air gapped registry.
+
 ## Limitations
 
 * On ARM-based MacOS, there is a kernel panic when issuing a query to current BIND 9.20.7
@@ -66,3 +72,5 @@ $ docker pull localhost:5001/postgres:15
 * We currently have no way to synchronise stack.kiali.version with the AppVersion in the Kiali Helm chart
 * Keycloak doesn't play nice with Istio ztunnel
 * GitHub Actions don't build/tag releases upon merge into main just yet
+* cloud-provider-mdns still requires to be restarted too frequently when the cluster gets recreated. It is best to `make host-infra-stop` and `make host-infra-start`
+* make stack should wait for keycloak to fully start up before continuing

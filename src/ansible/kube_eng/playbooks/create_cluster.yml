@@ -25,17 +25,16 @@
       profile: "{{ cluster.istio_profile | default('minimal') }}"
       tool_kubectl: "{{ host_tool_kubectl }}"
       tool_istioctl: "{{ host_tool_istioctl }}"
-      hub: "{{ host.registry.name }}:5000/istio"
       state: present
 
-  - name: Deploy the Gateway API CRD
+  - name: Deploy the Gateway API CRD, if enabled
     when: "stack.gateway_api.enabled | bool == true"
     kubernetes.core.k8s:
       state: present
       apply: true
       src: "{{ dist_dir }}/preheat/gateway-api-crds.yaml"
 
-  - name: Deploy the experimental Gateway API CRD
+  - name: Deploy the experimental Gateway API CRD, if enabled
     when: "stack.gateway_api.experimental | bool == true"
     kubernetes.core.k8s:
       state: present
