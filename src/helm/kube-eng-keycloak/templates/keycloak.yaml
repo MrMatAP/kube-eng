@@ -3,7 +3,7 @@ kind: Keycloak
 metadata:
   name: keycloak
   labels:
-    {{- include "common.labels" . | nindent 4 }}
+    {{ include "common.labels" . | nindent 4 }}
     app.kubernetes.io/name: keycloak
 spec:
   instances: {{ .Values.keycloak.instances }}
