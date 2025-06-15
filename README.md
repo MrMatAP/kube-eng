@@ -71,6 +71,5 @@ $ docker pull localhost:5001/postgres:15
 * Kiali is unable to pull traces from Jaeger
 * We currently have no way to synchronise stack.kiali.version with the AppVersion in the Kiali Helm chart
 * Keycloak doesn't play nice with Istio ztunnel
-* GitHub Actions don't build/tag releases upon merge into main just yet
 * cloud-provider-mdns still requires to be restarted too frequently when the cluster gets recreated. It is best to `make host-infra-stop` and `make host-infra-start`
 * make stack should wait for keycloak to fully start up before continuing
