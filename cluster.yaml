@@ -33,7 +33,6 @@ chart_jaeger_v2: ""
 cluster:
   control_plane_nodes: 1
   worker_nodes: 3
-  node_image: ""
   mesh: istio
   istio_profile: ambient
   domain: k8s
