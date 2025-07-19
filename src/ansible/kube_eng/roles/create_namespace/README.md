@@ -11,10 +11,10 @@ None
 Role Variables
 --------------
 
-| Variable      | Type | Required | Default | Description           |
-|---------------|------|----------|---------|-----------------------|
-| name          | str  | true     | N/A     | Name of the namespace |
-| istio_profile | str  | false    | ambient | The Istio Profile     |
+| Variable | Type | Required | Default | Description                                                          |
+|----------|------|----------|---------|----------------------------------------------------------------------|
+| name     | str  | true     | N/A     | Name of the namespace                                                |
+| mesh     | str  | false    | istio   | The mesh currently in use. One of 'none', 'istio' or 'istio-ambient' |
 
 Dependencies
 ------------
@@ -34,7 +34,7 @@ Example Playbook
       name: mrmat.kube_eng.create_namespace
     vars:
       name: "{{ stack.cert_manager.ns }}
-      istio_profile: "{{ cluster.istio_profile }}"
+      mesh: "{{ cluster.mesh.kind }}"
 ```
 
 License

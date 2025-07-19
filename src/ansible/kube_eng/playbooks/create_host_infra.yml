@@ -3,7 +3,6 @@
   hosts: localhost
   tasks:
   - name: Create PKI infrastructure
-    when: "stack.cert_manager.enabled | bool == true"
     block:
     - name: Create a directory for PKI
       ansible.builtin.file:
@@ -88,7 +87,7 @@
         restart_policy: always
         state: healthy
 
-  - name: Create a local MinIO server
+  - name: Create a local MinIO server, if enabled
     when: host.minio.enabled == true
     block:
     - name: Create a volume for Minio
@@ -122,18 +121,14 @@
       ansible.builtin.file:
         path: "{{ dist_dir }}/preheat"
         state: directory
-    - name: Download the CRD for cert-manager
+    - name: Download the CRD for cert-manager PKI
       ansible.builtin.get_url:
-        url: "{{ stack.cert_manager.crd }}"
+        url: "{{ cluster.pki.crd }}"
         dest: "{{ dist_dir }}/preheat/cert-manager-crds.yaml"
     - name: Download the Gateway-API CRDs
       ansible.builtin.get_url:
-        url: "{{ stack.gateway_api.crd }}"
+        url: "{{ cluster.edge.istio_gateway_api.crd }}"
         dest: "{{ dist_dir }}/preheat/gateway-api-crds.yaml"
-    - name: Download the Experimental Gateway-API CRDs
-      ansible.builtin.get_url:
-        url: "{{ stack.gateway_api.crd_experimental }}"
-        dest: "{{ dist_dir }}/preheat/experimental-gateway-api-crds.yaml"
     - name: Download the KeyCloak Operator CRDs
       ansible.builtin.get_url:
         url: "https://raw.githubusercontent.com/keycloak/keycloak-k8s-resources/{{ stack.keycloak.operator_version }}/kubernetes/{{ item }}"

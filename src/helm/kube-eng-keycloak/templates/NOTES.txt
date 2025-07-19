@@ -2,4 +2,4 @@
 
 Admin user:     {{ .Values.keycloak.admin_user }}
 Admin Password: {{ .Values.keycloak.admin_password }}
-URL:            {{ .Values.route.hostname }}.{{ .Values.cluster.name }}.{{ .Values.cluster.domain }}
+URL:            https://{{ .Values.fqdn }}

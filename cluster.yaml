@@ -29,13 +29,27 @@ chart_alloy: ""
 chart_loki: ""
 chart_jaeger_v2: ""
 
-
+# mesh.kind can be one of 'istio', 'istio-ambient' or 'none'
+# edge.kind can be one of 'none', 'ingress', 'istio', 'istio-gateway-api'
 cluster:
   control_plane_nodes: 1
   worker_nodes: 3
-  mesh: istio
-  istio_profile: ambient
-  domain: k8s
+  mesh:
+    kind: istio
+    ns: istio-system
+  pki:
+    ns: cert-manager
+    crd: https://github.com/cert-manager/cert-manager/releases/download/v1.17.1/cert-manager.crds.yaml
+  edge:
+    kind: ingress
+    name: edge-ingress
+    ns: edge
+    external_domain: k8s
+    ingress:
+      repository: docker.io/traefik
+      tag: v3.4.4
+    istio_gateway_api:
+      crd: https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.2.1/standard-install.yaml
 
 host:
   cloud_provider_kind:
@@ -46,10 +60,6 @@ host:
   bind:
     enabled: false
     forwarders: "8.8.8.8; 4.4.4.4; 2001:4860:4860::8888; 2001:4860:4860::8844;"
-  pki:
-    enabled: true
-    name: local-pki
-    port: 9000
   registry:
     enabled: true
     name: registry
@@ -75,21 +85,6 @@ host:
       port: 9001
 
 stack:
-  gateway_api:
-    enabled: true
-    experimental: false
-    crd: https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.2.1/standard-install.yaml
-    crd_experimental: https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.2.1/experimental-install.yaml
-  cert_manager:
-    enabled: true
-    ns: cert-manager
-    crd: https://github.com/cert-manager/cert-manager/releases/download/v1.17.1/cert-manager.crds.yaml
-  edge:
-    enabled: true
-    ns: edge
-    name: edge-ingress
-    # kind can be 'istio', 'istio-gateway-api' or 'traefik'
-    kind: istio-gateway-api
   prometheus:
     enabled: true
     ns: prometheus

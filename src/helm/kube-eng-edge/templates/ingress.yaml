@@ -1,11 +1,12 @@
-{{- if eq $.Values.edge.kind "traefik" }}
+# Edge for the Traefik ingress controller
+{{- if eq .Values.cluster.edge.kind "ingress" }}
 ---
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: traefik-role
   labels:
-    {{- include "common.labels" . | nindent 4 }}
+    {{ include "common.labels" . | nindent 4 }}
     app.kubernetes.io/name: traefik-role
 rules:
 - apiGroups:
@@ -65,7 +66,7 @@ kind: ServiceAccount
 metadata:
   name: traefik
   labels:
-    {{- include "common.labels" . | nindent 4 }}
+    {{ include "common.labels" . | nindent 4 }}
     app.kubernetes.io/name: traefik
 ---
 kind: ClusterRoleBinding
@@ -73,7 +74,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: traefik-role-binding
   labels:
-    {{- include "common.labels" . | nindent 4 }}
+    {{ include "common.labels" . | nindent 4 }}
     app.kubernetes.io/name: traefik-role-binding
 roleRef:
   apiGroup: rbac.authorization.k8s.io
@@ -89,7 +90,7 @@ apiVersion: apps/v1
 metadata:
   name: traefik-deployment
   labels:
-    {{- include "common.labels" . | nindent 4 }}
+    {{ include "common.labels" . | nindent 4 }}
     app: traefik
     version: {{ .Chart.AppVersion }}
     app.kubernetes.io/name: traefik
@@ -106,13 +107,13 @@ spec:
       serviceAccountName: traefik
       containers:
       - name: traefik
-        image: {{ .Values.traefik.repository }}:{{ .Values.traefik.tag }}
+        image: {{ .Values.cluster.edge.ingress.repository }}:{{ .Values.cluster.edge.ingress.tag }}
         args:
         - --api.insecure
         - --entryPoints.http.address=:80
         - --entryPoints.https.address=:443
         - --providers.kubernetesingress
-        - --providers.kubernetesingress.ingressendpoint.publishedservice=edge/traefik-web-service
+        - --providers.kubernetesingress.ingressendpoint.publishedservice={{ .Release.Namespace }}/traefik-web-service
         ports:
         - name: http
           containerPort: 80
@@ -125,6 +126,9 @@ apiVersion: v1
 kind: Service
 metadata:
   name: traefik-web-service
+  labels:
+    {{ include "common.labels" . | nindent 4 }}
+    app.kubernetes.io/name: traefik-web-service
 spec:
   type: LoadBalancer
   ports:
@@ -141,6 +145,9 @@ apiVersion: v1
 kind: Service
 metadata:
   name: traefik-dashboard-service
+  labels:
+    {{ include "common.labels" . | nindent 4 }}
+    app.kubernetes.io/name: traefik-dashboard-service
 spec:
   type: ClusterIP
   ports:
@@ -153,6 +160,9 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: traefik
+  labels:
+    {{ include "common.labels" . | nindent 4 }}
+    app.kubernetes.io/name: traefik
   annotations:
     cert-manager.io/cluster-issuer: ca-issuer
     traefik.ingress.kubernetes.io/router.entrypoints: https
@@ -160,10 +170,10 @@ metadata:
 spec:
   tls:
   - hosts:
-    - traefik.{{ .Values.cluster.name }}.{{ .Values.cluster.domain }}
+    - {{ .Values.cluster.edge.ingress.fqdn }}
     secretName: traefik-cert
   rules:
-  - host: traefik.{{ .Values.cluster.name }}.{{ .Values.cluster.domain }}
+  - host: {{ .Values.cluster.edge.ingress.fqdn }}
     http:
       paths:
       - path: /

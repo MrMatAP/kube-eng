@@ -1,5 +1,5 @@
 # Edge for Istio with the Gateway API
-{{- if eq $.Values.edge.kind "istio-gateway-api" }}
+{{- if eq .Values.cluster.edge.kind "istio-gateway-api" }}
 ---
 apiVersion: gateway.networking.k8s.io/v1
 kind: Gateway
@@ -19,9 +19,9 @@ spec:
     allowedRoutes:
       namespaces:
         from: All
- {{- if .Values.prometheus.enabled }}
-  - name: prometheus
-    hostname: {{ .Values.prometheus.hostname }}.{{ .Values.cluster.name }}.{{ .Values.cluster.domain }}
+ {{- if .Values.stack.prometheus.enabled }}
+  - name: {{ .Values.stack.prometheus.fqdn }}
+    hostname: {{ .Values.stack.prometheus.fqdn }}
     port: 443
     protocol: HTTPS
     allowedRoutes:
@@ -33,9 +33,9 @@ spec:
       - name: prometheus-cert
         kind: Secret
   {{- end }}
-  {{- if .Values.alloy.enabled }}
-  - name: alloy
-    hostname: {{ .Values.alloy.hostname }}.{{ .Values.cluster.name }}.{{ .Values.cluster.domain }}
+  {{- if .Values.stack.alloy.enabled }}
+  - name: {{ .Values.stack.alloy.fqdn }}
+    hostname: {{ .Values.stack.alloy.fqdn }}
     port: 443
     protocol: HTTPS
     allowedRoutes:
@@ -47,9 +47,9 @@ spec:
       - name: alloy-cert
         kind: Secret
   {{- end }}
-  {{- if .Values.keycloak.enabled }}
-  - name: keycloak
-    hostname: {{ .Values.keycloak.hostname }}.{{ .Values.cluster.name }}.{{ .Values.cluster.domain }}
+  {{- if .Values.stack.keycloak.enabled }}
+  - name: {{ .Values.stack.keycloak.fqdn }}
+    hostname: {{ .Values.stack.keycloak.fqdn }}
     port: 443
     protocol: HTTPS
     allowedRoutes:
@@ -61,9 +61,9 @@ spec:
       - name: keycloak-cert
         kind: Secret
   {{- end }}
-  {{- if .Values.grafana.enabled }}
-  - name: grafana
-    hostname: {{ .Values.grafana.hostname }}.{{ .Values.cluster.name }}.{{ .Values.cluster.domain }}
+  {{- if .Values.stack.grafana.enabled }}
+  - name: {{ .Values.stack.grafana.fqdn }}
+    hostname: {{ .Values.stack.grafana.fqdn }}
     port: 443
     protocol: HTTPS
     allowedRoutes:
@@ -75,9 +75,9 @@ spec:
       - name: grafana-cert
         kind: Secret
   {{- end }}
-  {{- if .Values.jaeger.enabled }}
-  - name: jaeger
-    hostname: {{ .Values.jaeger.hostname }}.{{ .Values.cluster.name }}.{{ .Values.cluster.domain }}
+  {{- if .Values.stack.jaeger.enabled }}
+  - name: {{ .Values.stack.jaeger.fqdn }}
+    hostname: {{ .Values.stack.jaeger.fqdn }}
     port: 443
     protocol: HTTPS
     allowedRoutes:
@@ -89,9 +89,9 @@ spec:
       - name: jaeger-cert
         kind: Secret
   {{- end }}
-  {{- if .Values.kiali.enabled }}
-  - name: kiali
-    hostname: {{ .Values.kiali.hostname }}.{{ .Values.cluster.name }}.{{ .Values.cluster.domain }}
+  {{- if .Values.stack.kiali.enabled }}
+  - name: {{ .Values.stack.kiali.fqdn }}
+    hostname: {{ .Values.stack.kiali.fqdn }}
     port: 443
     protocol: HTTPS
     allowedRoutes:

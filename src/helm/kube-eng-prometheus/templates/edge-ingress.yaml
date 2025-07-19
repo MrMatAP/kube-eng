@@ -1,4 +1,4 @@
-{{- if eq $.Values.edge.kind "traefik" }}
+{{- if eq .Values.cluster.edge.kind "ingress" }}
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
@@ -11,10 +11,10 @@ metadata:
 spec:
   tls:
   - hosts:
-    - {{ .Values.route.hostname }}.{{ .Values.cluster.name }}.{{ .Values.cluster.domain }}
+    - {{ .Values.fqdn }}
     secretName: prometheus-cert
   rules:
-  - host: {{ .Values.route.hostname }}.{{ .Values.cluster.name }}.{{ .Values.cluster.domain }}
+  - host: {{ .Values.fqdn }}
     http:
       paths:
       - path: /

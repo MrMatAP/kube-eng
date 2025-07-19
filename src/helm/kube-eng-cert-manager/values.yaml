@@ -1,16 +1,6 @@
 #
 # Default values for Kube Eng :: cert-manager
 
-cluster:
-  mesh: "istio"
-  gateway_api: true
-  name: "cluster"
-  domain: "local"
-
-edge:
-  ns: edge
-  name: edge-ingress
-
 #
 # Dependency Chart overrides
 
@@ -25,7 +15,6 @@ overrides:
   fullnameOverride: cert-manager
   serviceAccount:
     create: true
-    #name: sa-cert-manager
   config:
     enableGatewayAPI: true
   prometheus:

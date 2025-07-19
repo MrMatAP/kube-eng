@@ -4,9 +4,9 @@ kind: Namespace
 metadata:
   name: "{{ name }}"
   labels:
-    {% if istio_profile == 'ambient' %}
+    {% if mesh == 'istio-ambient' %}
     istio.io/dataplane-mode: ambient
-    {% elif istio_profile == 'minimal' %}
+    {% elif mesh == 'istio' %}
     istio-injection: enabled
     {% else %}
     {% endif %}

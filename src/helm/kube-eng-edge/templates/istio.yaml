@@ -1,16 +1,17 @@
-{{- if eq $.Values.edge.kind "istio" }}
+# Edge for Istio
+{{- if eq .Values.cluster.edge.kind "istio" }}
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: edge-ingress
+  name: {{ .Values.cluster.edge.gw }}
   labels:
     {{ include "common.labels" . | nindent 4 }}
-    app.kubernetes.io/name: edge-ingress
+    app.kubernetes.io/name: {{ .Values.cluster.edge.gw }}
 spec:
   selector:
     matchLabels:
-      app.kubernetes.io/name: edge-ingress
+      app.kubernetes.io/name: {{ .Values.cluster.edge.gw }}
   template:
     metadata:
       annotations:
@@ -19,7 +20,7 @@ spec:
       labels:
         # Set a unique label for the gateway. This is required to ensure Gateways can select this workload
         istio: ingressgateway
-        app.kubernetes.io/name: edge-ingress
+        app.kubernetes.io/name: {{ .Values.cluster.edge.gw }}
     spec:
       # Allow binding to all ports (such as 80 and 443)
       securityContext:
@@ -60,7 +61,7 @@ kind: Role
 metadata:
   name: istio-ingressgateway-sds
   labels:
-    {{- include "common.labels" . | nindent 4 }}
+    {{ include "common.labels" . | nindent 4 }}
     app.kubernetes.io/name: edge-ingress
 rules:
 - apiGroups: [""]
@@ -72,7 +73,7 @@ kind: RoleBinding
 metadata:
   name: istio-ingressgateway-sds
   labels:
-    {{- include "common.labels" . | nindent 4 }}
+    {{ include "common.labels" . | nindent 4 }}
     app.kubernetes.io/name: edge-ingress
 roleRef:
   apiGroup: rbac.authorization.k8s.io

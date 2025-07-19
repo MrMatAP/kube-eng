@@ -11,10 +11,10 @@ spec:
     strategy: "anonymous"
   deployment:
     additional_service_yaml:
-      externalName: {{ .Values.route.hostname }}.{{ .Values.cluster.name }}.{{ .Values.cluster.domain }}
+      externalName: {{ .Values.fqdn }}
     cluster_wide_access: true
     ingress:
-      {{- if eq $.Values.edge.kind "traefik" }}
+      {{- if eq $.Values.cluster.edge.kind "ingress" }}
       enabled: true
       override_yaml:
         metadata:
@@ -25,10 +25,10 @@ spec:
         spec:
           tls:
           - hosts:
-            - {{ .Values.route.hostname }}.{{ .Values.cluster.name }}.{{ .Values.cluster.domain }}
+            - {{ .Values.fqdn }}
             secretName: kiali-cert
           rules:
-          - host: {{ .Values.route.hostname }}.{{ .Values.cluster.name }}.{{ .Values.cluster.domain }}
+          - host: {{ .Values.fqdn }}
             http:
               paths:
               - path: /
@@ -46,11 +46,14 @@ spec:
     replicas: 1
     service_type: "ClusterIP"
   external_services:
+    istio:
+      ingress_gateway_namespace: {{ .Values.cluster.edge.ns }}
+      root_namespace: "istio-system"
     prometheus:
       url: "http://prometheus.{{ .Values.prometheus.ns }}.svc.cluster.local"
     grafana:
       internal_url: "http://grafana-overrides.{{ .Values.grafana.ns }}.svc.cluster.local"
-      external_url: "https://{{ .Values.grafana.hostname }}.{{ .Values.cluster.name }}.{{ .Values.cluster.domain }}"
+      external_url: "https://{{ .Values.grafana.fqdn }}"
       auth:
         type: {{ .Values.grafana.auth.type }}
         {{- if .Values.grafana.auth.token }}
@@ -59,12 +62,9 @@ spec:
         username: {{ .Values.grafana.auth.username }}
         password: {{ .Values.grafana.auth.password }}
         {{- end}}
-    istio:
-      ingress_gateway_namespace: {{ .Values.edge.ns }}
-      root_namespace: "istio-system"
     tracing:
       enabled: true
-      external_url: https://{{ .Values.jaeger.hostname }}.{{ .Values.cluster.name }}.{{ .Values.cluster.domain }}
+      external_url: https://{{ .Values.jaeger.fqdn }}
       internal_url: http://jaeger-query.{{ .Values.jaeger.ns }}.svc.cluster.local:16685
       use_grpc: true
       provider: "jaeger"
