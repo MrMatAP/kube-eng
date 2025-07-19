@@ -20,23 +20,126 @@
       state: present
 
   - name: Install Istio
-    when: "cluster.mesh == 'istio'"
-    mrmat.kube_eng.istio:
-      profile: "{{ cluster.istio_profile | default('minimal') }}"
+    mrmat.kube_eng.mesh:
+      mesh: "{{ cluster.mesh.kind }}"
+      namespace: "{{ cluster.mesh.ns }}"
+      edge_kind: "{{ cluster.edge.kind }}"
+      tracing: "{{ stack.jaeger.enabled | bool }}"
       tool_kubectl: "{{ host_tool_kubectl }}"
       tool_istioctl: "{{ host_tool_istioctl }}"
       state: present
 
-  - name: Deploy the Gateway API CRD, if enabled
-    when: "stack.gateway_api.enabled | bool == true"
+  - name: Deploy the default Gateway API CRD, if enabled through edge.kind
+    when: "cluster.edge.kind == 'istio-gateway-api'"
     kubernetes.core.k8s:
       state: present
       apply: true
       src: "{{ dist_dir }}/preheat/gateway-api-crds.yaml"
 
   - name: Deploy the experimental Gateway API CRD, if enabled
-    when: "stack.gateway_api.experimental | bool == true"
+    when: "cluster.edge.kind == 'istio-gateway-api-experimental'"
     kubernetes.core.k8s:
       state: present
       apply: true
       src: "{{ dist_dir }}/preheat/experimental-gateway-api-crds.yaml"
+
+  - name: Deploy cluster PKI
+    block:
+    - name: Create and label the cert-manager namespace
+      ansible.builtin.import_role:
+        name: mrmat.kube_eng.create_namespace
+      vars:
+        name: "{{ cluster.pki.ns }}"
+        mesh: "{{ cluster.mesh.kind }}"
+    - name: Apply the cert-manager CRDs
+      kubernetes.core.k8s:
+        state: present
+        apply: true
+        src: "{{ dist_dir }}/preheat/cert-manager-crds.yaml"
+    - name: Create a secret from the local CA files
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: v1
+          kind: Secret
+          type: Opaque
+          metadata:
+            name: cluster-ca
+            namespace: "{{ cluster.pki.ns }}"
+          data:
+            tls.crt: "{{ lookup('ansible.builtin.file', '{{ pki_dir }}/ca.pem') | b64encode }}"
+            tls.key: "{{ lookup('ansible.builtin.file', '{{ pki_dir }}/ca.key') | b64encode }}"
+    - name: Declare the local CA as an issuer
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: cert-manager.io/v1
+          kind: ClusterIssuer
+          metadata:
+            name: ca-issuer
+            namespace: "{{ cluster.pki.ns }}"
+          spec:
+            ca:
+              secretName: cluster-ca
+    - name: Deploy the cert-manager Helm chart
+      kubernetes.core.helm:
+        name: cert-manager
+        create_namespace: false
+        release_namespace: "{{ cluster.pki.ns }}"
+        chart_ref: "{{ chart_cert_manager }}"
+        wait: true
+        values:
+          overrides:
+            namespace: "{{ cluster.pki.ns }}"
+            config:
+              enableGatewayAPI: "{{ cluster.edge.kind == 'istio-gateway-api' }}"
+            prometheus:
+              enabled: "{{ stack.prometheus.enabled | bool }}"
+
+  - name: Deploy Edge
+    block:
+    - name: Create and label the Edge namespace
+      ansible.builtin.import_role:
+        name: mrmat.kube_eng.create_namespace
+      vars:
+        name: "{{ cluster.edge.ns }}"
+        mesh: "{{ cluster.mesh.kind }}"
+    - name: Deploy the Edge Helm chart
+      kubernetes.core.helm:
+        name: edge
+        create_namespace: false
+        release_namespace: "{{ cluster.edge.ns }}"
+        chart_ref: "{{ chart_edge }}"
+        # This will time out if host-infra is not yet started, as it will wait for the LoadBalancer to be up
+        wait: false
+        values:
+          cluster:
+            name: "{{ cluster_name }}"
+            edge:
+              kind: "{{ cluster.edge.kind }}"
+              name: "{{ cluster.edge.name }}"
+              ns: "{{ cluster.edge.ns }}"
+              external_domain: "{{ cluster.edge.external_domain }}"
+              ingress:
+                repository: "{{ cluster.edge.ingress.repository }}"
+                tag: "{{ cluster.edge.ingress.tag }}"
+                fqdn: "edge.{{ cluster_name }}.{{ cluster.edge.external_domain }}"
+          stack:
+            prometheus:
+              enabled: "{{ stack.prometheus.enabled }}"
+              fqdn: "{{ stack.prometheus.hostname }}.{{ cluster_name }}.{{ cluster.edge.external_domain }}"
+            alloy:
+              enabled: "{{ stack.alloy.enabled }}"
+              fqdn: "{{ stack.alloy.hostname }}.{{ cluster_name }}.{{ cluster.edge.external_domain }}"
+            keycloak:
+              enabled: "{{ stack.keycloak.enabled }}"
+              fqdn: "{{ stack.keycloak.hostname }}.{{ cluster_name }}.{{ cluster.edge.external_domain }}"
+            grafana:
+              enabled: "{{ stack.grafana.enabled }}"
+              fqdn: "{{ stack.grafana.hostname }}.{{ cluster_name }}.{{ cluster.edge.external_domain }}"
+            jaeger:
+              enabled: "{{ stack.jaeger.enabled }}"
+              fqdn: "{{ stack.jaeger.hostname }}.{{ cluster_name }}.{{ cluster.edge.external_domain }}"
+            kiali:
+              enabled: "{{ stack.kiali.enabled }}"
+              fqdn: "{{ stack.kiali.hostname }}.{{ cluster_name }}.{{ cluster.edge.external_domain }}"

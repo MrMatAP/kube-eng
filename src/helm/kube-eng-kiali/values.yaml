@@ -2,20 +2,12 @@
 # Default values for Kube Eng :: Kiali
 
 cluster:
-  mesh: istio
-  gateway_api: true
-  name: cluster
-  domain: local
+  edge:
+    kind: ingress
+    name: edge-ingress
+    ns: edge
 
-edge:
-  ns: edge
-  name: edge-ingress
-  kind: istio
-
-route:
-  name: route-kiali
-  hostname: kiali
-  sectionName: kiali
+fqdn: jaeger.cluster.k8s
 
 prometheus:
   ns: prometheus
@@ -23,11 +15,11 @@ prometheus:
 
 jaeger:
   ns: jaeger
-  hostname: jaeger
+  fqdn: jaeger.cluster.k8s
 
 grafana:
   ns: grafana
-  hostname: grafana
+  fqdn: grafana.cluster.k8s
   auth:
     type: bearer
     token: null

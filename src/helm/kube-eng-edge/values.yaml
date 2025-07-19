@@ -2,38 +2,32 @@
 # Default values for Kube Eng :: Edge
 
 cluster:
-  mesh: "istio"
-  gateway_api: true
-  name: "cluster"
-  domain: "local"
+  name: cluster
+  edge:
+    kind: ingress
+    name: edge
+    external_domain: k8s
+    ingress:
+      repository: docker.io/traefik
+      tag: v3.4.4
+      fqdn: edge.cluster.k8s
 
-edge:
-  ns: edge
-  name: edge-ingress
-  kind: istio
-
-traefik:
-  repository: docker.io/traefik
-  tag: v3.4
-
-prometheus:
-  enabled: false
-  hostname: prometheus
-alloy:
-  enabled: false
-  hostname: alloy
-loki:
-  enabled: false
-  hostname: loki
-keycloak:
-  enabled: false
-  hostname: keycloak
-grafana:
-  enabled: false
-  hostname: grafana
-jaeger:
-  enabled: false
-  hostname: jaeger
-kiali:
-  enabled: false
-  hostname: kiali
+stack:
+  prometheus:
+    enabled: false
+    fqdn: prometheus.cluster.k8s
+  alloy:
+    enabled: false
+    fqdn: alloy.cluster.k8s
+  keycloak:
+    enabled: false
+    fqdn: keycloak.cluster.k8s
+  grafana:
+    enabled: false
+    fqdn: grafana.cluster.k8s
+  jaeger:
+    enabled: false
+    fqdn: jaeger.cluster.k8s
+  kiali:
+    enabled: false
+    fqdn: kiali.cluster.k8s

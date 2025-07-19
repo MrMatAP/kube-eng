@@ -8,8 +8,9 @@ argument_specs:
         description: Name of the namespace
         type: str
         required: true
-      istio_profile:
-        description: The Istio profile
+      mesh:
+        description: The mesh in use
         type: str
         required: false
-        default: ambient
+        choices: ['none', 'istio', 'istio-ambient']
+        default: istio

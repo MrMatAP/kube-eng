@@ -182,7 +182,7 @@ host-infra-stop: $(COLLECTION)
 #
 # Cluster installation
 
-cluster: $(COLLECTION)
+cluster: $(COLLECTION) $(CERT_MANAGER_CHART) $(EDGE_CHART)
 	$(helm) repo add jetstack https://charts.jetstack.io
 	$(ANSIBLE_PLAYBOOK_EXEC) mrmat.kube_eng.create_cluster
 

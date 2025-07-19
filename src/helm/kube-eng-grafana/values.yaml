@@ -2,21 +2,12 @@
 # Default values for Kube Eng :: Grafana
 
 cluster:
-  mesh: istio
-  gateway_api: true
-  name: cluster
-  domain: local
+  edge:
+    kind: ingress
+    name: edge-ingress
+    ns: edge
 
-edge:
-  ns: edge
-  name: edge-ingress
-  kind: istio
-  ingress_class: traefik
-
-route:
-  name: route-grafana
-  hostname: grafana
-  sectionName: grafana
+fqdn: grafana.cluster.k8s
 
 #
 # Dependency Chart overrides

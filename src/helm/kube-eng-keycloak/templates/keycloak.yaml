@@ -20,7 +20,7 @@ spec:
   transaction:
     xaEnabled: false
   hostname:
-    hostname: https://{{ .Values.route.hostname }}.{{ .Values.cluster.name }}.{{ .Values.cluster.domain }}
+    hostname: https://{{ .Values.fqdn }}
     backchannelDynamic: true
     strict: false
   http:

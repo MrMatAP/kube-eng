@@ -1,4 +1,4 @@
-{{- if eq $.Values.edge.kind "istio" }}
+{{- if eq $.Values.cluster.edge.kind "istio" }}
 ---
 apiVersion: networking.istio.io/v1
 kind: Gateway
@@ -17,7 +17,7 @@ spec:
       name: http
       protocol: HTTP
     hosts:
-    - {{ .Values.route.hostname }}.{{ .Values.cluster.name }}.{{ .Values.cluster.domain }}
+    - {{ .Values.fqdn }}
 ---
 apiVersion: networking.istio.io/v1
 kind: VirtualService
@@ -28,7 +28,7 @@ metadata:
     app.kubernetes.io/name: grafana
 spec:
   hosts:
-  - {{ .Values.route.hostname }}.{{ .Values.cluster.name }}.{{ .Values.cluster.domain }}
+  - {{ .Values.fqdn }}
   gateways:
   - grafana-gateway
   http:
