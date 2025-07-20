@@ -1,40 +1,21 @@
 {{- if eq $.Values.cluster.edge.kind "istio" }}
 ---
 apiVersion: networking.istio.io/v1
-kind: Gateway
-metadata:
-  name: keycloak-gateway
-  labels:
-    {{ include "common.labels" . | nindent 4 }}
-    app.kubernetes.io/name: keycloak
-spec:
-  # The selector matches the ingress gateway pod labels.
-  selector:
-    istio: ingressgateway
-  servers:
-  - port:
-      number: 80
-      name: http
-      protocol: HTTP
-    hosts:
-    - {{ .Values.fqdn }}
----
-apiVersion: networking.istio.io/v1
 kind: VirtualService
 metadata:
-  name: keycloak
+  name: keycloak-vsvc
   labels:
     {{ include "common.labels" . | nindent 4 }}
-    app.kubernetes.io/name: keycloak
+    app.kubernetes.io/name: keycloak-vsvc
 spec:
   hosts:
   - {{ .Values.fqdn }}
   gateways:
-  - keycloak-gateway
+  - {{ .Values.cluster.edge.ns }}/keycloak-gw
   http:
   - route:
     - destination:
-        host: keycloak-service
+        host: keycloak-service.{{ .Release.Namespace }}.svc.cluster.local
         port:
           number: {{ .Values.keycloak.port | int }}
         subset: main

@@ -1,40 +1,22 @@
 {{- if eq $.Values.cluster.edge.kind "istio" }}
 ---
 apiVersion: networking.istio.io/v1
-kind: Gateway
-metadata:
-  name: jaeger-gateway
-  labels:
-    {{ include "common.labels" . | nindent 4 }}
-    app.kubernetes.io/name: jaeger
-spec:
-  # The selector matches the ingress gateway pod labels.
-  selector:
-    istio: ingressgateway
-  servers:
-  - port:
-      number: 80
-      name: http
-      protocol: HTTP
-    hosts:
-    - {{ .Values.fqdn }}
----
-apiVersion: networking.istio.io/v1
 kind: VirtualService
 metadata:
-  name: jaeger
+  name: jaeger-vsvc
   labels:
     {{ include "common.labels" . | nindent 4 }}
-    app.kubernetes.io/name: jaeger
+    app.kubernetes.io/name: jaeger-vsvc
 spec:
   hosts:
   - {{ .Values.fqdn }}
   gateways:
-  - jaeger-gateway
+  - {{ .Values.cluster.edge.ns }}/jaeger-gw
+  - mesh
   http:
   - route:
     - destination:
-        host: jaeger-collector
+        host: jaeger-query.{{ .Release.Namespace }}.svc.cluster.local
         port:
           number: 16686
         subset: main
@@ -42,15 +24,15 @@ spec:
 apiVersion: networking.istio.io/v1
 kind: DestinationRule
 metadata:
-  name: jaeger
+  name: jaeger-dst
   labels:
     {{ include "common.labels" . | nindent 4 }}
-    app.kubernetes.io/name: jaeger
+    app.kubernetes.io/name: jaeger-dst
 spec:
   host: jaeger-query.{{ .Release.Namespace }}.svc.cluster.local
   subsets:
   - name: main
     labels:
-      app: jaeger
-      version: {{ .Chart.AppVersion }}
+      app.kubernetes.io/name: jaeger
+      app.kubernetes.io/instance: jaeger
 {{- end }}

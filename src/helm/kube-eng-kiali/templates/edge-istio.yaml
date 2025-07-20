@@ -1,55 +1,37 @@
 {{- if eq $.Values.cluster.edge.kind "istio" }}
 ---
 apiVersion: networking.istio.io/v1
-kind: Gateway
-metadata:
-  name: kiali-gateway
-  labels:
-    {{ include "common.labels" . | nindent 4 }}
-    app.kubernetes.io/name: kiali
-spec:
-  # The selector matches the ingress gateway pod labels.
-  selector:
-    istio: ingressgateway
-  servers:
-  - port:
-      number: 80
-      name: http
-      protocol: HTTP
-    hosts:
-    - {{ .Values.fqdn }}
----
-apiVersion: networking.istio.io/v1
 kind: VirtualService
 metadata:
-  name: kiali
+  name: kiali-vsvc
   labels:
     {{ include "common.labels" . | nindent 4 }}
-    app.kubernetes.io/name: kiali
+    app.kubernetes.io/name: kiali-vsvc
 spec:
   hosts:
   - {{ .Values.fqdn }}
   gateways:
-  - kiali-gateway
+  - {{ .Values.cluster.edge.ns }}/kiali-gw
+  - mesh
   http:
   - route:
     - destination:
         host: kiali.{{ .Release.Namespace }}.svc.cluster.local
         port:
           number: 20001
-        subset: v2
+        subset: main
 ---
 apiVersion: networking.istio.io/v1
 kind: DestinationRule
 metadata:
-  name: kiali
+  name: kiali-dst
   labels:
     {{ include "common.labels" . | nindent 4 }}
-    app.kubernetes.io/name: kiali
+    app.kubernetes.io/name: kiali-dst
 spec:
   host: kiali.{{ .Release.Namespace }}.svc.cluster.local
   subsets:
-  - name: v2
+  - name: main
     labels:
       app: kiali
       version: {{ .Chart.AppVersion }}

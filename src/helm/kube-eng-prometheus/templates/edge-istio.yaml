@@ -1,55 +1,37 @@
 {{- if eq .Values.cluster.edge.kind "istio" }}
 ---
 apiVersion: networking.istio.io/v1
-kind: Gateway
-metadata:
-  name: prometheus-gateway
-  labels:
-    {{ include "common.labels" . | nindent 4 }}
-    app.kubernetes.io/name: prometheus
-spec:
-  # The selector matches the ingress gateway pod labels.
-  selector:
-    istio: ingressgateway
-  servers:
-  - port:
-      number: 80
-      name: http
-      protocol: HTTP
-    hosts:
-    - {{ .Values.fqdn }}
----
-apiVersion: networking.istio.io/v1
 kind: VirtualService
 metadata:
-  name: prometheus
+  name: prometheus-vsvc
   labels:
     {{ include "common.labels" . | nindent 4 }}
-    app.kubernetes.io/name: prometheus
+    app.kubernetes.io/name: prometheus-vsvc
 spec:
   hosts:
   - {{ .Values.fqdn }}
   gateways:
-  - prometheus-gateway
+  - {{ .Values.cluster.edge.ns }}/prometheus-gw
+  - mesh
   http:
   - route:
     - destination:
         host: prometheus.{{ .Release.Namespace }}.svc.cluster.local
         port:
           number: 80
-        subset: v1
+        subset: main
 ---
 apiVersion: networking.istio.io/v1
 kind: DestinationRule
 metadata:
-  name: prometheus
+  name: prometheus-dst
   labels:
     {{ include "common.labels" . | nindent 4 }}
-    app.kubernetes.io/name: prometheus
+    app.kubernetes.io/name: prometheus-dst
 spec:
   host: prometheus.{{ .Release.Namespace }}.svc.cluster.local
   subsets:
-  - name: v1
+  - name: main
     labels:
       app: prometheus
       version: {{ .Chart.AppVersion }}
