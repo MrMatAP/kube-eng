@@ -44,9 +44,9 @@ overrides:
     auth.generic_oauth:
       enabled: true
       name: Keycloak-OAuth
-      auth_url: http://keycloak.covenant.local/realms/master/protocol/openid-connect/auth
-      token_url: http://kube-eng-keycloak-svc.kube-eng.svc.cluster.local/realms/master/protocol/openid-connect/token
-      api_url: http://kube-eng-keycloak-svc.kube-eng.svc.cluster.local/realms/master/protocol/openid-connect/userinfo
+      auth_url: https://keycloak.cluster.k8s/realms/master/protocol/openid-connect/auth
+      token_url: https://keycloak.cluster.k8s/realms/master/protocol/openid-connect/token
+      api_url: https://keycloak.cluster.k8s/realms/master/protocol/openid-connect/userinfo
       allow_sign_up: true
       scopes: openid email profile offline_access roles
       email_attribute_path: email
