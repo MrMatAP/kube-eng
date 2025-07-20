@@ -16,7 +16,6 @@ overrides:
   replicas: 1
   extraLabels:
     app: grafana
-    version: 8.8.2
   serviceAccount:
     create: true
     name: sa-grafana

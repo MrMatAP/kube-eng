@@ -1,40 +1,22 @@
 {{- if eq $.Values.cluster.edge.kind "istio" }}
 ---
 apiVersion: networking.istio.io/v1
-kind: Gateway
-metadata:
-  name: grafana-gateway
-  labels:
-    {{ include "common.labels" . | nindent 4 }}
-    app.kubernetes.io/name: grafana
-spec:
-  # The selector matches the ingress gateway pod labels.
-  selector:
-    istio: ingressgateway
-  servers:
-  - port:
-      number: 80
-      name: http
-      protocol: HTTP
-    hosts:
-    - {{ .Values.fqdn }}
----
-apiVersion: networking.istio.io/v1
 kind: VirtualService
 metadata:
-  name: grafana
+  name: grafana-vsvc
   labels:
     {{ include "common.labels" . | nindent 4 }}
-    app.kubernetes.io/name: grafana
+    app.kubernetes.io/name: grafana-vsvc
 spec:
   hosts:
   - {{ .Values.fqdn }}
   gateways:
-  - grafana-gateway
+  - {{ .Values.cluster.edge.ns }}/grafana-gw
+  - mesh
   http:
   - route:
     - destination:
-        host: grafana-overrides
+        host: grafana-overrides.{{ .Release.Namespace }}.svc.cluster.local
         port:
           number: 80
         subset: main
@@ -42,15 +24,14 @@ spec:
 apiVersion: networking.istio.io/v1
 kind: DestinationRule
 metadata:
-  name: grafana
+  name: grafana-dst
   labels:
     {{ include "common.labels" . | nindent 4 }}
-    app.kubernetes.io/name: grafana
+    app.kubernetes.io/name: grafana-dst
 spec:
   host: grafana-overrides.{{ .Release.Namespace }}.svc.cluster.local
   subsets:
   - name: main
     labels:
-      app: grafana
-      version: {{ .Chart.AppVersion }}
+      app.kubernetes.io/instance: grafana
 {{- end }}

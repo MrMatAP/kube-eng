@@ -82,8 +82,7 @@
         name: mrmat.kube_eng.create_namespace
       vars:
         name: "{{ stack.keycloak.ns }}"
-        # TODO: Keycloak does not play nice with Istio ambient. We do not know why yet.
-        mesh: "none"
+        mesh: "{{ cluster.mesh.kind }}"
     - name: Deploy the Keycloak Operator CRDs
       kubernetes.core.k8s:
         src: "{{ item }}"
