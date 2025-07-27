@@ -61,7 +61,7 @@
       directory: "{{ dist_dir }}/cloud-provider-mdns"
       user: "{{ user_id }}"
 
-  - name: Create a local PostgreSQL database
+  - name: Create a local PostgreSQL database container
     when: host.postgresql.enabled == true
     block:
     - name: Create a volume for PostgreSQL
@@ -80,7 +80,7 @@
           target: /var/lib/postgresql/data
         networks:
         - name: kind
-          aliases: "{{ host.postgresql.name }}"
+          aliases: "{{ host.postgresql.name }}.{{ cluster_name }}.{{ cluster.edge.external_domain }}"
         env:
           POSTGRES_PASSWORD: "{{ admin_password }}"
           PGDATA: /var/lib/postgresql/data

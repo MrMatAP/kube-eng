@@ -1,4 +1,4 @@
-{{- if eq $.Values.cluster.edge.kind "istio" }}
+{{- if eq .Values.cluster.edge.kind "istio" }}
 ---
 apiVersion: networking.istio.io/v1
 kind: VirtualService

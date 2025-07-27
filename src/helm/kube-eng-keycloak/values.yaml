@@ -16,6 +16,7 @@ keycloak:
   db_user: keycloak
   db_password: admin
   db_host: kube-eng-postgres-svc.kube-eng.svc.cluster.local
+  db_port: 5432
   db_database: keycloak
   port: 8080
   managementPort: 9000

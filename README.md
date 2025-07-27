@@ -70,6 +70,7 @@ $ docker pull localhost:5001/postgres:15
 * Kiali can't authenticate to Grafana
 * Kiali is unable to pull traces from Jaeger
 * We currently have no way to synchronise stack.kiali.version with the AppVersion in the Kiali Helm chart
-* Keycloak doesn't play nice with Istio ztunnel
 * cloud-provider-mdns still requires to be restarted too frequently when the cluster gets recreated. It is best to `make host-infra-stop` and `make host-infra-start`
 * make stack should wait for keycloak to fully start up before continuing
+* Istio Ambient mode (mesh.kind=istio-ambient, edge.kind=istio-gateway-api) does not play well with Keycloak
+* `make stack` often needs to be run twice, as keycloak takes a bit longer to come up. We don't wait properly

@@ -1,4 +1,4 @@
-{{- if eq $.Values.cluster.edge.kind "ingress" }}
+{{- if eq .Values.cluster.edge.kind "ingress" }}
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
