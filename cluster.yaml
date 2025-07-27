@@ -41,7 +41,7 @@ cluster:
     ns: cert-manager
     crd: https://github.com/cert-manager/cert-manager/releases/download/v1.17.1/cert-manager.crds.yaml
   edge:
-    kind: ingress
+    kind: istio-gateway-api
     name: edge-ingress
     ns: edge
     external_domain: k8s

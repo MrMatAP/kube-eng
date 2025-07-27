@@ -148,7 +148,7 @@
           keycloak:
             admin_password: "{{ admin_password }}"
             db_password: "{{ admin_password }}"
-            db_host: "{{ host.postgresql.name }}"
+            db_host: "{{ host.postgresql.name }}.{{ cluster_name }}.{{ cluster.edge.external_domain }}"
             db_port: "{{ host.postgresql.port }}"
 
   - name: Deploy Grafana
