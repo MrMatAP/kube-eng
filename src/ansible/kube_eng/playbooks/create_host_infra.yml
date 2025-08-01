@@ -61,6 +61,10 @@
       directory: "{{ dist_dir }}/cloud-provider-mdns"
       user: "{{ user_id }}"
 
+  - name: Create a docker network to host infrastructure
+    community.docker.docker_network:
+      name: kind
+
   - name: Create a local PostgreSQL database container
     when: host.postgresql.enabled == true
     block:
