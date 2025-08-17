@@ -63,8 +63,6 @@ $ docker pull localhost:5001/postgres:15
 
 ## Limitations
 
-* On ARM-based MacOS, there is a kernel panic when issuing a query to current BIND 9.20.7
-  * The reason for the kernel panic is the [use of private APIs within libuv](https://github.com/libuv/libuv/issues/4594). Mitigation for this is to revert [back and pin to libuv 1.48.0](https://delaat.net/setup/#mozTocId756945)
 * Ansible doesn't immediately trust the CA certificate we generate. The playbook currently ignores TLS validation when communicating with newly-spawned services
 * Kiali isn't integrated into Keycloak
 * Kiali can't authenticate to Grafana
