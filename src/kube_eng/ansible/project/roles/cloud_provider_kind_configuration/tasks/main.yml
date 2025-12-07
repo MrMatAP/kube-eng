@@ -1,0 +1,25 @@
+#SPDX-License-Identifier: MIT-0
+---
+- name: Create directories for cloud-provider-kind
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+  loop:
+  - "{{ cloud_provider_kind_dir }}"
+  - "{{ cloud_provider_kind_dir }}/bin"
+  - "{{ cloud_provider_kind_dir }}/logs"
+
+- name: Fetch cloud-provider-kind if necessary
+  ansible.builtin.unarchive:
+    src: "{{ cloud_provider_kind_url }}"
+    dest: "{{ cloud_provider_kind_dir }}/bin"
+    remote_src: yes
+    creates: "{{ cloud_provider_kind_dir }}/bin/cloud-provider-kind"
+    exclude:
+    - LICENSE
+    - README.md
+
+- name: Template the cloud-provider-kind configuration
+  ansible.builtin.template:
+    src: templates/org.mrmat.kubeeng.cloudproviderkind.plist.j2
+    dest: "{{ cloud_provider_kind_dir }}/org.mrmat.kubeeng.cloudproviderkind.plist"

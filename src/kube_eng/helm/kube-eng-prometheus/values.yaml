@@ -1,0 +1,46 @@
+#
+# Default values for Kube Eng :: Prometheus
+
+cluster:
+  edge:
+    kind: ingress
+    name: edge-ingress
+    ns: edge
+
+fqdn: prometheus.cluster.k8s
+
+#
+# Dependency Chart overrides
+
+overrides:
+  nameOverride: prometheus
+  commonMetaLabels:
+    app: prometheus
+    version: 26.0.1
+  serviceAccounts:
+    server:
+      create: true
+      name: sa-prometheus
+  server:
+    fullnameOverride: prometheus
+    releaseNamespace: false
+    extraFlags:
+    - web.enable-lifecycle
+    - web.enable-admin-api
+    ingress:
+      enabled: false
+    persistentVolume:
+      enabled: true
+      size: 3Gi
+    service:
+      enabled: true
+      type: ClusterIP
+  alertmanager:
+    enabled: false
+  kube-state-metrics:
+    enabled: true
+  prometheus-node-exporter:
+    fullnameOverride: prometheus-node-exporter
+    enabled: true
+  prometheus-pushgateway:
+    enabled: false

@@ -1,0 +1,30 @@
+#
+# Default values for Kube Eng :: Kiali
+
+cluster:
+  edge:
+    kind: ingress
+    name: edge-ingress
+    ns: edge
+
+fqdn: jaeger.cluster.k8s
+
+prometheus:
+  ns: prometheus
+  hostname: prometheus
+
+jaeger:
+  ns: jaeger
+  fqdn: jaeger.cluster.k8s
+
+grafana:
+  ns: grafana
+  fqdn: grafana.cluster.k8s
+  auth:
+    type: bearer
+    token: null
+    username: null
+    password: null
+
+# To authenticate to Grafana, create a service account, set type to 'bearer' and specify the token.
+# alternatively, set token to 'basic' and specify username and password

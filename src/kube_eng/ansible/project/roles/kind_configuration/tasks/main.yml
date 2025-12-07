@@ -1,0 +1,25 @@
+#SPDX-License-Identifier: MIT-0
+---
+# tasks file for create_cluster
+
+- name: Create a directory for the cluster configuration
+  ansible.builtin.file:
+    path: "{{ directory }}"
+    state: directory
+
+- name: Template the cluster configuration
+  ansible.builtin.template:
+    src: templates/config.yaml.j2
+    dest: "{{ directory }}/config.yaml"
+
+- name: Create directory overrides for specific upstreams
+  ansible.builtin.include_tasks: upstream.yml
+  loop_control:
+    loop_var: upstream
+  loop:
+  - _default
+  - k8s.gcr.io
+  - registry.k8s.io
+  - docker.io
+  - quay.io
+  - ghcr.io

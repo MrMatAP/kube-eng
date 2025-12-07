@@ -1,0 +1,11 @@
+apiVersion: v2
+name: kube-eng-alloy
+description: A Helm chart for Grafana Alloy
+type: application
+version: 0.0.0
+appVersion: "0.0.0"
+dependencies:
+- name: alloy
+  repository: https://grafana.github.io/helm-charts
+  version: 1.0.*
+  alias: overrides

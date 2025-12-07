@@ -1,0 +1,11 @@
+# Declare containerd upstream mirror for a specific upstream
+---
+- name: Create a directory for the upstream registry override
+  ansible.builtin.file:
+    path: "{{ directory }}/certs.d/{{ upstream }}"
+    state: directory
+
+- name: Template the upstream override configuration
+  ansible.builtin.template:
+    src: templates/upstream_hosts.toml.j2
+    dest: "{{ directory }}/certs.d/{{ upstream }}/hosts.toml"
