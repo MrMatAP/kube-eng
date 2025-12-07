@@ -1,0 +1,4 @@
+#SPDX-License-Identifier: MIT-0
+---
+control_plane_nodes: 1
+worker_nodes: 3

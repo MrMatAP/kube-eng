@@ -1,0 +1,138 @@
+
+
+
+KubeEngApp {
+
+    AppHeader {
+        color: $text-primary;
+        padding: 1 3;
+        height: auto;
+    }
+
+    AppBody {
+        padding: 1;
+
+        #tabs {
+            height: 60%;
+        }
+
+        #log {
+            height: 40%;
+            border-top: solid $primary;
+            background: $background;
+            margin: 1;
+       }
+    }
+
+    .bordered {
+        border: round purple;
+    }
+
+    .form {
+        layout: vertical;
+
+        .form-group {
+            layout: vertical;
+            border: round $primary;
+            background: $background;
+
+            .form-group {
+                border: round $secondary;
+                margin: 1;
+            }
+        }
+
+        .form-line {
+            layout: horizontal;
+            margin: 2;
+            align: left middle;
+
+            Label {
+                width: 1fr;
+                align: right middle;
+                padding-top: 1;
+            }
+
+            Input {
+                width: 5fr;
+            }
+
+            Checkbox {
+                width: 1fr;
+            }
+        }
+
+        .form-actions {
+            layout: horizontal;
+            margin: 2;
+            align: right middle;
+            border-top: solid $accent;
+        }
+
+    }
+
+    Screen {
+        background: $background;
+    }
+
+    Footer {
+        padding-left: 2
+    }
+
+}
+
+/*
+Screen {
+    layout: grid;
+    grid-size: 2 3;
+    grid-columns: 1fr 2fr;
+    grid-gutter: 1 2;
+}
+
+#host {
+}
+
+#cluster {
+}
+
+#stack {
+}
+
+#main {
+    row-span: 3;
+    height: 100%;
+}
+
+.box {
+    height: 100%;
+    border: round purple;
+}
+
+#main Markdown {
+    background: transparent;
+}
+
+#main Grid {
+    background: $boost;
+    padding: 1;
+    height: auto;
+    grid-size: 2;
+    grid-gutter: 0;
+    grid-columns: auto 1fr;
+    border: round purple;
+    &:focus-within {
+        border: tall $accent;
+    }
+}
+
+#main Grid Checkbox {
+    column-span: 2;
+}
+
+#main Label {
+    width: 100%;
+    padding: 1;
+    text-align: right;
+}
+
+*/

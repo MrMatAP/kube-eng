@@ -1,0 +1,12 @@
+apiVersion: v2
+name: kube-eng-cert-manager
+description: A Helm chart for Cert-Manager
+type: application
+version: 0.0.0
+# The upstream cert-manager version and dependency
+appVersion: "v1.17.1"
+dependencies:
+- name: cert-manager
+  version: v1.17.1
+  repository: https://charts.jetstack.io
+  alias: overrides

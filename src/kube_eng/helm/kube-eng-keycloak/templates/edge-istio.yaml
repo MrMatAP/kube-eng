@@ -1,0 +1,37 @@
+{{- if eq .Values.cluster.edge.kind "istio" }}
+---
+apiVersion: networking.istio.io/v1
+kind: VirtualService
+metadata:
+  name: keycloak-vsvc
+  labels:
+    {{ include "common.labels" . | nindent 4 }}
+    app.kubernetes.io/name: keycloak-vsvc
+spec:
+  hosts:
+  - {{ .Values.fqdn }}
+  gateways:
+  - {{ .Values.cluster.edge.ns }}/keycloak-gw
+  http:
+  - route:
+    - destination:
+        host: keycloak-service.{{ .Release.Namespace }}.svc.cluster.local
+        port:
+          number: {{ .Values.keycloak.port | int }}
+        subset: main
+---
+apiVersion: networking.istio.io/v1
+kind: DestinationRule
+metadata:
+  name: keycloak
+  labels:
+    {{ include "common.labels" . | nindent 4 }}
+    app.kubernetes.io/name: keycloak
+spec:
+  host: keycloak-service.{{ .Release.Namespace }}.svc.cluster.local
+  subsets:
+  - name: main
+    labels:
+      app: keycloak
+      version: {{ .Chart.AppVersion }}
+{{- end }}

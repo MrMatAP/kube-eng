@@ -1,6 +1,6 @@
 # kube-eng
 
-Create a local Kubernetes cluster suitable for local engineering.
+A local Kubernetes cluster suitable for local engineering.
 
 ## How to run this
 

@@ -1,0 +1,207 @@
+---
+- name: Apply the host infrastructure configuration
+  hosts: localhost
+  tasks:
+  - name: Create public key infrastructure
+    block:
+    - name: Create a directory for PKI
+      ansible.builtin.file:
+        path: "{{ pki_path }}"
+        state: directory
+    - name: Create a private key for the local CA
+      community.crypto.openssl_privatekey:
+        path: "{{ pki_path }}/ca.key"
+        type: ECC
+        curve: secp256r1
+        return_content: true
+        state: present
+    - name: Generate a CSR for the local CA
+      community.crypto.openssl_csr:
+        path: "{{ pki_path }}/ca.csr"
+        privatekey_path: "{{ pki_path }}/ca.key"
+        common_name: "{{ cluster.name }} Local CA"
+        key_usage_critical: true
+        key_usage:
+        - keyCertSign
+        - cRLSign
+        basic_constraints_critical: true
+        basic_constraints:
+        - "CA:TRUE"
+        - "pathlen:1"
+    - name: Create a self-signed local CA
+      community.crypto.x509_certificate:
+        path: "{{ pki_path }}/ca.pem"
+        privatekey_path: "{{ pki_path }}/ca.key"
+        csr_path: "{{ pki_path }}/ca.csr"
+        provider: selfsigned
+        return_content: true
+
+  - name: Template the BIND resolver configuration
+    ansible.builtin.import_role:
+      name: mrmat.kube_eng.bind_configuration
+    vars:
+      bind_executable: "{{ host.tool.bind.path }}"
+      bind_dir: "{{ bind_path }}"
+      forwarders: "{{ host.tool.bind.forwarders }}"
+      domain: "{{ cluster.name }}.k8s"
+      bind_key: "{{ admin_password }}"
+
+  - name: Template the cloud-provider-kind configuration
+    ansible.builtin.import_role:
+      name: mrmat.kube_eng.cloud_provider_kind_configuration
+    vars:
+      cloud_provider_kind_url: "{{ host.tool.cloud_provider_kind.url }}"
+      cloud_provider_kind_dir: "{{ cloud_provider_kind_path }}"
+
+  - name: Template the cloud-provider-mdns configuration
+    ansible.builtin.import_role:
+      name: mrmat.kube_eng.cloud_provider_mdns_configuration
+    vars:
+      tool_cloud_provider_mdns: "{{ host.tool.cloud_provider_mdns.path }}"
+      directory: "{{ cloud_provider_mdns_path }}"
+      user: "{{ user_id }}"
+
+  - name: Create a docker network to host infrastructure
+    community.docker.docker_network:
+      name: kind
+
+  - name: Create an air gapped registry
+    when: host.registry.enabled == true
+    block:
+    - name: Configure the air gapped registry
+      ansible.builtin.import_role:
+        name: mrmat.kube_eng.registry_configuration
+      vars:
+        directory: "{{ registry_path }}"
+    - name: Create a private key for the air gapped registry
+      community.crypto.openssl_privatekey:
+        path: "{{ registry_path }}/registry.key"
+        type: ECC
+        curve: secp256r1
+        state: present
+    - name: Generate a CSR for the air gapped registry
+      community.crypto.openssl_csr:
+        path: "{{ registry_path }}/registry.csr"
+        privatekey_path: "{{ registry_path }}/registry.key"
+        common_name: "{{ cluster.name }} Registry"
+        subject_alt_name:
+        - "DNS:{{ host.registry.name }}"
+        - "DNS:localhost"
+        basic_constraints_critical: true
+        basic_constraints:
+        - "CA:FALSE"
+    - name: Create a self-signed local CA
+      community.crypto.x509_certificate:
+        path: "{{ registry_path }}/registry.pem"
+        csr_path: "{{ registry_path }}/registry.csr"
+        ownca_path: "{{ pki_path }}/ca.pem"
+        ownca_privatekey_path: "{{ pki_path }}/ca.key"
+        ownca_not_after: "+825d"
+        provider: ownca
+    - name: Create a volume for the air gapped registry
+      community.docker.docker_volume:
+        name: "{{ host.registry.volume_name }}"
+        state: present
+    - name: Create the air gapped OCI registry container
+      community.docker.docker_container:
+        name: "{{ host.registry.name }}"
+        image: "{{ host.registry.image }}"
+        restart: true
+        mounts:
+        - source: "{{ host.registry.volume_name }}"
+          target: /data
+        - source: "{{ registry_path }}/config.json"
+          target: /etc/zot/config.json
+          read_only: true
+          type: bind
+        - source: "{{ registry_path }}/registry.key"
+          target: /etc/zot/registry.key
+          read_only: true
+          type: bind
+        - source: "{{ registry_path }}/registry.pem"
+          target: /etc/zot/registry.pem
+          read_only: true
+          type: bind
+        ports:
+        - "127.0.0.1:{{ host.registry.port | int }}:5000"
+        networks:
+        - name: kind
+          aliases: "{{ host.registry.name }}"
+        restart_policy: always
+        state: started
+
+  - name: Create a local PostgreSQL database container
+    when: host.postgresql.enabled == true
+    block:
+    - name: Create a volume for PostgreSQL
+      community.docker.docker_volume:
+        name: "{{ host.postgresql.volume_name }}"
+        state: present
+    - name: Create a PostgreSQL container
+      community.docker.docker_container:
+        name: "{{ host.postgresql.name }}"
+        image: "{{ host.postgresql.image }}"
+        restart: true
+        ports:
+        - "127.0.0.1:{{ host.postgresql.port | int }}:5432"
+        mounts:
+        - source: "{{ host.postgresql.volume_name }}"
+          target: /var/lib/postgresql/data
+        networks:
+        - name: kind
+          aliases: "{{ host.postgresql.name }}.{{ cluster.name }}.{{ cluster.edge.external_domain }}"
+        env:
+          POSTGRES_PASSWORD: "{{ admin_password }}"
+          PGDATA: /var/lib/postgresql/data
+        restart_policy: always
+        state: healthy
+
+  - name: Create a local MinIO server, if enabled
+    when: host.minio.enabled == true
+    block:
+    - name: Create a volume for Minio
+      community.docker.docker_volume:
+        name: "{{ host.minio.volume_name }}"
+        state: present
+    - name: Create a MinIO container
+      community.docker.docker_container:
+        name: "{{ host.minio.name }}"
+        image: "{{ host.minio.image }}"
+        restart: true
+        ports:
+        - "127.0.0.1:{{ host.minio.port | int }}:9000"
+        - "127.0.0.1:{{ host.minio.console_port | int }}:9001"
+        mounts:
+        - source: "{{ host.minio.volume_name }}"
+          target: /data
+        networks:
+        - name: kind
+          aliases: "{{ host.minio.name }}"
+        env:
+          MINIO_ROOT_USER: admin
+          MINIO_ROOT_PASSWORD: "{{ admin_password }}"
+        command: "server /data --console-address ':9001'"
+        restart_policy: always
+        state: healthy
+
+  - name: Preheat k8s yaml files for later
+    block:
+    - name: Create a directory for preheated files
+      ansible.builtin.file:
+        path: "{{ preheat_path }}"
+        state: directory
+    - name: Download the CRD for cert-manager PKI
+      ansible.builtin.get_url:
+        url: "{{ cluster.pki.crd }}"
+        dest: "{{ preheat_path }}/cert-manager-crds.yaml"
+    - name: Download the Gateway-API CRDs
+      ansible.builtin.get_url:
+        url: "{{ cluster.edge.istio_gateway_api_crd }}"
+        dest: "{{ preheat_path }}/gateway-api-crds.yaml"
+    - name: Download the KeyCloak Operator CRDs
+      ansible.builtin.get_url:
+        url: "https://raw.githubusercontent.com/keycloak/keycloak-k8s-resources/{{ stack.keycloak.operator_version }}/kubernetes/{{ item }}"
+        dest: "{{ preheat_path }}/{{ item }}"
+      loop:
+      - keycloaks.k8s.keycloak.org-v1.yml
+      - keycloakrealmimports.k8s.keycloak.org-v1.yml

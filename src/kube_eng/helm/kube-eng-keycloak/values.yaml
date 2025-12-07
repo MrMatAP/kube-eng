@@ -1,0 +1,24 @@
+#
+# Default values for Kube Eng :: Keycloak
+
+cluster:
+  edge:
+    kind: ingress
+    name: edge-ingress
+    ns: edge
+
+fqdn: prometheus.cluster.k8s
+
+
+keycloak:
+  instances: 1
+  db: postgres
+  db_user: keycloak
+  db_password: admin
+  db_host: kube-eng-postgres-svc.kube-eng.svc.cluster.local
+  db_port: 5432
+  db_database: keycloak
+  port: 8080
+  managementPort: 9000
+  admin_user: admin
+  admin_password: admin

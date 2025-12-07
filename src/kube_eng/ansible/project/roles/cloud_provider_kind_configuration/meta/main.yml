@@ -1,0 +1,9 @@
+#SPDX-License-Identifier: MIT-0
+galaxy_info:
+  author: MrMatAP
+  description: Template the cloud-provider-kind configuration
+  company: The MrMat Organisation
+  license: MIT
+  min_ansible_version: 2.1
+  galaxy_tags: ['kube-eng']
+dependencies: []

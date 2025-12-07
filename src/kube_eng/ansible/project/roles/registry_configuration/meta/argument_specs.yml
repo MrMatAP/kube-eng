@@ -1,0 +1,10 @@
+# Argument requirements. See https://docs.ansible.com/ansible/latest/dev_guide/developing_program_flow_modules.html#argument-spec
+---
+argument_specs:
+  main:
+    short_description: Template the air gapped registry configuration
+    options:
+      directory:
+        description: Path to the directory to hold air gapped registry configuration
+        type: str
+        required: true
