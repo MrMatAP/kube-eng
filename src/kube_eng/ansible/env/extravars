@@ -1,1 +1,0 @@
-{"dist_dir": "/Users/imfeldma/projects/kube-eng/src/kube_eng/var/cluster", "pki_dir": "/Users/imfeldma/projects/kube-eng/src/kube_eng/var/cluster/pki", "tmp_dir": "/Users/imfeldma/projects/kube-eng/src/kube_eng/var/cluster/tmp", "admin_password": "RYhtCW3XCMcHRDm7oGeGSw", "user_id": "imfeldma", "cluster_name": "covenant.local", "host_tool_kind": "/opt/homebrew/bin/kind"}

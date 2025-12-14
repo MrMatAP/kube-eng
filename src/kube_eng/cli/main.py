@@ -6,7 +6,7 @@ import asyncio
 import rich.status
 
 from kube_eng import __version__, __default_config_path__
-from kube_eng.config import Config
+from kube_eng.config import RootConfig
 from kube_eng.common import AnsibleEvent, AnsibleExecution, AnsibleStatusEnum
 
 console = rich.console.Console()
@@ -44,7 +44,7 @@ async def main() -> int:
         apply_cluster_parser = subparsers.add_parser('apply-cluster', help='Apply the cluster configuration')
         apply_stack_parser = subparsers.add_parser('apply-stack', help='Apply the stack configuration')
         args = parser.parse_args()
-        config = Config.load(config_path=args.config_path)
+        config = RootConfig.load(config_path=args.config_path)
 
         #
         # Execute the playbook
@@ -54,7 +54,10 @@ async def main() -> int:
             return 1
         ex = AnsibleExecution(config, log_ansible_event)
         ex.execute(playbook=cmd_to_playbook[args.command])
+        pass
     except KeyboardInterrupt:
+        pass
+    except Exception as e:
         pass
     return 0
 

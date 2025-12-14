@@ -1,0 +1,5 @@
+# Kube-Eng :: Keycloak installed
+
+Admin user:     {{ .Values.keycloak.admin_user }}
+Admin Password: {{ .Values.keycloak.admin_password }}
+URL:            https://{{ .Values.fqdn }}

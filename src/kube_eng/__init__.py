@@ -8,4 +8,5 @@ except importlib.metadata.PackageNotFoundError:
     __version__ = '0.0.0.dev0'
 
 __default_config_path__ = pathlib.Path.home() / '.kube-eng'
-__ansible_project_dir__ = pathlib.Path(__file__).parent / 'ansible'
+__ansible_path__ = pathlib.Path(__file__).parent / 'ansible'
+__helm_chart_path__ = pathlib.Path(__file__).parent / 'helm'
