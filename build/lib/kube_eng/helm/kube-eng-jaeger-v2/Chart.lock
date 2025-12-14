@@ -1,0 +1,6 @@
+dependencies:
+- name: jaeger
+  repository: https://charts.bitnami.com/bitnami
+  version: 5.1.14
+digest: sha256:f047167afcde8b5dde674a8a0e24597642f995da27c2bb282a74fc4bf12a7e64
+generated: "2025-04-21T16:25:32.873654+02:00"

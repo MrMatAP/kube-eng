@@ -2,12 +2,13 @@ import dataclasses
 import enum
 import typing
 import collections.abc
+import uuid
 
 import ansible_runner
 import rich.emoji
 
-from kube_eng import __ansible_project_dir__
-from kube_eng.config import Config
+from kube_eng import __ansible_path__
+from kube_eng.config import RootConfig
 
 
 class AnsibleStatusEnum(enum.StrEnum):
@@ -25,6 +26,7 @@ class AnsibleEvent:
     counter: int
     event: str
     task: str = dataclasses.field(default='Unknown')
+    msg: str = dataclasses.field(default='')
     changed: bool = dataclasses.field(default=False)
     warnings: list[str] = dataclasses.field(default_factory=list)
     status: AnsibleStatusEnum = dataclasses.field(default=AnsibleStatusEnum.empty)
@@ -32,24 +34,31 @@ class AnsibleEvent:
 
 class AnsibleExecution:
 
-    def __init__(self, config: Config, ui_event_callback: collections.abc.Callable[[AnsibleEvent], None]):
+    def __init__(self, config: RootConfig, ui_event_callback: collections.abc.Callable[[AnsibleEvent], None]):
         self._config = config
         self._ui_event_callback = ui_event_callback
 
     def execute(self, playbook: str):
-        self._config.artifacts_path.mkdir(parents=True, exist_ok=True)
-        t, r = ansible_runner.run_async(
-            private_data_dir=__ansible_project_dir__,
-            artifact_dir=self._config.artifacts_path,
-            playbook=playbook,
-            extravars=self._config.model_dump(mode="json"),
-            host_pattern='localhost',
-            event_handler=self.ansible_event_handler,
-            finished_callback=self.ansible_finished_callback,
-            status_handler=self.ansible_status_handler,
-            artifacts_handler=self.ansible_artifacts_handler,
-            quiet=True
-        )
+        try:
+            self._config.ansible_artifacts_path.mkdir(parents=True, exist_ok=True)
+            t, r = ansible_runner.run_async(
+                ident=f'{playbook}-{uuid.uuid4()}',
+                private_data_dir=__ansible_path__,
+                playbook=playbook,
+                extravars=self._config.model_dump(mode="json"),
+                suppress_env_files=True,
+                artifact_dir=self._config.ansible_artifacts_path,
+                rotate_artifacts=5,
+                inventory=str(__ansible_path__ / 'inventory' / 'inventory.yml'),
+                host_pattern='localhost',
+                quiet=True,
+                event_handler=self.ansible_event_handler,
+                cancel_callback=self.ansible_cancel_callback,
+                finished_callback=self.ansible_finished_callback,
+                status_handler=self.ansible_status_handler,
+                artifacts_handler=self.ansible_artifacts_handler)
+        except Exception as e:
+            print(e)
 
     def ansible_event_handler(self, status: typing.Dict) -> bool:
         ev = AnsibleEvent(uuid=status.get('uuid', 'Unknown'),
@@ -70,10 +79,11 @@ class AnsibleExecution:
                 # We do not capture this event
                 return True
             case 'runner_on_failed':
-                # Update the original task event to have failed first
                 ev.uuid = event_data.get('task_uuid', ev.uuid)
                 ev.task = event_data.get('task', 'Unknown')
+                ev.msg = event_data.get('res', {}).get('msg', 'Unknown')
                 ev.status = AnsibleStatusEnum.failed
+                ev.changed = status.get('event_data', {}).get('changed', False)
                 self._ui_event_callback(ev)
 
                 # Now create a separate event for the failed task
@@ -96,6 +106,9 @@ class AnsibleExecution:
                 ev.task = event_data.get('name', 'Unknown')
         self._ui_event_callback(ev)
         return True
+
+    def ansible_cancel_callback(self) -> bool:
+        return False
 
     def ansible_finished_callback(self, runner: ansible_runner.Runner) -> None:
         pass

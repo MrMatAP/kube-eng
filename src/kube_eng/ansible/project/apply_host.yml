@@ -36,29 +36,29 @@
         provider: selfsigned
         return_content: true
 
-  - name: Template the BIND resolver configuration
+  - name: Template the BIND configuration
     ansible.builtin.import_role:
-      name: mrmat.kube_eng.bind_configuration
+      name: bind_configuration
     vars:
       bind_executable: "{{ host.tool.bind.path }}"
-      bind_dir: "{{ bind_path }}"
+      bind_config_path: "{{ host.tool.bind.config_path }}"
       forwarders: "{{ host.tool.bind.forwarders }}"
-      domain: "{{ cluster.name }}.k8s"
+      cluster_domain: "{{ cluster.name }}.k8s"
       bind_key: "{{ admin_password }}"
 
   - name: Template the cloud-provider-kind configuration
     ansible.builtin.import_role:
-      name: mrmat.kube_eng.cloud_provider_kind_configuration
+      name: cloud_provider_kind_configuration
     vars:
       cloud_provider_kind_url: "{{ host.tool.cloud_provider_kind.url }}"
-      cloud_provider_kind_dir: "{{ cloud_provider_kind_path }}"
+      cloud_provider_kind_dir: "{{ host.tool.cloud_provider_kind.config_path }}"
 
   - name: Template the cloud-provider-mdns configuration
     ansible.builtin.import_role:
-      name: mrmat.kube_eng.cloud_provider_mdns_configuration
+      name: cloud_provider_mdns_configuration
     vars:
       tool_cloud_provider_mdns: "{{ host.tool.cloud_provider_mdns.path }}"
-      directory: "{{ cloud_provider_mdns_path }}"
+      directory: "{{ host.tool.cloud_provider_mdns.config_path }}"
       user: "{{ user_id }}"
 
   - name: Create a docker network to host infrastructure
@@ -70,7 +70,7 @@
     block:
     - name: Configure the air gapped registry
       ansible.builtin.import_role:
-        name: mrmat.kube_eng.registry_configuration
+        name: registry_configuration
       vars:
         directory: "{{ registry_path }}"
     - name: Create a private key for the air gapped registry

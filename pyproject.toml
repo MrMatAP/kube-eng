@@ -21,9 +21,9 @@ maintainers = [
 ]
 classifiers = [
     "Development Status :: 3 - Alpha",
-    "Programming Language :: Python :: 3.13"
+    "Programming Language :: Python :: 3.14"
 ]
-requires-python = ">=3.13"
+requires-python = ">=3.14"
 dynamic = ["version"]
 dependencies = [
     "ansible==13.1.0",
@@ -42,6 +42,7 @@ dev = [
     "wheel==0.45.1",
     "ruff>=0.14.1",
     "pyrefly>=0.45.2",
+    "pytest-cov>=7.0.0",
 ]
 
 [tool.setuptools.dynamic]
@@ -74,7 +75,7 @@ asyncio_default_fixture_loop_scope='session'
 [tool.ruff]
 line-length = 88
 indent-width = 4
-target-version = "py313"
+target-version = "py314"
 
 [tool.ruff.format]
 quote-style = "single"

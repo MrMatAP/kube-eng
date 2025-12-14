@@ -4,18 +4,18 @@
   tasks:
   - name: Template the cluster configuration
     ansible.builtin.import_role:
-      name: mrmat.kube_eng.kind_configuration
+      name: kind_configuration
     vars:
       control_plane_nodes: "{{ cluster.control_plane_nodes | int }}"
       worker_nodes: "{{ cluster.worker_nodes | int }}"
-      directory: "{{ kind_path }}"
+      directory: "{{ host.tool.kind.config_path }}"
       ca_file_path: "{{ pki_path }}/ca.pem"
       airgap_registry_name: "{{ host.registry.name }}"
 
   - name: Create the cluster
     kind_cluster:
-      name: "{{ cluster_name }}"
-      config_file: "{{ kind_path }}/config.yaml"
+      name: "{{ cluster.name }}"
+      config_file: "{{ host.tool.kind.config_path }}/config.yaml"
       tool_kind: "{{ host.tool.kind.path }}"
       state: present
 
@@ -47,7 +47,7 @@
     block:
     - name: Create and label the cert-manager namespace
       ansible.builtin.import_role:
-        name: mrmat.kube_eng.create_namespace
+        name: create_namespace
       vars:
         name: "{{ cluster.pki.ns }}"
         mesh: "{{ cluster.mesh.kind }}"
@@ -86,7 +86,7 @@
         name: cert-manager
         create_namespace: false
         release_namespace: "{{ cluster.pki.ns }}"
-        chart_ref: "{{ chart_cert_manager }}"
+        chart_ref: "{{ cluster.pki.chart_ref }}"
         wait: true
         values:
           overrides:
@@ -100,7 +100,7 @@
     block:
     - name: Create and label the Edge namespace
       ansible.builtin.import_role:
-        name: mrmat.kube_eng.create_namespace
+        name: create_namespace
       vars:
         name: "{{ cluster.edge.ns }}"
         mesh: "{{ cluster.mesh.kind }}"
@@ -109,37 +109,37 @@
         name: edge
         create_namespace: false
         release_namespace: "{{ cluster.edge.ns }}"
-        chart_ref: "{{ chart_edge }}"
+        chart_ref: "{{ cluster.edge.chart_ref }}"
         # This will time out if host-infra is not yet started, as it will wait for the LoadBalancer to be up
         wait: false
         values:
           cluster:
-            name: "{{ cluster_name }}"
+            name: "{{ cluster.name }}"
             edge:
               kind: "{{ cluster.edge.kind }}"
               name: "{{ cluster.edge.name }}"
               ns: "{{ cluster.edge.ns }}"
               external_domain: "{{ cluster.edge.external_domain }}"
               ingress:
-                repository: "{{ cluster.edge.ingress.repository }}"
-                tag: "{{ cluster.edge.ingress.tag }}"
+                repository: "{{ cluster.edge.ingress_repository }}"
+                tag: "{{ cluster.edge.ingress_tag }}"
                 fqdn: "edge.{{ cluster.name }}.{{ cluster.edge.external_domain }}"
           stack:
             prometheus:
               enabled: "{{ stack.prometheus.enabled }}"
-              fqdn: "{{ stack.prometheus.hostname }}.{{ cluster_name }}.{{ cluster.edge.external_domain }}"
+              fqdn: "{{ stack.prometheus.hostname }}.{{ cluster.name }}.{{ cluster.edge.external_domain }}"
             alloy:
               enabled: "{{ stack.alloy.enabled }}"
-              fqdn: "{{ stack.alloy.hostname }}.{{ cluster_name }}.{{ cluster.edge.external_domain }}"
+              fqdn: "{{ stack.alloy.hostname }}.{{ cluster.name }}.{{ cluster.edge.external_domain }}"
             keycloak:
               enabled: "{{ stack.keycloak.enabled }}"
-              fqdn: "{{ stack.keycloak.hostname }}.{{ cluster_name }}.{{ cluster.edge.external_domain }}"
+              fqdn: "{{ stack.keycloak.hostname }}.{{ cluster.name }}.{{ cluster.edge.external_domain }}"
             grafana:
               enabled: "{{ stack.grafana.enabled }}"
-              fqdn: "{{ stack.grafana.hostname }}.{{ cluster_name }}.{{ cluster.edge.external_domain }}"
+              fqdn: "{{ stack.grafana.hostname }}.{{ cluster.name }}.{{ cluster.edge.external_domain }}"
             jaeger:
               enabled: "{{ stack.jaeger.enabled }}"
-              fqdn: "{{ stack.jaeger.hostname }}.{{ cluster_name }}.{{ cluster.edge.external_domain }}"
+              fqdn: "{{ stack.jaeger.hostname }}.{{ cluster.name }}.{{ cluster.edge.external_domain }}"
             kiali:
               enabled: "{{ stack.kiali.enabled }}"
-              fqdn: "{{ stack.kiali.hostname }}.{{ cluster_name }}.{{ cluster.edge.external_domain }}"
+              fqdn: "{{ stack.kiali.hostname }}.{{ cluster.name }}.{{ cluster.edge.external_domain }}"
