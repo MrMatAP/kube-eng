@@ -1,20 +1,12 @@
 # Default values for Kube Eng :: Loki
 
 cluster:
-  control_plane_nodes: 1
-  worker_nodes: 3
-  mesh: "istio"
-  istio_profile: "istio-experimental"
-  gateway_api: true
-  edge_ns: edge
-  edge: edge-ingress
-  name: "cluster"
-  domain: "local"
+  edge:
+    kind: ingress
+    name: edge-ingress
+    ns: edge
 
-route:
-  name: route-loki
-  hostname: loki
-  sectionName: loki
+fqdn: loki.cluster.k8s
 
 overrides:
   fullnameOverride: loki

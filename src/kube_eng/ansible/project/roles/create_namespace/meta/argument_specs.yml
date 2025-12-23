@@ -4,7 +4,7 @@ argument_specs:
   main:
     short_description: Create a namespace
     options:
-      name:
+      ns:
         description: Name of the namespace
         type: str
         required: true

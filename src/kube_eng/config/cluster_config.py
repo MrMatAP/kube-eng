@@ -1,4 +1,5 @@
 import socket
+from typing import Any
 
 from pydantic import Field
 
@@ -38,6 +39,12 @@ class ClusterConfig(RootConfigAware):
     control_plane_nodes: int = Field(default=1)
     worker_nodes: int = Field(default=3)
 
-    mesh: ClusterMeshConfig = Field(default_factory=ClusterMeshConfig)
     pki: ClusterPKIConfig = Field(default_factory=ClusterPKIConfig)
+    mesh: ClusterMeshConfig = Field(default_factory=ClusterMeshConfig)
     edge: ClusterEdgeConfig = Field(default_factory=ClusterEdgeConfig)
+
+    def model_post_init(self, context: Any, /) -> None:
+        super().model_post_init(context)
+        # We want to have an unqualified hostname
+        if self.name == socket.gethostname() and self.name.endswith(".local"):
+            self.name.replace(".local", "")

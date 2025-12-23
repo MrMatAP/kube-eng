@@ -29,8 +29,9 @@ class KubeEngApp(App[None]):
     def on_mount(self) -> None:
         self.theme = 'tokyo-night'
 
-    def on_config_tab_configured(self, message: ConfigTab.Configured) -> None:
-        ex = AnsibleExecution(self._config, self.tui_ansible_callback).execute(playbook='apply_host.yml')
+    async def on_config_tab_configured(self, message: ConfigTab.Configured) -> None:
+        ex = AnsibleExecution(self._config, self.tui_ansible_callback)
+        await ex.execute(playbook='host_apply.yml')
 
     def tui_ansible_callback(self, ev: AnsibleEvent):
         self._kelog.add_event(ev)

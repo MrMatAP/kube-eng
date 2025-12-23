@@ -49,7 +49,7 @@
       ansible.builtin.import_role:
         name: create_namespace
       vars:
-        name: "{{ cluster.pki.ns }}"
+        ns: "{{ cluster.pki.ns }}"
         mesh: "{{ cluster.mesh.kind }}"
     - name: Apply the cert-manager CRDs
       kubernetes.core.k8s:
@@ -87,6 +87,7 @@
         create_namespace: false
         release_namespace: "{{ cluster.pki.ns }}"
         chart_ref: "{{ cluster.pki.chart_ref }}"
+        binary_path: "{{ host.tool.helm.path }}"
         wait: true
         values:
           overrides:
@@ -102,7 +103,7 @@
       ansible.builtin.import_role:
         name: create_namespace
       vars:
-        name: "{{ cluster.edge.ns }}"
+        ns: "{{ cluster.edge.ns }}"
         mesh: "{{ cluster.mesh.kind }}"
     - name: Deploy the Edge Helm chart
       kubernetes.core.helm:
@@ -110,6 +111,7 @@
         create_namespace: false
         release_namespace: "{{ cluster.edge.ns }}"
         chart_ref: "{{ cluster.edge.chart_ref }}"
+        binary_path: "{{ host.tool.helm.path }}"
         # This will time out if host-infra is not yet started, as it will wait for the LoadBalancer to be up
         wait: false
         values:
