@@ -6,16 +6,11 @@ import asyncio
 import rich.status
 
 from kube_eng import __version__, __default_config_path__
+from kube_eng.common.ansible_execution import cmd_to_playbook
 from kube_eng.config import RootConfig
-from kube_eng.common import AnsibleEvent, AnsibleExecution, AnsibleStatusEnum
+from kube_eng.common import AnsibleEvent, AnsibleExecution
 
 console = rich.console.Console()
-
-cmd_to_playbook = {
-    'apply-host': 'apply_host.yml',
-    'apply-cluster': 'apply_cluster.yml',
-    'apply-stack': 'apply_stack.yml',
-}
 
 def log_ansible_event(ev: AnsibleEvent) -> None:
     """
@@ -40,11 +35,13 @@ async def main() -> int:
             help=f'Path to the config file, defaults to {__default_config_path__}',
         )
         subparsers = parser.add_subparsers(dest='command', required=True, help='Sub-commands')
-        apply_host_parser = subparsers.add_parser('apply-host', help='Apply the host configuration')
-        apply_cluster_parser = subparsers.add_parser('apply-cluster', help='Apply the cluster configuration')
-        apply_stack_parser = subparsers.add_parser('apply-stack', help='Apply the stack configuration')
+        apply_host_parser = subparsers.add_parser('host-apply', help='Apply the host configuration')
+        apply_cluster_parser = subparsers.add_parser('cluster-apply', help='Apply the cluster configuration')
+        destroy_cluster_parser = subparsers.add_parser('cluster-destroy', help='Destroy the cluster')
+        apply_stack_parser = subparsers.add_parser('stack-apply', help='Apply the stack configuration')
         args = parser.parse_args()
         config = RootConfig.load(config_path=args.config_path)
+        config.save()
 
         #
         # Execute the playbook
@@ -53,7 +50,7 @@ async def main() -> int:
             parser.print_help()
             return 1
         ex = AnsibleExecution(config, log_ansible_event)
-        ex.execute(playbook=cmd_to_playbook[args.command])
+        await ex.execute(playbook=cmd_to_playbook[args.command])
         pass
     except KeyboardInterrupt:
         pass

@@ -68,16 +68,6 @@ class RootConfig(BaseModel):
 
     @computed_field
     @property
-    def registry_path(self) -> pathlib.Path:
-        """
-        Directory to store registry configuration in.
-        Returns:
-            Path to the registry directory.
-        """
-        return self.config_path / "registry"
-
-    @computed_field
-    @property
     def ansible_artifacts_path(self) -> pathlib.Path:
         """
         Directory to store Ansible artefacts in.

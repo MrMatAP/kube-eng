@@ -2,7 +2,7 @@
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: "{{ name }}"
+  name: "{{ ns }}"
   labels:
     {% if mesh == 'istio-ambient' %}
     istio.io/dataplane-mode: ambient

@@ -4,6 +4,6 @@
   tasks:
   - name: Destroy the cluster
     kind_cluster:
-      name: "{{ cluster_name }}"
-      tool_kind: "{{ host_tool_kind }}"
+      name: "{{ cluster.name }}"
+      tool_kind: "{{ host.tool.kind.path }}"
       state: absent

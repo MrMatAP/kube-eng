@@ -7,40 +7,42 @@
     block:
     - name: Create and label the Prometheus namespace
       ansible.builtin.import_role:
-        name: mrmat.kube_eng.create_namespace
+        name: create_namespace
       vars:
-        name: "{{ stack.prometheus.ns }}"
+        ns: "{{ stack.prometheus.ns }}"
         mesh: "{{ cluster.mesh.kind }}"
     - name: Deploy the Prometheus Helm Chart
       kubernetes.core.helm:
         name: prometheus
         create_namespace: false
         release_namespace: "{{ stack.prometheus.ns }}"
-        chart_ref: "{{ chart_prometheus }}"
+        chart_ref: "{{ stack.prometheus.chart_ref }}"
+        binary_path: "{{ host.tool.helm.path }}"
         wait: true
         values:
           cluster:
             edge:
               kind: "{{ cluster.edge.kind }}"
-              name: edge-ingress
+              name: "{{ cluster.edge.name }}"
               ns: "{{ cluster.edge.ns }}"
-          fqdn: "{{ stack.prometheus.hostname }}.{{ cluster_name }}.{{ cluster.edge.external_domain }}"
+          fqdn: "{{ stack.prometheus.hostname }}.{{ cluster.name }}.{{ cluster.edge.external_domain }}"
 
   - name: Deploy Alloy
     when: "stack.alloy.enabled | bool == true"
     block:
     - name: Create and label the Alloy namespace
       ansible.builtin.import_role:
-        name: mrmat.kube_eng.create_namespace
+        name: create_namespace
       vars:
-        name: "{{ stack.alloy.ns }}"
+        ns: "{{ stack.alloy.ns }}"
         mesh: "{{ cluster.mesh.kind }}"
     - name: Deploy the Alloy Helm Chart
       kubernetes.core.helm:
         name: alloy
         create_namespace: false
         release_namespace: "{{ stack.alloy.ns }}"
-        chart_ref: "{{ chart_alloy }}"
+        chart_ref: "{{ stack.alloy.chart_ref }}"
+        binary_path: "{{ host.tool.helm.path }}"
         wait: true
         values:
           cluster:
@@ -48,23 +50,24 @@
               kind: "{{ cluster.edge.kind }}"
               name: "{{ cluster.edge.name }}"
               ns: "{{ cluster.edge.ns }}"
-          fqdn: "{{ stack.alloy.hostname }}.{{ cluster_name }}.{{ cluster.edge.external_domain }}"
+          fqdn: "{{ stack.alloy.hostname }}.{{ cluster.name }}.{{ cluster.edge.external_domain }}"
 
   - name: Deploy Loki
     when: "stack.loki.enabled | bool == true"
     block:
     - name: Create and label the Loki namespace
       ansible.builtin.import_role:
-        name: mrmat.kube_eng.create_namespace
+        name: create_namespace
       vars:
-        name: "{{ stack.loki.ns }}"
+        ns: "{{ stack.loki.ns }}"
         mesh: "{{ cluster.mesh.kind }}"
     - name: Deploy the Loki Helm chart
       kubernetes.core.helm:
         name: loki
         create_namespace: false
         release_namespace: "{{ stack.loki.ns }}"
-        chart_ref: "{{ chart_loki }}"
+        chart_ref: "{{ stack.loki.chart_ref }}"
+        binary_path: "{{ host.tool.helm.path }}"
         wait: true
         values:
           cluster:
@@ -72,16 +75,16 @@
               kind: "{{ cluster.edge.kind }}"
               name: "{{ cluster.edge.name }}"
               ns: "{{ cluster.edge.ns }}"
-          fqdn: "{{ stack.loki.hostname }}.{{ cluster_name }}.{{ cluster.edge.external_domain }}"
+          fqdn: "{{ stack.loki.hostname }}.{{ cluster.name }}.{{ cluster.edge.external_domain }}"
 
   - name: Deploy Keycloak
     when: "stack.keycloak.enabled | bool == true"
     block:
     - name: Create and label the Keycloak namespace
       ansible.builtin.import_role:
-        name: mrmat.kube_eng.create_namespace
+        name: create_namespace
       vars:
-        name: "{{ stack.keycloak.ns }}"
+        ns: "{{ stack.keycloak.ns }}"
         mesh: "{{ cluster.mesh.kind }}"
     - name: Deploy the Keycloak Operator CRDs
       kubernetes.core.k8s:
@@ -98,7 +101,8 @@
         name: kubernetes-operator
         create_namespace: false
         release_namespace: "{{ stack.keycloak.ns }}"
-        chart_ref: "{{ chart_keycloak_operator }}"
+        chart_ref: "{{ stack.keycloak.operator_chart_ref }}"
+        binary_path: "{{ host.tool.helm.path }}"
         wait: true
         values:
           cluster:
@@ -106,7 +110,7 @@
               kind: "{{ cluster.edge.kind }}"
               name: "{{ cluster.edge.name }}"
               ns: "{{ cluster.edge.ns }}"
-            fqdn: "{{ stack.keycloak.hostname }}.{{ cluster_name }}.{{ cluster.edge.external_domain }}"
+            fqdn: "{{ stack.keycloak.hostname }}.{{ cluster.name }}.{{ cluster.edge.external_domain }}"
     - name: Create a Keycloak user in PostgreSQL
       community.postgresql.postgresql_user:
         login_host: localhost
@@ -136,7 +140,7 @@
         name: keycloak
         create_namespace: false
         release_namespace: "{{ stack.keycloak.ns }}"
-        chart_ref: "{{ chart_keycloak }}"
+        chart_ref: "{{ stack.keycloak.chart_ref }}"
         wait: true
         values:
           cluster:
@@ -144,11 +148,11 @@
               kind: "{{ cluster.edge.kind }}"
               name: "{{ cluster.edge.name }}"
               ns: "{{ cluster.edge.ns }}"
-          fqdn: "{{ stack.keycloak.hostname }}.{{ cluster_name }}.{{ cluster.edge.external_domain }}"
+          fqdn: "{{ stack.keycloak.hostname }}.{{ cluster.name }}.{{ cluster.edge.external_domain }}"
           keycloak:
             admin_password: "{{ admin_password }}"
             db_password: "{{ admin_password }}"
-            db_host: "{{ host.postgresql.name }}.{{ cluster_name }}.{{ cluster.edge.external_domain }}"
+            db_host: "{{ host.postgresql.name }}.{{ cluster.name }}.{{ cluster.edge.external_domain }}"
             db_port: "{{ host.postgresql.port }}"
 
   - name: Deploy Grafana
@@ -156,13 +160,13 @@
     block:
     - name: Create and label the Grafana namespace
       ansible.builtin.import_role:
-        name: mrmat.kube_eng.create_namespace
+        name: create_namespace
       vars:
-        name: "{{ stack.grafana.ns }}"
+        ns: "{{ stack.grafana.ns }}"
         mesh: "{{ cluster.mesh.kind }}"
     - name: Register Grafana in Keycloak
       community.general.keycloak_client:
-        auth_keycloak_url: "https://{{ stack.keycloak.hostname }}.{{ cluster_name }}.{{ cluster.edge.external_domain }}"
+        auth_keycloak_url: "https://{{ stack.keycloak.hostname }}.{{ cluster.name }}.{{ cluster.edge.external_domain }}"
         auth_realm: master
         auth_username: admin
         auth_password: "{{ admin_password }}"
@@ -174,11 +178,11 @@
         public_client: false
         client_authenticator_type: client-secret
         secret: "{{ admin_password }}"
-        root_url: "https://{{ stack.grafana.hostname }}.{{ cluster_name }}.{{ cluster.edge.external_domain }}/"
-        base_url: "https://{{ stack.grafana.hostname }}.{{ cluster_name }}.{{ cluster.edge.external_domain }}/"
-        admin_url: "https://{{ stack.grafana.hostname }}.{{ cluster_name }}.{{ cluster.edge.external_domain }}/"
+        root_url: "https://{{ stack.grafana.hostname }}.{{ cluster.name }}.{{ cluster.edge.external_domain }}/"
+        base_url: "https://{{ stack.grafana.hostname }}.{{ cluster.name }}.{{ cluster.edge.external_domain }}/"
+        admin_url: "https://{{ stack.grafana.hostname }}.{{ cluster.name }}.{{ cluster.edge.external_domain }}/"
         redirect_uris:
-        - "https://{{ stack.grafana.hostname }}.{{ cluster_name }}.{{ cluster.edge.external_domain }}/login/generic_oauth"
+        - "https://{{ stack.grafana.hostname }}.{{ cluster.name }}.{{ cluster.edge.external_domain }}/login/generic_oauth"
         standard_flow_enabled: true
         implicit_flow_enabled: false
         direct_access_grants_enabled: true
@@ -191,7 +195,7 @@
         validate_certs: false
     - name: Register Grafana Viewer role
       community.general.keycloak_role:
-        auth_keycloak_url: "https://{{ stack.keycloak.hostname }}.{{ cluster_name }}.{{ cluster.edge.external_domain }}"
+        auth_keycloak_url: "https://{{ stack.keycloak.hostname }}.{{ cluster.name }}.{{ cluster.edge.external_domain }}"
         auth_realm: master
         auth_username: admin
         auth_password: "{{ admin_password }}"
@@ -203,7 +207,7 @@
         validate_certs: false
     - name: Register Grafana Editor role
       community.general.keycloak_role:
-        auth_keycloak_url: "https://{{ stack.keycloak.hostname }}.{{ cluster_name }}.{{ cluster.edge.external_domain }}"
+        auth_keycloak_url: "https://{{ stack.keycloak.hostname }}.{{ cluster.name }}.{{ cluster.edge.external_domain }}"
         auth_realm: master
         auth_username: admin
         auth_password: "{{ admin_password }}"
@@ -215,7 +219,7 @@
         validate_certs: false
     - name: Register Grafana Admin role
       community.general.keycloak_role:
-        auth_keycloak_url: "https://{{ stack.keycloak.hostname }}.{{ cluster_name }}.{{ cluster.edge.external_domain }}"
+        auth_keycloak_url: "https://{{ stack.keycloak.hostname }}.{{ cluster.name }}.{{ cluster.edge.external_domain }}"
         auth_realm: master
         auth_username: admin
         auth_password: "{{ admin_password }}"
@@ -230,7 +234,8 @@
         name: grafana
         create_namespace: false
         release_namespace: "{{ stack.grafana.ns }}"
-        chart_ref: "{{ chart_grafana }}"
+        chart_ref: "{{ stack.grafana.chart_ref }}"
+        binary_path: "{{ host.tool.helm.path }}"
         wait: true
         values:
           cluster:
@@ -238,7 +243,7 @@
               kind: "{{ cluster.edge.kind }}"
               name: "{{ cluster.edge.name }}"
               ns: "{{ cluster.edge.ns }}"
-          fqdn: "{{ stack.grafana.hostname }}.{{ cluster_name }}.{{ cluster.edge.external_domain }}"
+          fqdn: "{{ stack.grafana.hostname }}.{{ cluster.name }}.{{ cluster.edge.external_domain }}"
           overrides:
             adminUser: "{{ stack.grafana.admin_user }}"
             adminPassword: "{{ admin_password }}"
@@ -247,9 +252,9 @@
               GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET: "{{ admin_password }}"
             grafana.ini:
               server:
-                root_url: "https://{{ stack.grafana.hostname }}.{{ cluster_name }}.{{ cluster.edge.external_domain }}/"
+                root_url: "https://{{ stack.grafana.hostname }}.{{ cluster.name }}.{{ cluster.edge.external_domain }}/"
               auth.generic_oauth:
-                auth_url: "https://{{ stack.keycloak.hostname }}.{{ cluster_name }}.{{ cluster.edge.external_domain }}/realms/master/protocol/openid-connect/auth"
+                auth_url: "https://{{ stack.keycloak.hostname }}.{{ cluster.name }}.{{ cluster.edge.external_domain }}/realms/master/protocol/openid-connect/auth"
                 token_url: "http://keycloak-service.{{ stack.keycloak.ns }}.svc.cluster.local:8080/realms/master/protocol/openid-connect/token"
                 api_url: "http://keycloak-service.{{ stack.keycloak.ns }}.svc.cluster.local:8080/realms/master/protocol/openid-connect/userinfo"
             datasources:
@@ -266,16 +271,17 @@
     block:
     - name: Create and label the Jaeger namespace
       ansible.builtin.import_role:
-        name: mrmat.kube_eng.create_namespace
+        name: create_namespace
       vars:
-        name: "{{ stack.jaeger.ns }}"
+        ns: "{{ stack.jaeger.ns }}"
         mesh: "{{ cluster.mesh.kind }}"
     - name: Deploy the Jaeger Helm Chart
       kubernetes.core.helm:
         name: jaeger
         create_namespace: false
         release_namespace: "{{ stack.jaeger.ns }}"
-        chart_ref: "{{ chart_jaeger }}"
+        chart_ref: "{{ stack.jaeger.chart_ref }}"
+        binary_path: "{{ host.tool.helm.path }}"
         wait: true
         values:
           cluster:
@@ -283,7 +289,7 @@
               kind: "{{ cluster.edge.kind }}"
               name: "{{ cluster.edge.name }}"
               ns: "{{ cluster.edge.ns }}"
-          fqdn: "{{ stack.jaeger.hostname }}.{{ cluster_name }}.{{ cluster.edge.external_domain }}"
+          fqdn: "{{ stack.jaeger.hostname }}.{{ cluster.name }}.{{ cluster.edge.external_domain }}"
           overrides:
             storage:
               cassandra:
@@ -295,9 +301,9 @@
     block:
     - name: Create and label the Jaeger v2 namespace
       ansible.builtin.import_role:
-        name: mrmat.kube_eng.create_namespace
+        name: create_namespace
       vars:
-        name: "{{ stack.jaegerv2.ns }}"
+        ns: "{{ stack.jaegerv2.ns }}"
         mesh: "{{ cluster.mesh.kind }}"
     - name: Deploy the OpenTelemetry Operator
       kubernetes.core.helm:
@@ -305,13 +311,15 @@
         create_namespace: false
         release_namespace: "{{ stack.jaegerv2.ns }}"
         chart_ref: open-telemetry/opentelemetry-operator
+        binary_path: "{{ host.tool.helm.path }}"
         wait: true
     - name: Deploy the Jaeger v2 Helm Chart
       kubernetes.core.helm:
         name: jaeger
         create_namespace: false
         release_namespace: "{{ stack.jaegerv2.ns }}"
-        chart_ref: "{{ chart_jaeger_v2 }}"
+        chart_ref: "{{ stack.jaegerv2.chart_ref }}"
+        binary_path: "{{ host.tool.helm.path }}"
         wait: true
         values:
           cluster:
@@ -319,16 +327,16 @@
               kind: "{{ cluster.edge.kind }}"
               name: "{{ cluster.edge.name }}"
               ns: "{{ cluster.edge.ns }}"
-          fqdn: "{{ stack.jaegerv2.hostname }}.{{ cluster_name }}.{{ cluster.edge.external_domain }}"
+          fqdn: "{{ stack.jaegerv2.hostname }}.{{ cluster.name }}.{{ cluster.edge.external_domain }}"
 
   - name: Deploy Kiali
     when: "stack.kiali.enabled | bool == true"
     block:
     - name: Create and label the Kiali namespace
       ansible.builtin.import_role:
-        name: mrmat.kube_eng.create_namespace
+        name: create_namespace
       vars:
-        name: "{{ stack.kiali.ns }}"
+        ns: "{{ stack.kiali.ns }}"
         mesh: "{{ cluster.mesh.kind }}"
     - name: Deploy the Kiali Operator
       kubernetes.core.helm:
@@ -337,6 +345,7 @@
         release_namespace: "{{ stack.kiali.ns }}"
         chart_ref: kiali/kiali-operator
         chart_version: "{{ stack.kiali.version }}"
+        binary_path: "{{ host.tool.helm.path }}"
         wait: true
         values:
           cr:
@@ -346,7 +355,8 @@
         name: kiali
         create_namespace: false
         release_namespace: "{{ stack.kiali.ns }}"
-        chart_ref: "{{ chart_kiali }}"
+        chart_ref: "{{ stack.kiali.chart_ref }}"
+        binary_path: "{{ host.tool.helm.path }}"
         wait: true
         values:
           cluster:
@@ -354,15 +364,15 @@
               kind: "{{ cluster.edge.kind }}"
               name: "{{ cluster.edge.name }}"
               ns: "{{ cluster.edge.ns }}"
-          fqdn: "{{ stack.kiali.hostname }}.{{ cluster_name }}.{{ cluster.edge.external_domain }}"
+          fqdn: "{{ stack.kiali.hostname }}.{{ cluster.name }}.{{ cluster.edge.external_domain }}"
           prometheus:
             hostname: "{{ stack.prometheus.hostname }}"
             ns: "{{ stack.prometheus.ns }}"
           jaeger:
             ns: "{{ stack.jaeger.ns }}"
-            fqdn: "{{ stack.jaeger.hostname }}.{{ cluster_name }}.{{ cluster.edge.external_domain }}"
+            fqdn: "{{ stack.jaeger.hostname }}.{{ cluster.name }}.{{ cluster.edge.external_domain }}"
           grafana:
-            fqdn: "{{ stack.grafana.hostname }}.{{ cluster_name }}.{{ cluster.edge.external_domain }}"
+            fqdn: "{{ stack.grafana.hostname }}.{{ cluster.name }}.{{ cluster.edge.external_domain }}"
             ns: "{{ stack.grafana.ns }}"
             auth:
               type: 'basic'

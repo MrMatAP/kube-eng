@@ -10,6 +10,12 @@ import rich.emoji
 from kube_eng import __ansible_path__
 from kube_eng.config import RootConfig
 
+cmd_to_playbook = {
+    'host-apply': 'host_apply.yml',
+    'cluster-apply': 'cluster_apply.yml',
+    'cluster-destroy': 'cluster_destroy.yml',
+    'stack-apply': 'stack_apply.yml',
+}
 
 class AnsibleStatusEnum(enum.StrEnum):
     ok = str(rich.emoji.Emoji("ok_button"))
@@ -38,7 +44,7 @@ class AnsibleExecution:
         self._config = config
         self._ui_event_callback = ui_event_callback
 
-    def execute(self, playbook: str):
+    async def execute(self, playbook: str):
         try:
             self._config.ansible_artifacts_path.mkdir(parents=True, exist_ok=True)
             t, r = ansible_runner.run_async(
@@ -51,12 +57,15 @@ class AnsibleExecution:
                 rotate_artifacts=5,
                 inventory=str(__ansible_path__ / 'inventory' / 'inventory.yml'),
                 host_pattern='localhost',
-                quiet=True,
+                quiet=False,
+                verbosity=2,
                 event_handler=self.ansible_event_handler,
                 cancel_callback=self.ansible_cancel_callback,
                 finished_callback=self.ansible_finished_callback,
                 status_handler=self.ansible_status_handler,
                 artifacts_handler=self.ansible_artifacts_handler)
+            t.join()
+            pass
         except Exception as e:
             print(e)
 
@@ -118,3 +127,5 @@ class AnsibleExecution:
 
     def ansible_artifacts_handler(self, artifacts_file: str) -> None:
         pass
+
+
