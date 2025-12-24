@@ -1,11 +1,20 @@
 apiVersion: v2
 name: kube-eng-alloy
-description: A Helm chart for Grafana Alloy
-type: application
 version: 0.0.0
-appVersion: "0.0.0"
+description: A Helm chart for Grafana Alloy within a kube-eng cluster
+type: application
+keywords:
+- kube-eng
+- alloy
+sources:
+- https://github.com/MrMatAP/kube-eng
+maintainers:
+- name: MrMatAP
+  email: imfeldma@gmail.com
+  url: https://github.com/MrMatAP
+appVersion: "v1.12.1"
 dependencies:
 - name: alloy
   repository: https://grafana.github.io/helm-charts
-  version: 1.0.*
+  version: 1.5.1
   alias: overrides

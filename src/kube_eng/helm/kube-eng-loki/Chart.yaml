@@ -1,11 +1,20 @@
 apiVersion: v2
 name: kube-eng-loki
+version: 0.0.0
 description: A Helm chart for Grafana Loki
 type: application
-version: 0.0.0
-appVersion: "0.0.0"
+keywords:
+- kube-eng
+- loki
+sources:
+- https://github.com/MrMatAP/kube-eng
+maintainers:
+- name: MrMatAP
+  email: imfeldma@gmail.com
+  url: https://github.com/MrMatAP
+appVersion: "3.6.3"
 dependencies:
 - name: loki
   repository: https://grafana.github.io/helm-charts
-  version: 6.29.*
+  version: 6.49.0
   alias: overrides

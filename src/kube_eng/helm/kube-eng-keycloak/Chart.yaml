@@ -1,6 +1,15 @@
 apiVersion: v2
 name: kube-eng-keycloak
-description: A Helm chart to install KeyCloak
-type: application
 version: 0.0.0
+description: A Helm chart to install KeyCloak within a kube-eng cluster
+type: application
+keywords:
+- kube-eng
+- keycloak
+sources:
+- https://github.com/MrMatAP/kube-eng
+maintainers:
+- name: MrMatAP
+  email: imfeldma@gmail.com
+  url: https://github.com/MrMatAP
 appVersion: "0.0.0"

@@ -1,12 +1,20 @@
 apiVersion: v2
 name: kube-eng-grafana
-description: A Helm chart for Grafana
-type: application
 version: 0.0.0
-# The upstream Grafana version and dependency
-appVersion: "8.12.1"
+description: A Helm chart for Grafana within a kube-eng cluster
+type: application
+keywords:
+- kube-eng
+- grafana
+sources:
+- https://github.com/MrMatAP/kube-eng
+maintainers:
+- name: MrMatAP
+  email: imfeldma@gmail.com
+  url: https://github.com/MrMatAP
+appVersion: "12.3.0"
 dependencies:
 - name: grafana
-  version: 8.12.1
+  version: 10.4.0
   repository: https://grafana.github.io/helm-charts
   alias: overrides

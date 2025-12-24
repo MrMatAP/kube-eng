@@ -296,3 +296,47 @@
         value: 127.0.0.1
         type: A
         state: present
+
+  - name: Package and upload local helm charts
+    block:
+    - name: Package the Helm chart
+      ansible.builtin.command:
+        cmd: |
+          {{ host.tool.helm.path }} package 
+          --version {{ host.tool.helm.chart_version }} 
+          --dependency-update 
+          --destination {{ dist_path }} 
+          {{ host.tool.helm.chart_path }}/{{ item }}
+        creates: "{{ dist_path }}/{{ item }}-{{ host.tool.helm.chart_version }}.tgz"
+      loop:
+      - kube-eng-alloy
+      - kube-eng-cert-manager
+      - kube-eng-edge
+      - kube-eng-grafana
+      - kube-eng-istio
+      - kube-eng-jaeger
+      - kube-eng-jaeger-v2
+      - kube-eng-keycloak
+      - kube-eng-keycloak-operator
+      - kube-eng-kiali
+      - kube-eng-loki
+      - kube-eng-prometheus
+    - name: Upload the Helm chart to the local registry
+      ansible.builtin.command:
+        cmd: |
+          {{ host.tool.helm.path }} push 
+          {{ dist_path }}/{{ item }}-{{ host.tool.helm.chart_version }}.tgz 
+          oci://{{ host.registry.name }}.{{ cluster.name }}.{{ host.ddns.zone }}:{{ host.registry.port | int }}/kube-eng
+      loop:
+      - kube-eng-alloy
+      - kube-eng-cert-manager
+      - kube-eng-edge
+      - kube-eng-grafana
+      - kube-eng-istio
+      - kube-eng-jaeger
+      - kube-eng-jaeger-v2
+      - kube-eng-keycloak
+      - kube-eng-keycloak-operator
+      - kube-eng-kiali
+      - kube-eng-loki
+      - kube-eng-prometheus

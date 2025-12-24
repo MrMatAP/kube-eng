@@ -1,12 +1,20 @@
 apiVersion: v2
 name: kube-eng-jaeger
-description: A Helm chart to install Jaeger
-type: application
 version: 0.0.0
-# The upstream Grafana version and dependency
-appVersion: "1.53.0"
+description: A Helm chart to install Jaeger within a kube-eng cluster
+type: application
+keywords:
+- kube-eng
+- jaeger
+sources:
+- https://github.com/MrMatAP/kube-eng
+maintainers:
+- name: MrMatAP
+  email: imfeldma@gmail.com
+  url: https://github.com/MrMatAP
+appVersion: "2.13.0"
 dependencies:
 - name: jaeger
-  version: 3.4.1
+  version: 4.1.5
   repository: https://jaegertracing.github.io/helm-charts
   alias: overrides
