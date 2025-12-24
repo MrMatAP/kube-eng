@@ -1,0 +1,24 @@
+apiVersion: v2
+name: kube-eng-istio
+version: 0.0.0
+description: A Helm chart for Istio within a kube-eng cluster
+type: application
+keywords:
+- kube-eng
+- istio
+sources:
+- https://github.com/MrMatAP/kube-eng
+maintainers:
+- name: MrMatAP
+  email: imfeldma@gmail.com
+  url: https://github.com/MrMatAP
+appVersion: "1.28.2"
+dependencies:
+- name: base
+  repository: https://istio-release.storage.googleapis.com/charts
+  version: 1.28.2
+  alias: overrides_base
+- name: istiod
+  repository: https://istio-release.storage.googleapis.com/charts
+  version: 1.28.2
+  alias: overrides_istiod

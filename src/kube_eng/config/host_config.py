@@ -2,6 +2,7 @@ import pathlib
 
 from pydantic import Field, computed_field
 
+from kube_eng import __version__, __helm_chart_path__
 from .root_config_aware import RootConfigAware
 
 class HostToolDockerConfig(RootConfigAware):
@@ -25,6 +26,21 @@ class HostToolKubectlConfig(RootConfigAware):
 
 class HostToolHelmConfig(RootConfigAware):
     path: pathlib.Path = Field(default=pathlib.Path('/opt/homebrew/Cellar/helm@3/3.19.4/bin/helm'))
+
+    @computed_field
+    @property
+    def chart_path(self) -> pathlib.Path:
+        """
+        Path to the included Helm charts
+        Returns:
+            Path to the included Helm charts
+        """
+        return __helm_chart_path__
+
+    @computed_field
+    @property
+    def chart_version(self) -> str:
+        return __version__.replace('.dev', '-dev')
 
 class HostToolCloudProviderKindConfig(RootConfigAware):
     enabled: bool = Field(default=True)

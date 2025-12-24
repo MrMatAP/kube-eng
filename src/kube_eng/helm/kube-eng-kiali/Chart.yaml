@@ -1,6 +1,16 @@
 apiVersion: v2
 name: kube-eng-kiali
+version: 0.0.0
 description: A Helm chart to install Kiali
 type: application
-version: 0.0.0
+keywords:
+- kube-eng
+- istio
+- kiali
+sources:
+- https://github.com/MrMatAP/kube-eng
+maintainers:
+- name: MrMatAP
+  email: imfeldma@gmail.com
+  url: https://github.com/MrMatAP
 appVersion: "v2.10.0"

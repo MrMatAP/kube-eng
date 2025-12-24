@@ -7,6 +7,7 @@ import yaml
 
 from pydantic import BaseModel, Field, computed_field
 
+from kube_eng import __version__
 from .root_config_aware import RootConfigAware
 
 from .cluster_config import ClusterConfig
@@ -25,6 +26,17 @@ class RootConfig(BaseModel):
     host: HostConfig = Field(default_factory=HostConfig, description="Host configuration")
     cluster: ClusterConfig = Field(default_factory=ClusterConfig, description="Cluster configuration")
     stack: StackConfig = Field(default_factory=StackConfig, description="Stack configuration")
+
+    @computed_field
+    @property
+    def version(self) -> str:
+        """
+        The current version of kube-eng
+
+        Returns:
+            The current version of kube-eng
+        """
+        return __version__
 
     @computed_field
     @property

@@ -1,0 +1,37 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Values.overrides.alloy.configMap.name }}
+  labels:
+    {{- include "common.labels" . | nindent 4 }}
+    app.kubernetes.io/name: {{ .Values.overrides.alloy.configMap.name }}
+data:
+  {{ .Values.overrides.alloy.configMap.key }}: |-
+    logging {
+      level = "info"
+      format = "logfmt"
+    }
+
+    prometheus.remote_write "prometheus" {
+      endpoint {
+        url = "http://prometheus.stack.svc.cluster.local/api/prom/push"
+      }
+    }
+
+    discovery.kubernetes "pods" {
+      role = "pod"
+    }
+    discovery.relabel "scrapefilter" {
+      targets = discovery.kubernetes.pods.targets
+
+      rule {
+        source_labels = ["__meta_kubernetes_pod_annotation_prometheus_io_scrape"]
+        regex = "true"
+        action = "keep"
+      }
+    }
+    prometheus.scrape "podscraper" {
+      targets = discovery.relabel.scrapefilter.output
+      forward_to = [ prometheus.remote_write.prometheus.receiver ]
+    }
