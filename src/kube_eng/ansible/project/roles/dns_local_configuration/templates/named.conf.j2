@@ -1,0 +1,65 @@
+//
+// BIND configuration for a local nameserver
+
+options {
+    directory "/var/cache/bind";
+
+    listen-on { any; };
+    listen-on-v6 { any; };
+
+    dnssec-validation auto;
+    auth-nxdomain no;
+    allow-new-zones no;
+    notify no;
+    recursion yes;
+    allow-query { any; };
+    allow-query-cache { any; };
+    allow-recursion { any; };
+    allow-transfer { any; };
+    allow-update-forwarding { none; };
+    check-names master fail;
+    check-names slave warn;
+    check-names response warn;
+    check-integrity yes;
+    check-dup-records warn;
+    check-mx warn;
+    check-mx-cname warn;
+    check-srv-cname warn;
+    check-sibling yes;
+    check-spf warn;
+    check-wildcard yes;
+    version "Your mom";
+    hostname "Your mom";
+    server-id "Your mom";
+
+    serial-update-method increment;
+    flush-zones-on-shutdown yes;
+
+    zone-statistics full;
+    memstatistics yes;
+    querylog no;
+
+    minimal-responses no;
+
+    forwarders {
+        {{ dns_local_forwarders }}
+    };
+
+};
+
+include "/etc/bind/update.key";
+
+controls {
+    inet 127.0.0.1 port 953 allow { localhost; } keys { "update-key"; };
+};
+
+statistics-channels {
+    inet 127.0.0.1 port 8053 allow { localhost; };
+};
+
+zone "{{ dns_local_zone }}." {
+    type primary;
+    file "/var/lib/bind/db.{{ dns_local_zone }}";
+    dnssec-policy default;
+    allow-update { key update-key; };
+};

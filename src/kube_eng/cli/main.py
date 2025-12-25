@@ -55,7 +55,7 @@ async def main() -> int:
     except KeyboardInterrupt:
         pass
     except Exception as e:
-        pass
+        print(e)
     return 0
 
 

@@ -1,4 +1,6 @@
+import enum
 import pathlib
+from typing import Any
 
 from pydantic import Field, computed_field
 
@@ -39,7 +41,22 @@ class HostToolHelmConfig(RootConfigAware):
 
     @computed_field
     @property
+    def packaged_chart_path(self) -> pathlib.Path:
+        """
+        Path to the packaged Helm charts
+        Returns:
+            Path to the packaged Helm charts
+        """
+        return self._root_config.config_path / "helm"
+
+    @computed_field
+    @property
     def chart_version(self) -> str:
+        """
+        Adjust the kube_eng version to be acceptable for Helm chart versioning.
+        Returns:
+            The kube-chart version formatted for Helm
+        """
         return __version__.replace('.dev', '-dev')
 
 class HostToolCloudProviderKindConfig(RootConfigAware):
@@ -71,24 +88,6 @@ class HostToolCloudProviderMDNSConfig(RootConfigAware):
         """
         return self._root_config.config_path / "cloud_provider_mdns"
 
-class HostToolBindConfig(RootConfigAware):
-    enabled: bool = Field(default=False)
-    path: pathlib.Path = Field(default=pathlib.Path('/opt/homebrew/sbin/named'))
-    forwarders: str = Field(default='8.8.8.8; 4.4.4.4; 2001:4860:4860::8888; 2001:4860:4860::8844;')
-
-    @computed_field
-    @property
-    def config_path(self) -> pathlib.Path:
-        """
-        Directory to store BIND files in.
-        Returns:
-            Path to the BIND directory.
-        """
-        return self._root_config.config_path / "bind"
-
-class HostToolIstioCtlConfig(RootConfigAware):
-    path: pathlib.Path = Field(default=pathlib.Path('/opt/homebrew/bin/istioctl'))
-
 class HostToolKustomizeConfig(RootConfigAware):
     path: pathlib.Path = Field(default=pathlib.Path('/opt/homebrew/bin/kustomize'))
 
@@ -99,21 +98,37 @@ class HostToolConfig(RootConfigAware):
     helm: HostToolHelmConfig = Field(default_factory=HostToolHelmConfig)
     cloud_provider_kind: HostToolCloudProviderKindConfig = Field(default_factory=HostToolCloudProviderKindConfig)
     cloud_provider_mdns: HostToolCloudProviderMDNSConfig = Field(default_factory=HostToolCloudProviderMDNSConfig)
-    bind: HostToolBindConfig = Field(default_factory=HostToolBindConfig)
-    istioctl: HostToolIstioCtlConfig = Field(default_factory=HostToolIstioCtlConfig)
     kustomize: HostToolKustomizeConfig = Field(default_factory=HostToolKustomizeConfig)
 
 
-class HostDDNSConfig(RootConfigAware):
+class HostDNSKindEnum(str, enum.Enum):
+    local = "local"
+    remote = "remote"
+
+class HostDNSConfig(RootConfigAware):
+    kind: HostDNSKindEnum = Field(default=HostDNSKindEnum.local)
+    name: str = Field(default="dns")
+    image: str = Field(default="ubuntu/bind9:latest")
+    volume_name: str = Field(default="dns-volume")
+    forwarders: str = Field(default='8.8.8.8; 4.4.4.4; 2001:4860:4860::8888; 2001:4860:4860::8844;')
     server: str = Field(default="127.0.0.1")
     port: int = Field(default=53)
-    key_name: str = Field(default="")
+    key_name: str = Field(default="update-key")
     key_algorithm: str = Field(default="hmac-sha256")
     key_secret: str = Field(default="")
     protocol: str = Field(default="tcp")
     zone: str = Field(default="k8s")
     ttl: int = Field(default=1800)
 
+    @computed_field
+    @property
+    def config_path(self) -> pathlib.Path:
+        """
+        Directory to store DNS configuration in.
+        Returns:
+            Path to the DNS configuration directory.
+        """
+        return self._root_config.config_path / "dns"
 
 class HostRegistryConfig(RootConfigAware):
     enabled: bool = Field(default=True)
@@ -166,7 +181,7 @@ class HostKafkaConfig(RootConfigAware):
 
 class HostConfig(RootConfigAware):
     tool: HostToolConfig = Field(default_factory=HostToolConfig)
-    ddns: HostDDNSConfig = Field(default_factory=HostDDNSConfig)
+    dns: HostDNSConfig = Field(default_factory=HostDNSConfig)
     registry: HostRegistryConfig = Field(default_factory=HostRegistryConfig)
     postgresql: HostPostgresqlConfig = Field(default_factory=HostPostgresqlConfig)
     minio: HostMinioConfig = Field(default_factory=HostMinioConfig)

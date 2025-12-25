@@ -1,0 +1,23 @@
+# Argument requirements. See https://docs.ansible.com/ansible/latest/dev_guide/developing_program_flow_modules.html#argument-spec
+---
+argument_specs:
+  main:
+    short_description: Template the local DNS configuration
+    options:
+      dns_local_config_path:
+        description: Directory in which to generate the configuration
+        type: str
+        required: true
+      dns_local_forwarders:
+        description: Semicolon-separated IP addresses where to forward DNS queries to
+        type: str
+        required: false
+        default: "8.8.8.8; 4.4.4.4; 2001:4860:4860::8888; 2001:4860:4860::8844;"
+      dns_local_zone:
+        description: Name of the zone to authoritatively host
+        type: str
+        required: true
+      dns_local_update_key:
+        description: TSIG key to use for DDNS updates
+        type: str
+        required: true

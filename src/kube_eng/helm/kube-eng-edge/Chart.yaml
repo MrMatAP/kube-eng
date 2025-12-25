@@ -13,3 +13,9 @@ maintainers:
   email: imfeldma@gmail.com
   url: https://github.com/MrMatAP
 appVersion: "0.0.0"
+dependencies:
+- name: traefik
+  version: 38.0.1
+  repository: https://traefik.github.io/charts
+  condition: traefik_enabled
+  alias: traefik

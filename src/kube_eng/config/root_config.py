@@ -11,7 +11,7 @@ from kube_eng import __version__
 from .root_config_aware import RootConfigAware
 
 from .cluster_config import ClusterConfig
-from .host_config import HostConfig
+from .host_config import HostConfig, HostDNSKindEnum
 from .stack_config import StackConfig
 
 
@@ -47,26 +47,6 @@ class RootConfig(BaseModel):
             Path to the cluster configuration file
         """
         return self.config_path / "kube-eng.yaml"
-
-    @computed_field
-    @property
-    def dist_path(self) -> pathlib.Path:
-        """
-        Directory to store downloaded artefacts in.
-        Returns:
-            Path to the dist directory.
-        """
-        return self.config_path / "dist"
-
-    @computed_field
-    @property
-    def pki_path(self) -> pathlib.Path:
-        """
-        Directory to store PKI files in.
-        Returns:
-            Path to the PKI directory.
-        """
-        return self.config_path / "pki"
 
     @computed_field
     @property
@@ -119,6 +99,10 @@ class RootConfig(BaseModel):
         hierarchy. Pydantic invokes this method to let us know that the
         instance is fully initialised.
 
+        Massaging of initial, unset defaults within the hierarchy must occur
+        here because individual model_post_init methods within the hierarchy
+        execute before this sets a reference to the root config.
+
         Args:
             context (): Undocumented parameter, appears to always be None
         """
@@ -127,3 +111,7 @@ class RootConfig(BaseModel):
             if issubclass(type(field), RootConfigAware):
                 field.propagate_root_config(self)
 
+        # If we are to use the local default DNS server and have not been
+        # given a key_secret, we default to the admin password
+        if self.host.dns.kind == HostDNSKindEnum.local and self.host.dns.key_secret == "":
+            self.host.dns.key_secret = self.admin_password

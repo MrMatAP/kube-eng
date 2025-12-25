@@ -22,3 +22,11 @@ dependencies:
   repository: https://istio-release.storage.googleapis.com/charts
   version: 1.28.2
   alias: overrides_istiod
+- name: cni
+  repository: https://istio-release.storage.googleapis.com/charts
+  version: 1.28.2
+  alias: overrides_cni
+- name: ztunnel
+  repository: https://istio-release.storage.googleapis.com/charts
+  version: 1.28.2
+  alias: overrides_ztunnel

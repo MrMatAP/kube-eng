@@ -7,7 +7,7 @@ cluster:
     name: edge-ingress
     ns: edge
 
-fqdn: jaeger.cluster.k8s
+fqdn: kiali.cluster.k8s
 
 prometheus:
   ns: prometheus

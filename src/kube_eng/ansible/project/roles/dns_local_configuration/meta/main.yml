@@ -1,7 +1,7 @@
 #SPDX-License-Identifier: MIT-0
 galaxy_info:
   author: MrMatAP
-  description: Template the BIND configuration
+  description: Template the local DNS configuration
   company: The MrMat Organisation
   license: MIT
   min_ansible_version: 2.1

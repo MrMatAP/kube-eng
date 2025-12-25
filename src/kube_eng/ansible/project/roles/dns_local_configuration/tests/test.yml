@@ -3,4 +3,4 @@
 - hosts: localhost
   remote_user: root
   roles:
-    - bind_configuration
+    - dns_local_configuration
