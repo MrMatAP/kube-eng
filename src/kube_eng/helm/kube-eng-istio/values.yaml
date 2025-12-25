@@ -1,5 +1,16 @@
 # Default values for Kube Eng :: Alloy
 
 overrides_base:
+  global:
+    istioNamespace: istio-system
+    resourceScope: all
+  base:
+    excludedCRDS: []
+    enableCRTTemplates: true
+    validationURL: ""
+    validationCABundle: ""
+    enableIstioConfigCRDs: true
+  defaultRevision: "default"
 
 overrides_istiod:
+  replicaCount: 1

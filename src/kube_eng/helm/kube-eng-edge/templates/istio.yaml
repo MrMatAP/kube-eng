@@ -684,7 +684,6 @@ subjects:
 apiVersion: v1
 kind: Service
 metadata:
-  annotations: null
   labels:
     app: istio-ingressgateway
     app.kubernetes.io/instance: istio
@@ -698,7 +697,7 @@ metadata:
     istio.io/rev: default
     operator.istio.io/component: IngressGateways
     release: istio
-  name: istio-ingressgateway
+  name: edge-ingress
 spec:
   ports:
   - name: status-port

@@ -1,5 +1,5 @@
 # Edge for the Traefik ingress controller
-{{- if eq .Values.cluster.edge.kind "ingress" }}
+{{- if eq .Values.cluster.edge.kind "TODO" }}
 ---
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
@@ -125,7 +125,7 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: traefik-web-service
+  name: edge-ingress
   labels:
     {{ include "common.labels" . | nindent 4 }}
     app.kubernetes.io/name: traefik-web-service

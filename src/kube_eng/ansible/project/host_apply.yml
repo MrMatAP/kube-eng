@@ -9,14 +9,14 @@
       ansible.builtin.file:
         path: "{{ preheat_path }}"
         state: directory
+    - name: Download the Gateway-API CRDs
+      ansible.builtin.get_url:
+        url: "{{ cluster.mesh.istio_gateway_api_crd }}"
+        dest: "{{ preheat_path }}/istio_gateway_api_crds.yaml"
     - name: Download the CRD for cert-manager PKI
       ansible.builtin.get_url:
         url: "{{ cluster.pki.crd }}"
         dest: "{{ preheat_path }}/cert-manager-crds.yaml"
-    - name: Download the Gateway-API CRDs
-      ansible.builtin.get_url:
-        url: "{{ cluster.edge.istio_gateway_api_crd }}"
-        dest: "{{ preheat_path }}/gateway-api-crds.yaml"
     - name: Download the KeyCloak Operator CRDs
       ansible.builtin.get_url:
         url: "https://raw.githubusercontent.com/keycloak/keycloak-k8s-resources/{{ stack.keycloak.operator_version }}/kubernetes/{{ item }}"
@@ -25,23 +25,24 @@
       - keycloaks.k8s.keycloak.org-v1.yml
       - keycloakrealmimports.k8s.keycloak.org-v1.yml
 
-  - name: Create public key infrastructure
+  - name: Create public key infrastructure (PKI)
     block:
     - name: Create a directory for PKI
       ansible.builtin.file:
-        path: "{{ pki_path }}"
+        path: "{{ cluster.pki.config_path }}"
         state: directory
     - name: Create a private key for the local CA
       community.crypto.openssl_privatekey:
-        path: "{{ pki_path }}/ca.key"
-        type: ECC
-        curve: secp256r1
+        path: "{{ cluster.pki.config_path }}/ca.key"
+        type: "{{ cluster.pki.key_type }}"
+        curve: "{{ cluster.pki.key_curve }}"
+        size: "{{ cluster.pki.key_size }}"
         return_content: true
         state: present
     - name: Generate a CSR for the local CA
       community.crypto.openssl_csr:
-        path: "{{ pki_path }}/ca.csr"
-        privatekey_path: "{{ pki_path }}/ca.key"
+        path: "{{ cluster.pki.config_path }}/ca.csr"
+        privatekey_path: "{{ cluster.pki.config_path }}/ca.key"
         common_name: "{{ cluster.name }} Local CA"
         key_usage_critical: true
         key_usage:
@@ -53,21 +54,11 @@
         - "pathlen:1"
     - name: Create a self-signed local CA
       community.crypto.x509_certificate:
-        path: "{{ pki_path }}/ca.pem"
-        privatekey_path: "{{ pki_path }}/ca.key"
-        csr_path: "{{ pki_path }}/ca.csr"
+        path: "{{ cluster.pki.config_path }}/ca.pem"
+        privatekey_path: "{{ cluster.pki.config_path }}/ca.key"
+        csr_path: "{{ cluster.pki.config_path }}/ca.csr"
         provider: selfsigned
         return_content: true
-
-  - name: Template the BIND configuration
-    ansible.builtin.import_role:
-      name: bind_configuration
-    vars:
-      bind_executable: "{{ host.tool.bind.path }}"
-      bind_config_path: "{{ host.tool.bind.config_path }}"
-      forwarders: "{{ host.tool.bind.forwarders }}"
-      cluster_domain: "{{ cluster.name }}.k8s"
-      bind_key: "{{ admin_password }}"
 
   - name: Template the cloud-provider-kind configuration
     ansible.builtin.import_role:
@@ -88,6 +79,55 @@
     community.docker.docker_network:
       name: kind
 
+  - name: Create a local DNS server, if enabled
+    when: host.dns.kind == 'local'
+    block:
+    - name: Create a directory for DNS
+      ansible.builtin.file:
+        path: "{{ host.dns.config_path }}"
+        state: directory
+    - name: Template the local DNS configuration
+      ansible.builtin.import_role:
+        name: dns_local_configuration
+      vars:
+        dns_local_config_path: "{{ host.dns.config_path }}"
+        dns_local_forwarders: "{{ host.dns.forwarders }}"
+        dns_local_zone: "{{ host.dns.zone }}"
+        dns_local_update_key: "{{ host.dns.key_secret | b64encode }}"
+    - name: Create a volume for the DNS cache
+      community.docker.docker_volume:
+        name: "{{ host.dns.volume_name }}"
+        state: present
+    - name: Start the local DNS server
+      community.docker.docker_container:
+        name: "{{ host.dns.name }}"
+        image: "{{ host.dns.image }}"
+        restart: true
+        mounts:
+        - source: "{{ host.dns.volume_name }}"
+          target: /var/cache/bind
+        - source: "{{ host.dns.config_path }}/named.conf"
+          target: /etc/bind/named.conf
+          read_only: true
+          type: bind
+        - source: "{{ host.dns.config_path }}/update.key"
+          target: /etc/bind/update.key
+          read_only: true
+          type: bind
+        - source: "{{ host.dns.config_path }}/db.{{ host.dns.zone }}"
+          target: /var/lib/bind/db.{{ host.dns.zone }}
+          read_only: false
+          type: bind
+        ports:
+        - "127.0.0.1:53:53/udp"
+        - "127.0.0.1:53:53/tcp"
+        - "127.0.0.1:953:953/tcp"
+        networks:
+        - name: kind
+          aliases: "{{ host.dns.name }}"
+        restart_policy: always
+        state: started
+
   - name: Create a local air-gapped registry, if enabled
     when: host.registry.enabled == true
     block:
@@ -99,16 +139,18 @@
     - name: Create a private key for the air-gapped registry
       community.crypto.openssl_privatekey:
         path: "{{ host.registry.config_path }}/registry.key"
-        type: ECC
-        curve: secp256r1
+        type: "{{ cluster.pki.key_type }}"
+        curve: "{{ cluster.pki.key_curve }}"
+        size: "{{ cluster.pki.key_size }}"
         state: present
     - name: Generate a CSR for the air-gapped registry
       community.crypto.openssl_csr:
         path: "{{ host.registry.config_path }}/registry.csr"
         privatekey_path: "{{ host.registry.config_path }}/registry.key"
-        common_name: "{{ host.registry.name }}.{{ cluster.name }}.{{ host.ddns.zone }}"
+        common_name: "{{ host.registry.name }}.{{ cluster.name }}.{{ host.dns.zone }}"
         subject_alt_name:
-        - "DNS:{{ host.registry.name }}.{{ cluster.name }}.{{ host.ddns.zone }}"
+        - "DNS:{{ host.registry.name }}.{{ cluster.name }}.{{ host.dns.zone }}"
+        - "DNS:{{ host.registry.name }}"
         - "DNS:localhost"
         basic_constraints_critical: true
         basic_constraints:
@@ -117,9 +159,9 @@
       community.crypto.x509_certificate:
         path: "{{ host.registry.config_path }}/registry.pem"
         csr_path: "{{ host.registry.config_path }}/registry.csr"
-        ownca_path: "{{ pki_path }}/ca.pem"
-        ownca_privatekey_path: "{{ pki_path }}/ca.key"
-        ownca_not_after: "+825d"
+        ownca_path: "{{ cluster.pki.config_path }}/ca.pem"
+        ownca_privatekey_path: "{{ cluster.pki.config_path }}/ca.key"
+        ownca_not_after: "{{ cluster.pki.crt_validity }}"
         provider: ownca
     - name: Create a volume for the air-gapped registry
       community.docker.docker_volume:
@@ -154,14 +196,14 @@
         state: started
     - name: Update DNS with a record for the air gapped registry
       community.general.nsupdate:
-        key_name: "{{ host.ddns.key_name }}"
-        key_secret: "{{ host.ddns.key_secret }}"
-        key_algorithm: "{{ host.ddns.key_algorithm }}"
-        server: "{{ host.ddns.server }}"
-        port: "{{ host.ddns.port | int }}"
-        protocol: "{{ host.ddns.protocol }}"
-        record: "{{ host.registry.name }}.{{ cluster.name }}.{{ host.ddns.zone }}."
-        ttl: "{{ host.ddns.ttl | int }}"
+        key_name: "{{ host.dns.key_name }}"
+        key_secret: "{{ host.dns.key_secret | b64encode }}"
+        key_algorithm: "{{ host.dns.key_algorithm }}"
+        server: "{{ host.dns.server }}"
+        port: "{{ host.dns.port | int }}"
+        protocol: "{{ host.dns.protocol }}"
+        record: "{{ host.registry.name }}.{{ cluster.name }}.{{ host.dns.zone }}."
+        ttl: "{{ host.dns.ttl | int }}"
         value: 127.0.0.1
         type: A
         state: present
@@ -185,7 +227,7 @@
           target: /var/lib/postgresql/data
         networks:
         - name: kind
-          aliases: "{{ host.postgresql.name }}.{{ cluster.name }}.{{ cluster.edge.external_domain }}"
+          aliases: "{{ host.postgresql.name }}.{{ cluster.name }}.{{ host.dns.zone }}"
         env:
           POSTGRES_PASSWORD: "{{ admin_password }}"
           PGDATA: /var/lib/postgresql/data
@@ -193,14 +235,14 @@
         state: healthy
     - name: Update DNS with a record for PostgreSQL
       community.general.nsupdate:
-        key_name: "{{ host.ddns.key_name }}"
-        key_secret: "{{ host.ddns.key_secret }}"
-        key_algorithm: "{{ host.ddns.key_algorithm }}"
-        server: "{{ host.ddns.server }}"
-        port: "{{ host.ddns.port | int }}"
-        protocol: "{{ host.ddns.protocol }}"
-        record: "{{ host.postgresql.name }}.{{ cluster.name }}.{{ host.ddns.zone }}."
-        ttl: "{{ host.ddns.ttl | int }}"
+        key_name: "{{ host.dns.key_name }}"
+        key_secret: "{{ host.dns.key_secret | b64encode }}"
+        key_algorithm: "{{ host.dns.key_algorithm }}"
+        server: "{{ host.dns.server }}"
+        port: "{{ host.dns.port | int }}"
+        protocol: "{{ host.dns.protocol }}"
+        record: "{{ host.postgresql.name }}.{{ cluster.name }}.{{ host.dns.zone }}."
+        ttl: "{{ host.dns.ttl | int }}"
         value: 127.0.0.1
         type: A
         state: present
@@ -234,14 +276,14 @@
         state: healthy
     - name: Update DNS with a record for MinIO
       community.general.nsupdate:
-        key_name: "{{ host.ddns.key_name }}"
-        key_secret: "{{ host.ddns.key_secret }}"
-        key_algorithm: "{{ host.ddns.key_algorithm }}"
-        server: "{{ host.ddns.server }}"
-        port: "{{ host.ddns.port | int }}"
-        protocol: "{{ host.ddns.protocol }}"
-        record: "{{ host.minio.name }}.{{ cluster.name }}.{{ host.ddns.zone }}."
-        ttl: "{{ host.ddns.ttl | int }}"
+        key_name: "{{ host.dns.key_name }}"
+        key_secret: "{{ host.dns.key_secret | b64encode }}"
+        key_algorithm: "{{ host.dns.key_algorithm }}"
+        server: "{{ host.dns.server }}"
+        port: "{{ host.dns.port | int }}"
+        protocol: "{{ host.dns.protocol }}"
+        record: "{{ host.minio.name }}.{{ cluster.name }}.{{ host.dns.zone }}."
+        ttl: "{{ host.dns.ttl | int }}"
         value: 127.0.0.1
         type: A
         state: present
@@ -285,29 +327,29 @@
         state: healthy
     - name: Update DNS with a record for Kafka
       community.general.nsupdate:
-        key_name: "{{ host.ddns.key_name }}"
-        key_secret: "{{ host.ddns.key_secret }}"
-        key_algorithm: "{{ host.ddns.key_algorithm }}"
-        server: "{{ host.ddns.server }}"
-        port: "{{ host.ddns.port | int }}"
-        protocol: "{{ host.ddns.protocol }}"
-        record: "{{ host.kafka.name }}.{{ cluster.name }}.{{ host.ddns.zone }}."
-        ttl: "{{ host.ddns.ttl | int }}"
+        key_name: "{{ host.dns.key_name }}"
+        key_secret: "{{ host.dns.key_secret | b64encode }}"
+        key_algorithm: "{{ host.dns.key_algorithm }}"
+        server: "{{ host.dns.server }}"
+        port: "{{ host.dns.port | int }}"
+        protocol: "{{ host.dns.protocol }}"
+        record: "{{ host.kafka.name }}.{{ cluster.name }}.{{ host.dns.zone }}."
+        ttl: "{{ host.dns.ttl | int }}"
         value: 127.0.0.1
         type: A
         state: present
 
-  - name: Package and upload local helm charts
+  - name: Package and upload the helm charts
     block:
-    - name: Package the Helm chart
+    - name: Package the Helm charts
       ansible.builtin.command:
         cmd: |
           {{ host.tool.helm.path }} package 
           --version {{ host.tool.helm.chart_version }} 
           --dependency-update 
-          --destination {{ dist_path }} 
+          --destination {{ host.tool.helm.packaged_chart_path }} 
           {{ host.tool.helm.chart_path }}/{{ item }}
-        creates: "{{ dist_path }}/{{ item }}-{{ host.tool.helm.chart_version }}.tgz"
+        creates: "{{ host.tool.helm.packaged_chart_path }}/{{ item }}-{{ host.tool.helm.chart_version }}.tgz"
       loop:
       - kube-eng-alloy
       - kube-eng-cert-manager
@@ -321,22 +363,7 @@
       - kube-eng-kiali
       - kube-eng-loki
       - kube-eng-prometheus
-    - name: Upload the Helm chart to the local registry
-      ansible.builtin.command:
-        cmd: |
-          {{ host.tool.helm.path }} push 
-          {{ dist_path }}/{{ item }}-{{ host.tool.helm.chart_version }}.tgz 
-          oci://{{ host.registry.name }}.{{ cluster.name }}.{{ host.ddns.zone }}:{{ host.registry.port | int }}/kube-eng
-      loop:
-      - kube-eng-alloy
-      - kube-eng-cert-manager
-      - kube-eng-edge
-      - kube-eng-grafana
-      - kube-eng-istio
-      - kube-eng-jaeger
-      - kube-eng-jaeger-v2
-      - kube-eng-keycloak
-      - kube-eng-keycloak-operator
-      - kube-eng-kiali
-      - kube-eng-loki
-      - kube-eng-prometheus
+
+#
+# If you used a local DNS server, then you must now configure your host to point to 127.0.0.1:53
+# You must also trust the CA that was generated for you using security add-certificates ~/.kube-eng/pki/ca.pem

@@ -6,11 +6,14 @@ cluster:
   edge:
     kind: ingress
     name: edge
-    external_domain: k8s
     ingress:
       repository: docker.io/traefik
       tag: v3.4.4
       fqdn: edge.cluster.k8s
+
+#overrides_traefik:
+#  ingressRoute:
+#    enabled: true
 
 stack:
   prometheus:

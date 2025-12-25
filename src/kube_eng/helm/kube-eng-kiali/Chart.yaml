@@ -13,4 +13,8 @@ maintainers:
 - name: MrMatAP
   email: imfeldma@gmail.com
   url: https://github.com/MrMatAP
-appVersion: "v2.10.0"
+appVersion: "v2.20.0"
+dependencies:
+- name: kiali-server
+  version: 2.20.0
+  repository: https://kiali.org/helm-charts

@@ -30,6 +30,7 @@ dependencies = [
     "ansible-runner>=2.4.2",
     "dnspython>=2.8.0",
     "kubernetes>=34.1.0",
+    "psycopg2-binary>=2.9.11",
     "pydantic==2.12.5",
     "pyrefly>=0.45.2",
     "requests>=2.32.5",

@@ -2,6 +2,85 @@
 - name: Deploy the stack
   hosts: localhost
   tasks:
+
+  # This will wait indefinitely if cloud-provider-kind is not running
+  - name: Deploy Edge
+    block:
+    - name: Create and label the Edge namespace
+      ansible.builtin.import_role:
+        name: create_namespace
+      vars:
+        ns: "{{ cluster.edge.ns }}"
+        mesh: "{{ cluster.mesh.kind }}"
+    - name: Deploy the Edge Helm chart
+      kubernetes.core.helm:
+        name: edge
+        create_namespace: false
+        release_namespace: "{{ cluster.edge.ns }}"
+        chart_ref: "oci://{{ host.registry.name }}.{{ cluster.name }}.{{ host.dns.zone }}:{{ host.registry.port | int }}/kube-eng/kube-eng-edge"
+        chart_version: "{{ host.tool.helm.chart_version }}"
+        binary_path: "{{ host.tool.helm.path }}"
+        wait: true
+        values:
+          traefik_enabled: "{{ cluster.edge.kind == 'ingress' }}"
+          cluster:
+            name: "{{ cluster.name }}"
+            edge:
+              kind: "{{ cluster.edge.kind }}"
+              name: "{{ cluster.edge.name }}"
+              ns: "{{ cluster.edge.ns }}"
+              domain: "{{ host.dns.zone }}"
+              ingress:
+                repository: "{{ cluster.edge.ingress_repository }}"
+                tag: "{{ cluster.edge.ingress_tag }}"
+                fqdn: "edge.{{ cluster.name }}.{{ host.dns.zone }}"
+          stack:
+            prometheus:
+              enabled: "{{ stack.prometheus.enabled }}"
+              fqdn: "{{ stack.prometheus.hostname }}.{{ cluster.name }}.{{ host.dns.zone }}"
+            alloy:
+              enabled: "{{ stack.alloy.enabled }}"
+              fqdn: "{{ stack.alloy.hostname }}.{{ cluster.name }}.{{ host.dns.zone }}"
+            keycloak:
+              enabled: "{{ stack.keycloak.enabled }}"
+              fqdn: "{{ stack.keycloak.hostname }}.{{ cluster.name }}.{{ host.dns.zone }}"
+            grafana:
+              enabled: "{{ stack.grafana.enabled }}"
+              fqdn: "{{ stack.grafana.hostname }}.{{ cluster.name }}.{{ host.dns.zone }}"
+            jaeger:
+              enabled: "{{ stack.jaeger.enabled }}"
+              fqdn: "{{ stack.jaeger.hostname }}.{{ cluster.name }}.{{ host.dns.zone }}"
+            kiali:
+              enabled: "{{ stack.kiali.enabled }}"
+              fqdn: "{{ stack.kiali.hostname }}.{{ cluster.name }}.{{ host.dns.zone }}"
+
+  - name: Get the Edge Cluster IP address
+    kubernetes.core.k8s_info:
+      api_version: v1
+      kind: Service
+      name: edge-traefik
+      #name: edge-ingress
+      namespace: "{{ cluster.edge.ns }}"
+    register: edge_service
+
+  - name: Register the Ingress hostname in DNS, if enabled
+    when: cluster.edge.kind == 'ingress'
+    community.general.nsupdate:
+      key_name: "{{ host.dns.key_name }}"
+      key_secret: "{{ host.dns.key_secret | b64encode }}"
+      key_algorithm: "{{ host.dns.key_algorithm }}"
+      server: "{{ host.dns.server }}"
+      port: "{{ host.dns.port | int }}"
+      protocol: "{{ host.dns.protocol }}"
+      record: "{{ cluster.edge.ingress_hostname }}.{{ cluster.name }}.{{ host.dns.zone }}."
+      ttl: "{{ host.dns.ttl | int }}"
+      value: "{{ edge_service.resources[0].status.loadBalancer.ingress[0].ip }}"
+      type: A
+      state: present
+
+  - ansible.builtin.debug:
+      var: edge_service
+
   - name: Deploy Prometheus
     when: "stack.prometheus.enabled | bool == true"
     block:
@@ -16,7 +95,8 @@
         name: prometheus
         create_namespace: false
         release_namespace: "{{ stack.prometheus.ns }}"
-        chart_ref: "{{ stack.prometheus.chart_ref }}"
+        chart_ref: "oci://{{ host.registry.name }}.{{ cluster.name }}.{{ host.dns.zone }}:{{ host.registry.port | int }}/kube-eng/kube-eng-prometheus"
+        chart_version: "{{ host.tool.helm.chart_version }}"
         binary_path: "{{ host.tool.helm.path }}"
         wait: true
         values:
@@ -25,7 +105,20 @@
               kind: "{{ cluster.edge.kind }}"
               name: "{{ cluster.edge.name }}"
               ns: "{{ cluster.edge.ns }}"
-          fqdn: "{{ stack.prometheus.hostname }}.{{ cluster.name }}.{{ cluster.edge.external_domain }}"
+          fqdn: "{{ stack.prometheus.hostname }}.{{ cluster.name }}.{{ host.dns.zone }}"
+    - name: Update DNS with a record for Prometheus
+      community.general.nsupdate:
+        key_name: "{{ host.dns.key_name }}"
+        key_secret: "{{ host.dns.key_secret | b64encode }}"
+        key_algorithm: "{{ host.dns.key_algorithm }}"
+        server: "{{ host.dns.server }}"
+        port: "{{ host.dns.port | int }}"
+        protocol: "{{ host.dns.protocol }}"
+        record: "{{ stack.prometheus.hostname }}.{{ cluster.name }}.{{ host.dns.zone }}."
+        ttl: "{{ host.dns.ttl | int }}"
+        value: "{{ edge_service.resources[0].status.loadBalancer.ingress[0].ip }}"
+        type: A
+        state: present
 
   - name: Deploy Alloy
     when: "stack.alloy.enabled | bool == true"
@@ -41,7 +134,8 @@
         name: alloy
         create_namespace: false
         release_namespace: "{{ stack.alloy.ns }}"
-        chart_ref: "{{ stack.alloy.chart_ref }}"
+        chart_ref: "oci://{{ host.registry.name }}.{{ cluster.name }}.{{ host.dns.zone }}:{{ host.registry.port | int }}/kube-eng/kube-eng-alloy"
+        chart_version: "{{ host.tool.helm.chart_version }}"
         binary_path: "{{ host.tool.helm.path }}"
         wait: true
         values:
@@ -50,7 +144,20 @@
               kind: "{{ cluster.edge.kind }}"
               name: "{{ cluster.edge.name }}"
               ns: "{{ cluster.edge.ns }}"
-          fqdn: "{{ stack.alloy.hostname }}.{{ cluster.name }}.{{ cluster.edge.external_domain }}"
+          fqdn: "{{ stack.alloy.hostname }}.{{ cluster.name }}.{{ host.dns.zone }}"
+    - name: Update DNS with a record for Alloy
+      community.general.nsupdate:
+        key_name: "{{ host.dns.key_name }}"
+        key_secret: "{{ host.dns.key_secret | b64encode }}"
+        key_algorithm: "{{ host.dns.key_algorithm }}"
+        server: "{{ host.dns.server }}"
+        port: "{{ host.dns.port | int }}"
+        protocol: "{{ host.dns.protocol }}"
+        record: "{{ stack.alloy.hostname }}.{{ cluster.name }}.{{ host.dns.zone }}."
+        ttl: "{{ host.dns.ttl | int }}"
+        value: "{{ edge_service.resources[0].status.loadBalancer.ingress[0].ip }}"
+        type: A
+        state: present
 
   - name: Deploy Loki
     when: "stack.loki.enabled | bool == true"
@@ -66,7 +173,8 @@
         name: loki
         create_namespace: false
         release_namespace: "{{ stack.loki.ns }}"
-        chart_ref: "{{ stack.loki.chart_ref }}"
+        chart_ref: "oci://{{ host.registry.name }}.{{ cluster.name }}.{{ host.dns.zone }}:{{ host.registry.port | int }}/kube-eng/kube-eng-loki"
+        chart_version: "{{ host.tool.helm.chart_version }}"
         binary_path: "{{ host.tool.helm.path }}"
         wait: true
         values:
@@ -75,7 +183,20 @@
               kind: "{{ cluster.edge.kind }}"
               name: "{{ cluster.edge.name }}"
               ns: "{{ cluster.edge.ns }}"
-          fqdn: "{{ stack.loki.hostname }}.{{ cluster.name }}.{{ cluster.edge.external_domain }}"
+          fqdn: "{{ stack.loki.hostname }}.{{ cluster.name }}.{{ host.dns.zone }}"
+    - name: Update DNS with a record for Loki
+      community.general.nsupdate:
+        key_name: "{{ host.dns.key_name }}"
+        key_secret: "{{ host.dns.key_secret | b64encode }}"
+        key_algorithm: "{{ host.dns.key_algorithm }}"
+        server: "{{ host.dns.server }}"
+        port: "{{ host.dns.port | int }}"
+        protocol: "{{ host.dns.protocol }}"
+        record: "{{ stack.loki.hostname }}.{{ cluster.name }}.{{ host.dns.zone }}."
+        ttl: "{{ host.dns.ttl | int }}"
+        value: "{{ edge_service.resources[0].status.loadBalancer.ingress[0].ip }}"
+        type: A
+        state: present
 
   - name: Deploy Keycloak
     when: "stack.keycloak.enabled | bool == true"
@@ -94,14 +215,15 @@
         wait: true
         state: present
       loop:
-      - "{{ dist_dir }}/preheat/keycloaks.k8s.keycloak.org-v1.yml"
-      - "{{ dist_dir }}/preheat/keycloakrealmimports.k8s.keycloak.org-v1.yml"
+      - "{{ preheat_path }}/keycloaks.k8s.keycloak.org-v1.yml"
+      - "{{ preheat_path }}/keycloakrealmimports.k8s.keycloak.org-v1.yml"
     - name: Deploy the Keycloak Operator Helm chart
       kubernetes.core.helm:
         name: kubernetes-operator
         create_namespace: false
         release_namespace: "{{ stack.keycloak.ns }}"
-        chart_ref: "{{ stack.keycloak.operator_chart_ref }}"
+        chart_ref: "oci://{{ host.registry.name }}.{{ cluster.name }}.{{ host.dns.zone }}:{{ host.registry.port | int }}/kube-eng/kube-eng-keycloak-operator"
+        chart_version: "{{ host.tool.helm.chart_version }}"
         binary_path: "{{ host.tool.helm.path }}"
         wait: true
         values:
@@ -110,7 +232,7 @@
               kind: "{{ cluster.edge.kind }}"
               name: "{{ cluster.edge.name }}"
               ns: "{{ cluster.edge.ns }}"
-            fqdn: "{{ stack.keycloak.hostname }}.{{ cluster.name }}.{{ cluster.edge.external_domain }}"
+            fqdn: "{{ stack.keycloak.hostname }}.{{ cluster.name }}.{{ host.dns.zone }}"
     - name: Create a Keycloak user in PostgreSQL
       community.postgresql.postgresql_user:
         login_host: localhost
@@ -140,7 +262,9 @@
         name: keycloak
         create_namespace: false
         release_namespace: "{{ stack.keycloak.ns }}"
-        chart_ref: "{{ stack.keycloak.chart_ref }}"
+        chart_ref: "oci://{{ host.registry.name }}.{{ cluster.name }}.{{ host.dns.zone }}:{{ host.registry.port | int }}/kube-eng/kube-eng-keycloak"
+        chart_version: "{{ host.tool.helm.chart_version }}"
+        binary_path: "{{ host.tool.helm.path }}"
         wait: true
         values:
           cluster:
@@ -148,12 +272,25 @@
               kind: "{{ cluster.edge.kind }}"
               name: "{{ cluster.edge.name }}"
               ns: "{{ cluster.edge.ns }}"
-          fqdn: "{{ stack.keycloak.hostname }}.{{ cluster.name }}.{{ cluster.edge.external_domain }}"
+          fqdn: "{{ stack.keycloak.hostname }}.{{ cluster.name }}.{{ host.dns.zone}}"
           keycloak:
             admin_password: "{{ admin_password }}"
             db_password: "{{ admin_password }}"
-            db_host: "{{ host.postgresql.name }}.{{ cluster.name }}.{{ cluster.edge.external_domain }}"
+            db_host: "{{ host.postgresql.name }}.{{ cluster.name }}.{{ host.dns.zone }}"
             db_port: "{{ host.postgresql.port }}"
+    - name: Update DNS with a record for Keycloak
+      community.general.nsupdate:
+        key_name: "{{ host.dns.key_name }}"
+        key_secret: "{{ host.dns.key_secret | b64encode }}"
+        key_algorithm: "{{ host.dns.key_algorithm }}"
+        server: "{{ host.dns.server }}"
+        port: "{{ host.dns.port | int }}"
+        protocol: "{{ host.dns.protocol }}"
+        record: "{{ stack.keycloak.hostname }}.{{ cluster.name }}.{{ host.dns.zone }}."
+        ttl: "{{ host.dns.ttl | int }}"
+        value: "{{ edge_service.resources[0].status.loadBalancer.ingress[0].ip }}"
+        type: A
+        state: present
 
   - name: Deploy Grafana
     when: "stack.grafana.enabled | bool == true"
@@ -166,7 +303,7 @@
         mesh: "{{ cluster.mesh.kind }}"
     - name: Register Grafana in Keycloak
       community.general.keycloak_client:
-        auth_keycloak_url: "https://{{ stack.keycloak.hostname }}.{{ cluster.name }}.{{ cluster.edge.external_domain }}"
+        auth_keycloak_url: "https://{{ stack.keycloak.hostname }}.{{ cluster.name }}.{{ host.dns.zone }}"
         auth_realm: master
         auth_username: admin
         auth_password: "{{ admin_password }}"
@@ -178,11 +315,11 @@
         public_client: false
         client_authenticator_type: client-secret
         secret: "{{ admin_password }}"
-        root_url: "https://{{ stack.grafana.hostname }}.{{ cluster.name }}.{{ cluster.edge.external_domain }}/"
-        base_url: "https://{{ stack.grafana.hostname }}.{{ cluster.name }}.{{ cluster.edge.external_domain }}/"
-        admin_url: "https://{{ stack.grafana.hostname }}.{{ cluster.name }}.{{ cluster.edge.external_domain }}/"
+        root_url: "https://{{ stack.grafana.hostname }}.{{ cluster.name }}.{{ host.dns.zone }}/"
+        base_url: "https://{{ stack.grafana.hostname }}.{{ cluster.name }}.{{ host.dns.zone }}/"
+        admin_url: "https://{{ stack.grafana.hostname }}.{{ cluster.name }}.{{ host.dns.zone }}/"
         redirect_uris:
-        - "https://{{ stack.grafana.hostname }}.{{ cluster.name }}.{{ cluster.edge.external_domain }}/login/generic_oauth"
+        - "https://{{ stack.grafana.hostname }}.{{ cluster.name }}.{{ host.dns.zone }}/login/generic_oauth"
         standard_flow_enabled: true
         implicit_flow_enabled: false
         direct_access_grants_enabled: true
@@ -195,7 +332,7 @@
         validate_certs: false
     - name: Register Grafana Viewer role
       community.general.keycloak_role:
-        auth_keycloak_url: "https://{{ stack.keycloak.hostname }}.{{ cluster.name }}.{{ cluster.edge.external_domain }}"
+        auth_keycloak_url: "https://{{ stack.keycloak.hostname }}.{{ cluster.name }}.{{ host.dns.zone }}"
         auth_realm: master
         auth_username: admin
         auth_password: "{{ admin_password }}"
@@ -207,7 +344,7 @@
         validate_certs: false
     - name: Register Grafana Editor role
       community.general.keycloak_role:
-        auth_keycloak_url: "https://{{ stack.keycloak.hostname }}.{{ cluster.name }}.{{ cluster.edge.external_domain }}"
+        auth_keycloak_url: "https://{{ stack.keycloak.hostname }}.{{ cluster.name }}.{{ host.dns.zone }}"
         auth_realm: master
         auth_username: admin
         auth_password: "{{ admin_password }}"
@@ -219,7 +356,7 @@
         validate_certs: false
     - name: Register Grafana Admin role
       community.general.keycloak_role:
-        auth_keycloak_url: "https://{{ stack.keycloak.hostname }}.{{ cluster.name }}.{{ cluster.edge.external_domain }}"
+        auth_keycloak_url: "https://{{ stack.keycloak.hostname }}.{{ cluster.name }}.{{ host.dns.zone }}"
         auth_realm: master
         auth_username: admin
         auth_password: "{{ admin_password }}"
@@ -234,7 +371,8 @@
         name: grafana
         create_namespace: false
         release_namespace: "{{ stack.grafana.ns }}"
-        chart_ref: "{{ stack.grafana.chart_ref }}"
+        chart_ref: "oci://{{ host.registry.name }}.{{ cluster.name }}.{{ host.dns.zone }}:{{ host.registry.port | int }}/kube-eng/kube-eng-grafana"
+        chart_version: "{{ host.tool.helm.chart_version }}"
         binary_path: "{{ host.tool.helm.path }}"
         wait: true
         values:
@@ -243,7 +381,7 @@
               kind: "{{ cluster.edge.kind }}"
               name: "{{ cluster.edge.name }}"
               ns: "{{ cluster.edge.ns }}"
-          fqdn: "{{ stack.grafana.hostname }}.{{ cluster.name }}.{{ cluster.edge.external_domain }}"
+          fqdn: "{{ stack.grafana.hostname }}.{{ cluster.name }}.{{ host.dns.zone }}"
           overrides:
             adminUser: "{{ stack.grafana.admin_user }}"
             adminPassword: "{{ admin_password }}"
@@ -252,9 +390,9 @@
               GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET: "{{ admin_password }}"
             grafana.ini:
               server:
-                root_url: "https://{{ stack.grafana.hostname }}.{{ cluster.name }}.{{ cluster.edge.external_domain }}/"
+                root_url: "https://{{ stack.grafana.hostname }}.{{ cluster.name }}.{{ host.dns.zone }}/"
               auth.generic_oauth:
-                auth_url: "https://{{ stack.keycloak.hostname }}.{{ cluster.name }}.{{ cluster.edge.external_domain }}/realms/master/protocol/openid-connect/auth"
+                auth_url: "https://{{ stack.keycloak.hostname }}.{{ cluster.name }}.{{ host.dns.zone }}/realms/master/protocol/openid-connect/auth"
                 token_url: "http://keycloak-service.{{ stack.keycloak.ns }}.svc.cluster.local:8080/realms/master/protocol/openid-connect/token"
                 api_url: "http://keycloak-service.{{ stack.keycloak.ns }}.svc.cluster.local:8080/realms/master/protocol/openid-connect/userinfo"
             datasources:
@@ -265,6 +403,19 @@
                   type: prometheus
                   url: "http://prometheus.{{ stack.prometheus.ns }}.svc.cluster.local"
                   isDefault: true
+    - name: Update DNS with a record for Grafana
+      community.general.nsupdate:
+        key_name: "{{ host.dns.key_name }}"
+        key_secret: "{{ host.dns.key_secret | b64encode }}"
+        key_algorithm: "{{ host.dns.key_algorithm }}"
+        server: "{{ host.dns.server }}"
+        port: "{{ host.dns.port | int }}"
+        protocol: "{{ host.dns.protocol }}"
+        record: "{{ stack.grafana.hostname }}.{{ cluster.name }}.{{ host.dns.zone }}."
+        ttl: "{{ host.dns.ttl | int }}"
+        value: "{{ edge_service.resources[0].status.loadBalancer.ingress[0].ip }}"
+        type: A
+        state: present
 
   - name: Deploy Jaeger
     when: "stack.jaeger.enabled | bool == true"
@@ -280,7 +431,8 @@
         name: jaeger
         create_namespace: false
         release_namespace: "{{ stack.jaeger.ns }}"
-        chart_ref: "{{ stack.jaeger.chart_ref }}"
+        chart_ref: "oci://{{ host.registry.name }}.{{ cluster.name }}.{{ host.dns.zone }}:{{ host.registry.port | int }}/kube-eng/kube-eng-jaeger"
+        chart_version: "{{ host.tool.helm.chart_version }}"
         binary_path: "{{ host.tool.helm.path }}"
         wait: true
         values:
@@ -289,45 +441,25 @@
               kind: "{{ cluster.edge.kind }}"
               name: "{{ cluster.edge.name }}"
               ns: "{{ cluster.edge.ns }}"
-          fqdn: "{{ stack.jaeger.hostname }}.{{ cluster.name }}.{{ cluster.edge.external_domain }}"
+          fqdn: "{{ stack.jaeger.hostname }}.{{ cluster.name }}.{{ host.dns.zone }}"
           overrides:
             storage:
               cassandra:
                 password: "{{ admin_password }}"
+    - name: Update DNS with a record for Alloy
+      community.general.nsupdate:
+        key_name: "{{ host.dns.key_name }}"
+        key_secret: "{{ host.dns.key_secret | b64encode }}"
+        key_algorithm: "{{ host.dns.key_algorithm }}"
+        server: "{{ host.dns.server }}"
+        port: "{{ host.dns.port | int }}"
+        protocol: "{{ host.dns.protocol }}"
+        record: "{{ stack.jaeger.hostname }}.{{ cluster.name }}.{{ host.dns.zone }}."
+        ttl: "{{ host.dns.ttl | int }}"
+        value: "{{ edge_service.resources[0].status.loadBalancer.ingress[0].ip }}"
+        type: A
+        state: present
 
-
-  - name: Deploy Jaeger v2
-    when: "stack.jaegerv2.enabled | bool == true"
-    block:
-    - name: Create and label the Jaeger v2 namespace
-      ansible.builtin.import_role:
-        name: create_namespace
-      vars:
-        ns: "{{ stack.jaegerv2.ns }}"
-        mesh: "{{ cluster.mesh.kind }}"
-    - name: Deploy the OpenTelemetry Operator
-      kubernetes.core.helm:
-        name: otel-operator
-        create_namespace: false
-        release_namespace: "{{ stack.jaegerv2.ns }}"
-        chart_ref: open-telemetry/opentelemetry-operator
-        binary_path: "{{ host.tool.helm.path }}"
-        wait: true
-    - name: Deploy the Jaeger v2 Helm Chart
-      kubernetes.core.helm:
-        name: jaeger
-        create_namespace: false
-        release_namespace: "{{ stack.jaegerv2.ns }}"
-        chart_ref: "{{ stack.jaegerv2.chart_ref }}"
-        binary_path: "{{ host.tool.helm.path }}"
-        wait: true
-        values:
-          cluster:
-            edge:
-              kind: "{{ cluster.edge.kind }}"
-              name: "{{ cluster.edge.name }}"
-              ns: "{{ cluster.edge.ns }}"
-          fqdn: "{{ stack.jaegerv2.hostname }}.{{ cluster.name }}.{{ cluster.edge.external_domain }}"
 
   - name: Deploy Kiali
     when: "stack.kiali.enabled | bool == true"
@@ -355,7 +487,8 @@
         name: kiali
         create_namespace: false
         release_namespace: "{{ stack.kiali.ns }}"
-        chart_ref: "{{ stack.kiali.chart_ref }}"
+        chart_ref: "oci://{{ host.registry.name }}.{{ cluster.name }}.{{ host.dns.zone }}:{{ host.registry.port | int }}/kube-eng/kube-eng-kiali"
+        chart_version: "{{ host.tool.helm.chart_version }}"
         binary_path: "{{ host.tool.helm.path }}"
         wait: true
         values:
@@ -364,17 +497,30 @@
               kind: "{{ cluster.edge.kind }}"
               name: "{{ cluster.edge.name }}"
               ns: "{{ cluster.edge.ns }}"
-          fqdn: "{{ stack.kiali.hostname }}.{{ cluster.name }}.{{ cluster.edge.external_domain }}"
+          fqdn: "{{ stack.kiali.hostname }}.{{ cluster.name }}.{{ host.dns.zone }}"
           prometheus:
             hostname: "{{ stack.prometheus.hostname }}"
             ns: "{{ stack.prometheus.ns }}"
           jaeger:
             ns: "{{ stack.jaeger.ns }}"
-            fqdn: "{{ stack.jaeger.hostname }}.{{ cluster.name }}.{{ cluster.edge.external_domain }}"
+            fqdn: "{{ stack.jaeger.hostname }}.{{ cluster.name }}.{{ host.dns.zone }}"
           grafana:
-            fqdn: "{{ stack.grafana.hostname }}.{{ cluster.name }}.{{ cluster.edge.external_domain }}"
+            fqdn: "{{ stack.grafana.hostname }}.{{ cluster.name }}.{{ host.dns.zone }}"
             ns: "{{ stack.grafana.ns }}"
             auth:
               type: 'basic'
               username: admin
               password: "{{ admin_password }}"
+    - name: Update DNS with a record for Alloy
+      community.general.nsupdate:
+        key_name: "{{ host.dns.key_name }}"
+        key_secret: "{{ host.dns.key_secret | b64encode }}"
+        key_algorithm: "{{ host.dns.key_algorithm }}"
+        server: "{{ host.dns.server }}"
+        port: "{{ host.dns.port | int }}"
+        protocol: "{{ host.dns.protocol }}"
+        record: "{{ stack.kiali.hostname }}.{{ cluster.name }}.{{ host.dns.zone }}."
+        ttl: "{{ host.dns.ttl | int }}"
+        value: "{{ edge_service.resources[0].status.loadBalancer.ingress[0].ip }}"
+        type: A
+        state: present

@@ -3,6 +3,27 @@
   hosts: localhost
   tasks:
 
+  # This will fail if we use a local DNS server and haven't pointed to it yet
+  - name: Upload the Helm charts to the local registry
+    ansible.builtin.command:
+      cmd: |
+        {{ host.tool.helm.path }} push 
+        {{ host.tool.helm.packaged_chart_path }}/{{ item }}-{{ host.tool.helm.chart_version }}.tgz 
+        oci://{{ host.registry.name }}.{{ cluster.name }}.{{ host.dns.zone }}:{{ host.registry.port | int }}/kube-eng
+    loop:
+    - kube-eng-alloy
+    - kube-eng-cert-manager
+    - kube-eng-edge
+    - kube-eng-grafana
+    - kube-eng-istio
+    - kube-eng-jaeger
+    - kube-eng-jaeger-v2
+    - kube-eng-keycloak
+    - kube-eng-keycloak-operator
+    - kube-eng-kiali
+    - kube-eng-loki
+    - kube-eng-prometheus
+
   - name: Template the cluster configuration
     ansible.builtin.import_role:
       name: kind_configuration
@@ -10,7 +31,7 @@
       control_plane_nodes: "{{ cluster.control_plane_nodes | int }}"
       worker_nodes: "{{ cluster.worker_nodes | int }}"
       directory: "{{ host.tool.kind.config_path }}"
-      ca_file_path: "{{ pki_path }}/ca.pem"
+      ca_file_path: "{{ cluster.pki.config_path }}/ca.pem"
       airgap_registry_name: "{{ host.registry.name }}"
 
   - name: Create the cluster
@@ -20,129 +41,88 @@
       tool_kind: "{{ host.tool.kind.path }}"
       state: present
 
-#  - name: Install Istio
-#    mesh:
-#      mesh: "{{ cluster.mesh.kind }}"
-#      namespace: "{{ cluster.mesh.ns }}"
-#      edge_kind: "{{ cluster.edge.kind }}"
-#      tracing: "{{ stack.jaeger.enabled | bool }}"
-#      tool_kubectl: "{{ host.tool.kubectl.path }}"
-#      tool_istioctl: "{{ host.tool.istioctl.path }}"
-#      state: present
+  - name: Install Istio, if enabled
+    when: "cluster.mesh.enabled == true and cluster.mesh.kind == 'istio'"
+    block:
+    - name: Apply the Istio CRDs
+      kubernetes.core.k8s:
+        state: present
+        apply: true
+        src: "{{ preheat_path }}/istio_gateway_api_crds.yaml"
+        server_side_apply:
+          field_manager: ansible
+        wait: true
+    - name: Install Istio
+      kubernetes.core.helm:
+        name: istio
+        create_namespace: true
+        release_namespace: "{{ cluster.mesh.ns }}"
+        chart_ref: "oci://{{ host.registry.name }}.{{ cluster.name }}.{{ host.dns.zone }}:{{ host.registry.port | int }}/kube-eng/kube-eng-istio"
+        chart_version: "{{ host.tool.helm.chart_version }}"
+        binary_path: "{{ host.tool.helm.path }}"
+        wait: true
+        values:
+          overrides_istiod:
+            profile: ambient
+          overrides_cni:
+            profile: ambient
 
-#  - name: Deploy the default Gateway API CRD, if enabled through edge.kind
-#    when: "cluster.edge.kind == 'istio-gateway-api'"
-#    kubernetes.core.k8s:
-#      state: present
-#      apply: true
-#      src: "{{ preheat_path }}/gateway-api-crds.yaml"
-#
-#  - name: Deploy the experimental Gateway API CRD, if enabled
-#    when: "cluster.edge.kind == 'istio-gateway-api-experimental'"
-#    kubernetes.core.k8s:
-#      state: present
-#      apply: true
-#      src: "{{ preheat_path }}/experimental-gateway-api-crds.yaml"
-#
-#  - name: Deploy cluster PKI
-#    block:
-#    - name: Create and label the cert-manager namespace
-#      ansible.builtin.import_role:
-#        name: create_namespace
-#      vars:
-#        ns: "{{ cluster.pki.ns }}"
-#        mesh: "{{ cluster.mesh.kind }}"
-#    - name: Apply the cert-manager CRDs
-#      kubernetes.core.k8s:
-#        state: present
-#        apply: true
-#        src: "{{ preheat_path }}/cert-manager-crds.yaml"
-#    - name: Create a secret from the local CA files
-#      kubernetes.core.k8s:
-#        state: present
-#        definition:
-#          apiVersion: v1
-#          kind: Secret
-#          type: Opaque
-#          metadata:
-#            name: cluster-ca
-#            namespace: "{{ cluster.pki.ns }}"
-#          data:
-#            tls.crt: "{{ lookup('ansible.builtin.file', '{{ pki_path }}/ca.pem') | b64encode }}"
-#            tls.key: "{{ lookup('ansible.builtin.file', '{{ pki_path }}/ca.key') | b64encode }}"
-#    - name: Declare the local CA as an issuer
-#      kubernetes.core.k8s:
-#        state: present
-#        definition:
-#          apiVersion: cert-manager.io/v1
-#          kind: ClusterIssuer
-#          metadata:
-#            name: ca-issuer
-#            namespace: "{{ cluster.pki.ns }}"
-#          spec:
-#            ca:
-#              secretName: cluster-ca
-#    - name: Deploy the cert-manager Helm chart
-#      kubernetes.core.helm:
-#        name: cert-manager
-#        create_namespace: false
-#        release_namespace: "{{ cluster.pki.ns }}"
-#        chart_ref: "{{ cluster.pki.chart_ref }}"
-#        binary_path: "{{ host.tool.helm.path }}"
-#        wait: true
-#        values:
-#          overrides:
-#            namespace: "{{ cluster.pki.ns }}"
-#            config:
-#              enableGatewayAPI: "{{ cluster.edge.kind == 'istio-gateway-api' }}"
-#            prometheus:
-#              enabled: "{{ stack.prometheus.enabled | bool }}"
-#
-#  - name: Deploy Edge
-#    block:
-#    - name: Create and label the Edge namespace
-#      ansible.builtin.import_role:
-#        name: create_namespace
-#      vars:
-#        ns: "{{ cluster.edge.ns }}"
-#        mesh: "{{ cluster.mesh.kind }}"
-#    - name: Deploy the Edge Helm chart
-#      kubernetes.core.helm:
-#        name: edge
-#        create_namespace: false
-#        release_namespace: "{{ cluster.edge.ns }}"
-#        chart_ref: "{{ cluster.edge.chart_ref }}"
-#        binary_path: "{{ host.tool.helm.path }}"
-#        # This will time out if host-infra is not yet started, as it will wait for the LoadBalancer to be up
-#        wait: false
-#        values:
-#          cluster:
-#            name: "{{ cluster.name }}"
-#            edge:
-#              kind: "{{ cluster.edge.kind }}"
-#              name: "{{ cluster.edge.name }}"
-#              ns: "{{ cluster.edge.ns }}"
-#              external_domain: "{{ cluster.edge.external_domain }}"
-#              ingress:
-#                repository: "{{ cluster.edge.ingress_repository }}"
-#                tag: "{{ cluster.edge.ingress_tag }}"
-#                fqdn: "edge.{{ cluster.name }}.{{ cluster.edge.external_domain }}"
-#          stack:
-#            prometheus:
-#              enabled: "{{ stack.prometheus.enabled }}"
-#              fqdn: "{{ stack.prometheus.hostname }}.{{ cluster.name }}.{{ cluster.edge.external_domain }}"
-#            alloy:
-#              enabled: "{{ stack.alloy.enabled }}"
-#              fqdn: "{{ stack.alloy.hostname }}.{{ cluster.name }}.{{ cluster.edge.external_domain }}"
-#            keycloak:
-#              enabled: "{{ stack.keycloak.enabled }}"
-#              fqdn: "{{ stack.keycloak.hostname }}.{{ cluster.name }}.{{ cluster.edge.external_domain }}"
-#            grafana:
-#              enabled: "{{ stack.grafana.enabled }}"
-#              fqdn: "{{ stack.grafana.hostname }}.{{ cluster.name }}.{{ cluster.edge.external_domain }}"
-#            jaeger:
-#              enabled: "{{ stack.jaeger.enabled }}"
-#              fqdn: "{{ stack.jaeger.hostname }}.{{ cluster.name }}.{{ cluster.edge.external_domain }}"
-#            kiali:
-#              enabled: "{{ stack.kiali.enabled }}"
-#              fqdn: "{{ stack.kiali.hostname }}.{{ cluster.name }}.{{ cluster.edge.external_domain }}"
+  - name: Deploy cluster PKI
+    block:
+    - name: Create and label the cert-manager namespace
+      ansible.builtin.import_role:
+        name: create_namespace
+      vars:
+        ns: "{{ cluster.pki.ns }}"
+        mesh: "{{ cluster.mesh.kind }}"
+    - name: Apply the cert-manager CRDs
+      kubernetes.core.k8s:
+        state: present
+        apply: true
+        src: "{{ preheat_path }}/cert-manager-crds.yaml"
+        server_side_apply:
+          field_manager: ansible
+        wait: true
+    - name: Create a secret from the local CA files
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: v1
+          kind: Secret
+          type: Opaque
+          metadata:
+            name: cluster-ca
+            namespace: "{{ cluster.pki.ns }}"
+          data:
+            tls.crt: "{{ lookup('ansible.builtin.file', '{{ cluster.pki.config_path }}/ca.pem') | b64encode }}"
+            tls.key: "{{ lookup('ansible.builtin.file', '{{ cluster.pki.config_path }}/ca.key') | b64encode }}"
+    - name: Declare the local CA as an issuer
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: cert-manager.io/v1
+          kind: ClusterIssuer
+          metadata:
+            name: ca-issuer
+            namespace: "{{ cluster.pki.ns }}"
+          spec:
+            ca:
+              secretName: cluster-ca
+    - name: Deploy the cert-manager Helm chart
+      kubernetes.core.helm:
+        name: cert-manager
+        create_namespace: false
+        release_namespace: "{{ cluster.pki.ns }}"
+        chart_ref: "oci://{{ host.registry.name }}.{{ cluster.name }}.{{ host.dns.zone }}:{{ host.registry.port | int }}/kube-eng/kube-eng-cert-manager"
+        chart_version: "{{ host.tool.helm.chart_version }}"
+        binary_path: "{{ host.tool.helm.path }}"
+        wait: true
+        values:
+          overrides:
+            namespace: "{{ cluster.pki.ns }}"
+            config:
+              enableGatewayAPI: "{{ cluster.edge.kind == 'istio-gateway-api' }}"
+            prometheus:
+              enabled: "{{ stack.prometheus.enabled | bool }}"
+
+# You now need to start cloud-provider-kind as root
