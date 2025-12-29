@@ -9,11 +9,13 @@ from .root_config_aware import RootConfigAware
 
 
 class ClusterMeshKind(str, enum.Enum):
-    istio = "istio"
+    istio_sidecar = "istio-sidecar"
+    istio_ambient = "istio-ambient"
+    none = "none"
 
 class ClusterMeshConfig(RootConfigAware):
-    enabled: bool = Field(default=True)
-    kind: ClusterMeshKind = Field(default=ClusterMeshKind.istio)
+    enabled: bool = Field(default=False)
+    kind: ClusterMeshKind = Field(default=ClusterMeshKind.istio_sidecar)
     ns: str = Field(default="istio-system")
     istio_gateway_api_crd: str = Field(
         default="https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.4.0/experimental-install.yaml"

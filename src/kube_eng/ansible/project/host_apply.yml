@@ -357,7 +357,6 @@
       - kube-eng-grafana
       - kube-eng-istio
       - kube-eng-jaeger
-      - kube-eng-jaeger-v2
       - kube-eng-keycloak
       - kube-eng-keycloak-operator
       - kube-eng-kiali

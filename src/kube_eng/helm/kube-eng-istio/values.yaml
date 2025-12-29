@@ -1,16 +1,13 @@
-# Default values for Kube Eng :: Alloy
+# Default values for Kube Eng :: Istio
+cluster:
+  mesh:
+    kind: istio-sidecar
 
-overrides_base:
-  global:
-    istioNamespace: istio-system
-    resourceScope: all
-  base:
-    excludedCRDS: []
-    enableCRTTemplates: true
-    validationURL: ""
-    validationCABundle: ""
-    enableIstioConfigCRDs: true
-  defaultRevision: "default"
+istio:
+  ambient: false
+  gateway: false
 
-overrides_istiod:
-  replicaCount: 1
+
+overrides_base: {}
+
+overrides_istiod: {}

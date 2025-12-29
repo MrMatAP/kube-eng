@@ -17,7 +17,6 @@
     - kube-eng-grafana
     - kube-eng-istio
     - kube-eng-jaeger
-    - kube-eng-jaeger-v2
     - kube-eng-keycloak
     - kube-eng-keycloak-operator
     - kube-eng-kiali
@@ -42,7 +41,7 @@
       state: present
 
   - name: Install Istio, if enabled
-    when: "cluster.mesh.enabled == true and cluster.mesh.kind == 'istio'"
+    when: "cluster.mesh.enabled == true"
     block:
     - name: Apply the Istio CRDs
       kubernetes.core.k8s:
@@ -62,10 +61,16 @@
         binary_path: "{{ host.tool.helm.path }}"
         wait: true
         values:
+          cluster:
+            mesh:
+              kind: "{{ cluster.mesh.kind }}"
+          istio:
+            ambient: "{{ cluster.mesh.kind == 'istio-ambient' }}"
+            gateway: true
           overrides_istiod:
-            profile: ambient
+            profile: "{{ cluster.mesh.kind == 'istio-ambient' | ternary('ambient', 'default') }}"
           overrides_cni:
-            profile: ambient
+            profile: "{{ cluster.mesh.kind == 'istio-ambient' | ternary('ambient', 'default') }}"
 
   - name: Deploy cluster PKI
     block:
