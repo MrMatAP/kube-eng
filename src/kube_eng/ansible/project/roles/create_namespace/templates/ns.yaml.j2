@@ -6,7 +6,7 @@ metadata:
   labels:
     {% if mesh == 'istio-ambient' %}
     istio.io/dataplane-mode: ambient
-    {% elif mesh == 'istio' %}
+    {% elif mesh == 'istio-sidecar' %}
     istio-injection: enabled
     {% else %}
     {% endif %}

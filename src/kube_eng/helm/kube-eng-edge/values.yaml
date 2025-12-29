@@ -8,12 +8,20 @@ cluster:
     name: edge
     ingress:
       repository: docker.io/traefik
-      tag: v3.4.4
+      tag: v3.6
       fqdn: edge.cluster.k8s
 
-#overrides_traefik:
-#  ingressRoute:
-#    enabled: true
+traefik:
+  ingressRoute:
+    dashboard:
+      enabled: true
+  healthcheck:
+    enabled: true
+  gateway:
+    enabled: false
+  providers:
+    kubernetesCRD:
+      enabled: false
 
 stack:
   prometheus:

@@ -12,5 +12,5 @@ argument_specs:
         description: The mesh in use
         type: str
         required: false
-        choices: ['none', 'istio', 'istio-ambient']
+        choices: ['none', 'istio-sidecar', 'istio-ambient']
         default: istio
