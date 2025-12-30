@@ -106,19 +106,19 @@ class HostDNSKindEnum(str, enum.Enum):
     remote = "remote"
 
 class HostDNSConfig(RootConfigAware):
-    kind: HostDNSKindEnum = Field(default=HostDNSKindEnum.local)
-    name: str = Field(default="dns")
-    image: str = Field(default="ubuntu/bind9:latest")
-    volume_name: str = Field(default="dns-volume")
-    forwarders: str = Field(default='8.8.8.8; 4.4.4.4; 2001:4860:4860::8888; 2001:4860:4860::8844;')
-    server: str = Field(default="127.0.0.1")
-    port: int = Field(default=53)
-    key_name: str = Field(default="update-key")
-    key_algorithm: str = Field(default="hmac-sha256")
-    key_secret: str = Field(default="")
-    protocol: str = Field(default="tcp")
-    zone: str = Field(default="k8s")
-    ttl: int = Field(default=1800)
+    kind: HostDNSKindEnum = Field(default=HostDNSKindEnum.local, description='Whether to run a local DNS server in a container image or use a remote one')
+    name: str = Field(default="dns", description='Name of the DNS container')
+    image: str = Field(default="ubuntu/bind9:latest", description="DNS container image")
+    volume_name: str = Field(default="dns-volume", description='Name of the DNS volume')
+    forwarders: str = Field(default='8.8.8.8; 4.4.4.4; 2001:4860:4860::8888; 2001:4860:4860::8844;', description="DNS forwarders")
+    server: str = Field(default="127.0.0.1", description="DNS server IP address. This should be 127.0.0.1 for local DNS")
+    port: int = Field(default=53, description="DNS server port")
+    key_name: str = Field(default="update-key", description='Name of the key to sign dynamic DNS updates with')
+    key_algorithm: str = Field(default="hmac-sha256", description='Algorithm to use for signing dynamic DNS updates')
+    key_secret: str = Field(default="", description='Secret containing the key to sign dynamic DNS updates with. If empty, defaults to the admin password')
+    protocol: str = Field(default="tcp", description="DNS server protocol for DNS updates")
+    zone: str = Field(default="k8s", description="DNS zone to serve")
+    ttl: int = Field(default=1800, description="Time to live (TTL) for DNS records")
 
     @computed_field
     @property
