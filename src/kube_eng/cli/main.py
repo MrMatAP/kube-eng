@@ -85,6 +85,8 @@ async def config_set(config: RootConfig, args: argparse.Namespace) -> int:
             return 1
         else:
             setattr(parent, leaf, type(getattr(parent, leaf))(args.value))
+    elif isinstance(getattr(parent, leaf), bool):
+        setattr(parent, leaf, args.value.lower() == 'true')
     else:
         setattr(parent, leaf, args.value)
     config.save()
