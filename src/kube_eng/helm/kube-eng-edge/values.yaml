@@ -4,28 +4,71 @@
 cluster:
   name: cluster
   edge:
-    kind: ingress
+    kind: traefik
     name: edge
-    ingress:
-      repository: docker.io/traefik
-      tag: v3.6
-      fqdn: edge.cluster.k8s
+    traefik_repository: docker.io/traefik
+    traefik_tag: v3.6
+    traefik_hostname: edge.cluster.k8s
+    traefik_dashboard_hostname: dashboard
 
 traefik:
   ingressRoute:
     dashboard:
       enabled: true
-  healthcheck:
-    enabled: true
-  gateway:
-    enabled: false
   providers:
     kubernetesCRD:
       enabled: false
+    kubernetesIngress:
+      enabled: false
+    kubernetesGateway:
+      enabled: true
+  gateway:
+    enabled: false
+  healthcheck:
+    enabled: true
+# TODO: This requires the monitoring stack to be deployed first
+#  metrics:
+#    prometheus:
+#      service:
+#        enabled: true
+#      disableAPICheck: false
+#      serviceMonitor:
+#        enabled: true
+#      metricRelabelings:
+#      - sourceLabels: [__name__]
+#        separator: ;
+#        regex: ^fluentd_output_status_buffer_(oldest|newest)_.+
+#        replacement: $1
+#        action: drop
+#      relabelings:
+#      - sourceLabels: [__meta_kubernetes_pod_node_name]
+#        separator: ;
+#        regex: ^(.*)$
+#        targetLabel: nodename
+#        replacement: $1
+#        action: replace
+#      jobLabel: traefik
+#      interval: 30s
+#      honorLabels: true
+#    headerLabels:
+#      user_id: X-User-Id
+#      tenant: X-Tenant
+#    prometheusRule:
+#      enabled: true
+#      rules:
+#      - alert: TraefikDown
+#        expr: up{job="traefik"} == 0
+#        for: 5m
+#        labels:
+#          context: traefik
+#          severity: warning
+#        annotations:
+#          summary: "Traefik Down"
+#          description: "{{ $labels.pod }} on {{ $labels.nodename }} is down"
 
 stack:
   prometheus:
-    enabled: false
+    enabled: true
     fqdn: prometheus.cluster.k8s
   alloy:
     enabled: false
@@ -42,3 +85,6 @@ stack:
   kiali:
     enabled: false
     fqdn: kiali.cluster.k8s
+  loki:
+    enabled: false
+    fqdn: loki.cluster.k8s

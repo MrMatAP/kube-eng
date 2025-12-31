@@ -11,12 +11,15 @@ None
 Role Variables
 --------------
 
-| Variable             | Type | Required | Default | Description                                |
-|----------------------|------|----------|---------|--------------------------------------------|
-| control_plane_nodes  | int  | false    | 1       | Number of control plane nodes              |
-| worker_nodes         | int  | false    | 3       | Number of worker nodes                     |
-| config_file          | str  | true     | N/A     | Path to the configuration file to generate |
-| airgap_registry_name | str  | true     | N/A     | Name of the airgap registry                |
+| Variable             | Type | Required | Default | Description                         |
+|----------------------|------|----------|---------|-------------------------------------|
+| control_plane_nodes  | int  | false    | 1       | Number of control plane nodes       |
+| worker_nodes         | int  | false    | 3       | Number of worker nodes              |
+| directory            | str  | true     | N/A     | Path to the configuration directory |
+| airgap_registry_name | str  | true     | N/A     | Name of the airgap registry         |
+| pod_subnet_cidr      | str  | true     | N/A     | Pod subnet CIDR                     |
+| service_subnet_cidr  | str  | true     | N/A     | Service subnet CIDR                 |
+| cni                  | str  | false    | kind    | CNI plugin to use                   |
 
 Dependencies
 ------------
@@ -33,18 +36,23 @@ Example Playbook
   tasks:
     - name: Template the cluster configuration
       ansible.builtin.import_role:
-        name: mrmat.kube_eng.kind_configuration
+        name: kind_configuration
       vars:
-        control_plane_nodes: "{{ cluster.control_plane_nodes | int }}"
-        worker_nodes: "{{ cluster.worker_nodes | int }}"
-        config_file: "{{ distdir }}/kind-config.yaml"
+      control_plane_nodes: "{{ cluster.control_plane_nodes | int }}"
+      worker_nodes: "{{ cluster.worker_nodes | int }}"
+      directory: "{{ host.tool.kind.config_path }}"
+      ca_file_path: "{{ cluster.pki.config_path }}/ca.pem"
+      airgap_registry_name: "{{ host.registry.name }}"
+      pod_subnet_cidr: "{{ cluster.pod_subnet_cidr }}"
+      service_subnet_cidr: "{{ cluster.service_subnet_cidr }}"
+      cni: "{{ cluster.cni.kind }}"
 
     - name: Create the cluster
-      mrmat.kube_eng.kind_cluster:
-        name: "{{ cluster_name }}"
-        config_file: "{{ distdir }}/kind-config.yaml"
-        tool_kind: "{{ tools.kind }}"
-        state: present
+      kind_cluster:
+          name: "{{ cluster.name }}"
+          config_file: "{{ host.tool.kind.config_path }}/config.yaml"
+          tool_kind: "{{ host.tool.kind.path }}"
+          state: present
 ```
 
 License

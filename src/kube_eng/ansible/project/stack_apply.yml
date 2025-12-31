@@ -28,12 +28,6 @@
             edge:
               kind: "{{ cluster.edge.kind }}"
               name: "{{ cluster.edge.name }}"
-              ns: "{{ cluster.edge.ns }}"
-              domain: "{{ host.dns.zone }}"
-              ingress:
-                repository: "{{ cluster.edge.ingress_repository }}"
-                tag: "{{ cluster.edge.ingress_tag }}"
-                fqdn: "edge.{{ cluster.name }}.{{ host.dns.zone }}"
           stack:
             prometheus:
               enabled: "{{ stack.prometheus.enabled }}"
@@ -53,33 +47,26 @@
             kiali:
               enabled: "{{ stack.kiali.enabled }}"
               fqdn: "{{ stack.kiali.hostname }}.{{ cluster.name }}.{{ host.dns.zone }}"
-
-  - name: Get the Edge Cluster IP address
-    kubernetes.core.k8s_info:
-      api_version: v1
-      kind: Service
-      name: edge-traefik
-      #name: edge-ingress
-      namespace: "{{ cluster.edge.ns }}"
-    register: edge_service
-
-  - name: Register the Ingress hostname in DNS, if enabled
-    when: cluster.edge.kind == 'ingress'
-    community.general.nsupdate:
-      key_name: "{{ host.dns.key_name }}"
-      key_secret: "{{ host.dns.key_secret | b64encode }}"
-      key_algorithm: "{{ host.dns.key_algorithm }}"
-      server: "{{ host.dns.server }}"
-      port: "{{ host.dns.port | int }}"
-      protocol: "{{ host.dns.protocol }}"
-      record: "{{ cluster.edge.ingress_hostname }}.{{ cluster.name }}.{{ host.dns.zone }}."
-      ttl: "{{ host.dns.ttl | int }}"
-      value: "{{ edge_service.resources[0].status.loadBalancer.ingress[0].ip }}"
-      type: A
-      state: present
-
-  - ansible.builtin.debug:
-      var: edge_service
+            loki:
+              enabled: "{{ stack.loki.enabled }}"
+              fqdn: "{{ stack.loki.hostname }}.{{ cluster.name }}.{{ host.dns.zone }}"
+    - name: Get the Traefik edge service, if enabled
+      when: cluster.edge.kind == 'traefik'
+      block:
+      - name: Register the Traefik edge service
+        kubernetes.core.k8s_info:
+          api_version: v1
+          kind: Service
+          name: edge-traefik
+          namespace: "{{ cluster.edge.ns }}"
+        register: edge_service
+      - name: Register the Traefik gateway
+        kubernetes.core.k8s_info:
+          api_version: gateway.networking.k8s.io/v1
+          kind: Gateway
+          name: edge-gateway
+          namespace: "{{ cluster.edge.ns }}"
+        register: edge_gateway
 
   - name: Deploy Prometheus
     when: "stack.prometheus.enabled | bool == true"
@@ -101,15 +88,17 @@
         wait: true
         values:
           cluster:
+            name: "{{ cluster.name }}"
             edge:
               kind: "{{ cluster.edge.kind }}"
-              name: "{{ cluster.edge.name }}"
-              ns: "{{ cluster.edge.ns }}"
-          fqdn: "{{ stack.prometheus.hostname }}.{{ cluster.name }}.{{ host.dns.zone }}"
+              fqdn: "{{ stack.prometheus.hostname }}.{{ cluster.name }}.{{ host.dns.zone }}"
+              gateway:
+                name: "{{ edge_gateway.resources[0].metadata.name }}"
+                ns: "{{ cluster.edge.ns }}"
     - name: Update DNS with a record for Prometheus
       community.general.nsupdate:
         key_name: "{{ host.dns.key_name }}"
-        key_secret: "{{ host.dns.key_secret | b64encode }}"
+        key_secret: "{{ host.dns.key_secret }}"
         key_algorithm: "{{ host.dns.key_algorithm }}"
         server: "{{ host.dns.server }}"
         port: "{{ host.dns.port | int }}"
@@ -140,15 +129,17 @@
         wait: true
         values:
           cluster:
+            name: "{{ cluster.name }}"
             edge:
               kind: "{{ cluster.edge.kind }}"
-              name: "{{ cluster.edge.name }}"
-              ns: "{{ cluster.edge.ns }}"
-          fqdn: "{{ stack.alloy.hostname }}.{{ cluster.name }}.{{ host.dns.zone }}"
+              fqdn: "{{ stack.alloy.hostname }}.{{ cluster.name }}.{{ host.dns.zone }}"
+              gateway:
+                name: "{{ edge_gateway.resources[0].metadata.name }}"
+                ns: "{{ cluster.edge.ns }}"
     - name: Update DNS with a record for Alloy
       community.general.nsupdate:
         key_name: "{{ host.dns.key_name }}"
-        key_secret: "{{ host.dns.key_secret | b64encode }}"
+        key_secret: "{{ host.dns.key_secret }}"
         key_algorithm: "{{ host.dns.key_algorithm }}"
         server: "{{ host.dns.server }}"
         port: "{{ host.dns.port | int }}"
@@ -179,15 +170,17 @@
         wait: true
         values:
           cluster:
+            name: "{{ cluster.name }}"
             edge:
               kind: "{{ cluster.edge.kind }}"
-              name: "{{ cluster.edge.name }}"
-              ns: "{{ cluster.edge.ns }}"
-          fqdn: "{{ stack.loki.hostname }}.{{ cluster.name }}.{{ host.dns.zone }}"
+              fqdn: "{{ stack.loki.hostname }}.{{ cluster.name }}.{{ host.dns.zone }}"
+              gateway:
+                name: "{{ edge_gateway.resources[0].metadata.name }}"
+                ns: "{{ cluster.edge.ns }}"
     - name: Update DNS with a record for Loki
       community.general.nsupdate:
         key_name: "{{ host.dns.key_name }}"
-        key_secret: "{{ host.dns.key_secret | b64encode }}"
+        key_secret: "{{ host.dns.key_secret }}"
         key_algorithm: "{{ host.dns.key_algorithm }}"
         server: "{{ host.dns.server }}"
         port: "{{ host.dns.port | int }}"
@@ -228,11 +221,13 @@
         wait: true
         values:
           cluster:
+            name: "{{ cluster.name }}"
             edge:
               kind: "{{ cluster.edge.kind }}"
-              name: "{{ cluster.edge.name }}"
-              ns: "{{ cluster.edge.ns }}"
-            fqdn: "{{ stack.keycloak.hostname }}.{{ cluster.name }}.{{ host.dns.zone }}"
+              fqdn: "{{ stack.keycloak.hostname }}.{{ cluster.name }}.{{ host.dns.zone }}"
+              gateway:
+                name: "{{ edge_gateway.resources[0].metadata.name }}"
+                ns: "{{ cluster.edge.ns }}"
     - name: Create a Keycloak user in PostgreSQL
       community.postgresql.postgresql_user:
         login_host: localhost
@@ -268,11 +263,13 @@
         wait: true
         values:
           cluster:
+            name: "{{ cluster.name }}"
             edge:
               kind: "{{ cluster.edge.kind }}"
-              name: "{{ cluster.edge.name }}"
-              ns: "{{ cluster.edge.ns }}"
-          fqdn: "{{ stack.keycloak.hostname }}.{{ cluster.name }}.{{ host.dns.zone}}"
+              fqdn: "{{ stack.keycloak.hostname }}.{{ cluster.name }}.{{ host.dns.zone }}"
+              gateway:
+                name: "{{ edge_gateway.resources[0].metadata.name }}"
+                ns: "{{ cluster.edge.ns }}"
           keycloak:
             admin_password: "{{ admin_password }}"
             db_password: "{{ admin_password }}"
@@ -281,7 +278,7 @@
     - name: Update DNS with a record for Keycloak
       community.general.nsupdate:
         key_name: "{{ host.dns.key_name }}"
-        key_secret: "{{ host.dns.key_secret | b64encode }}"
+        key_secret: "{{ host.dns.key_secret }}"
         key_algorithm: "{{ host.dns.key_algorithm }}"
         server: "{{ host.dns.server }}"
         port: "{{ host.dns.port | int }}"
@@ -377,11 +374,13 @@
         wait: true
         values:
           cluster:
+            name: "{{ cluster.name }}"
             edge:
               kind: "{{ cluster.edge.kind }}"
-              name: "{{ cluster.edge.name }}"
-              ns: "{{ cluster.edge.ns }}"
-          fqdn: "{{ stack.grafana.hostname }}.{{ cluster.name }}.{{ host.dns.zone }}"
+              fqdn: "{{ stack.grafana.hostname }}.{{ cluster.name }}.{{ host.dns.zone }}"
+              gateway:
+                name: "{{ edge_gateway.resources[0].metadata.name }}"
+                ns: "{{ cluster.edge.ns }}"
           overrides:
             adminUser: "{{ stack.grafana.admin_user }}"
             adminPassword: "{{ admin_password }}"
@@ -406,7 +405,7 @@
     - name: Update DNS with a record for Grafana
       community.general.nsupdate:
         key_name: "{{ host.dns.key_name }}"
-        key_secret: "{{ host.dns.key_secret | b64encode }}"
+        key_secret: "{{ host.dns.key_secret }}"
         key_algorithm: "{{ host.dns.key_algorithm }}"
         server: "{{ host.dns.server }}"
         port: "{{ host.dns.port | int }}"
@@ -437,11 +436,13 @@
         wait: true
         values:
           cluster:
+            name: "{{ cluster.name }}"
             edge:
               kind: "{{ cluster.edge.kind }}"
-              name: "{{ cluster.edge.name }}"
-              ns: "{{ cluster.edge.ns }}"
-          fqdn: "{{ stack.jaeger.hostname }}.{{ cluster.name }}.{{ host.dns.zone }}"
+              fqdn: "{{ stack.jaeger.hostname }}.{{ cluster.name }}.{{ host.dns.zone }}"
+              gateway:
+                name: "{{ edge_gateway.resources[0].metadata.name }}"
+                ns: "{{ cluster.edge.ns }}"
           overrides:
             storage:
               cassandra:
@@ -449,7 +450,7 @@
     - name: Update DNS with a record for Alloy
       community.general.nsupdate:
         key_name: "{{ host.dns.key_name }}"
-        key_secret: "{{ host.dns.key_secret | b64encode }}"
+        key_secret: "{{ host.dns.key_secret }}"
         key_algorithm: "{{ host.dns.key_algorithm }}"
         server: "{{ host.dns.server }}"
         port: "{{ host.dns.port | int }}"
@@ -493,11 +494,13 @@
         wait: true
         values:
           cluster:
+            name: "{{ cluster.name }}"
             edge:
               kind: "{{ cluster.edge.kind }}"
-              name: "{{ cluster.edge.name }}"
-              ns: "{{ cluster.edge.ns }}"
-          fqdn: "{{ stack.kiali.hostname }}.{{ cluster.name }}.{{ host.dns.zone }}"
+              fqdn: "{{ stack.kiali.hostname }}.{{ cluster.name }}.{{ host.dns.zone }}"
+              gateway:
+                name: "{{ edge_gateway.resources[0].metadata.name }}"
+                ns: "{{ cluster.edge.ns }}"
           prometheus:
             hostname: "{{ stack.prometheus.hostname }}"
             ns: "{{ stack.prometheus.ns }}"
@@ -514,7 +517,7 @@
     - name: Update DNS with a record for Alloy
       community.general.nsupdate:
         key_name: "{{ host.dns.key_name }}"
-        key_secret: "{{ host.dns.key_secret | b64encode }}"
+        key_secret: "{{ host.dns.key_secret }}"
         key_algorithm: "{{ host.dns.key_algorithm }}"
         server: "{{ host.dns.server }}"
         port: "{{ host.dns.port | int }}"

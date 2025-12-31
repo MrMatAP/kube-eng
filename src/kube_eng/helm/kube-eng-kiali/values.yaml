@@ -2,12 +2,14 @@
 # Default values for Kube Eng :: Kiali
 
 cluster:
+  name: cluster
   edge:
-    kind: ingress
-    name: edge-ingress
-    ns: edge
-
-fqdn: kiali.cluster.k8s
+    kind: traefik
+    fqdn: kiali.cluster.k8s
+    gateway:
+      name: gateway
+      ns: edge
+      section: kiali
 
 prometheus:
   ns: prometheus

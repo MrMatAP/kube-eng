@@ -1,3 +1,3 @@
 # Kube Eng :: Jaeger installed
 
-URL:            https://{{ .Values.fqdn }}
+FQDN:   {{ .Values.cluster.edge.fqdn }}

@@ -9,17 +9,14 @@ from .root_config_aware import RootConfigAware
 
 
 class ClusterMeshKind(str, enum.Enum):
+    none = "none"
     istio_sidecar = "istio-sidecar"
     istio_ambient = "istio-ambient"
-    none = "none"
 
 class ClusterMeshConfig(RootConfigAware):
     enabled: bool = Field(default=False)
     kind: ClusterMeshKind = Field(default=ClusterMeshKind.istio_sidecar)
     ns: str = Field(default="istio-system")
-    istio_gateway_api_crd: str = Field(
-        default="https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.4.0/experimental-install.yaml"
-    )
 
 class ClusterPKIConfig(RootConfigAware):
     ns: str = Field(default="cert-manager")
@@ -44,20 +41,36 @@ class ClusterPKIConfig(RootConfigAware):
 class ClusterEdgeKindEnum(str, enum.Enum):
     istio = "istio"
     istio_gateway_api = "istio-gateway-api"
-    ingress = "ingress"
-
+    traefik = "traefik"
 
 class ClusterEdgeConfig(RootConfigAware):
-    kind: ClusterEdgeKindEnum = Field(default=ClusterEdgeKindEnum.ingress)
-    name: str = Field(default="edge-ingress")
+    kind: ClusterEdgeKindEnum = Field(default=ClusterEdgeKindEnum.traefik)
+    name: str = Field(default="edge")
     ns: str = Field(default="edge")
-    ingress_repository: str = Field(default="docker.io/traefik")
-    ingress_tag: str = Field(default="v3.6")
-    ingress_hostname: str = Field(default="edge")
+    gateway_api_crds: str = Field(
+        default="https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.4.1/experimental-install.yaml"
+    )
+    traefik_repository: str = Field(default="docker.io/traefik")
+    traefik_tag: str = Field(default="v3.6")
+    traefik_hostname: str = Field(default="edge")
+    traefik_dashboard_hostname: str = Field(default="dashboard")
 
+
+class ClusterCNIKindEnum(str, enum.Enum):
+    kind = "kind"
+    calico = "calico"
+
+class ClusterCNIConfig(RootConfigAware):
+    kind: ClusterCNIKindEnum = Field(default=ClusterCNIKindEnum.kind)
+    calico_operator_crds: str = Field(default="https://raw.githubusercontent.com/projectcalico/calico/v3.31.3/manifests/operator-crds.yaml")
+    calico_tigera_crds: str = Field(default="https://raw.githubusercontent.com/projectcalico/calico/v3.31.3/manifests/tigera-operator.yaml")
 
 class ClusterConfig(RootConfigAware):
     name: str = Field(description="Name of the cluster", default_factory=socket.gethostname)
+
+    pod_subnet_cidr: str = Field(default="10.244.0.0/16")
+    service_subnet_cidr: str = Field(default="10.96.0.0/12")
+    cni: ClusterCNIConfig = Field(default_factory=ClusterCNIConfig)
 
     control_plane_nodes: int = Field(default=1)
     worker_nodes: int = Field(default=3)

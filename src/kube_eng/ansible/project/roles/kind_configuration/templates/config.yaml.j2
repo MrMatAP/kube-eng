@@ -1,6 +1,10 @@
 ---
 kind: Cluster
 apiVersion: kind.x-k8s.io/v1alpha4
+networking:
+  podSubnet: "{{ pod_subnet_cidr }}"
+  serviceSubnet: "{{ service_subnet_cidr }}"
+  disableDefaultCNI: {{ cni != 'kind' }}
 nodes:
 {% for cp in range(0, control_plane_nodes | int) %}
 - role: control-plane

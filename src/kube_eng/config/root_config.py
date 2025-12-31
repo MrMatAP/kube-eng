@@ -1,3 +1,4 @@
+import base64
 import pathlib
 import getpass
 import secrets
@@ -112,6 +113,8 @@ class RootConfig(BaseModel):
                 field.propagate_root_config(self)
 
         # If we are to use the local default DNS server and have not been
-        # given a key_secret, we default to the admin password
+        # given a key_secret, we default to the base64-encoded admin password
         if self.host.dns.kind == HostDNSKindEnum.local and self.host.dns.key_secret == "":
-            self.host.dns.key_secret = self.admin_password
+            self.host.dns.key_secret = base64.b64encode(
+                bytes(self.admin_password, encoding='utf-8')
+            ).decode('utf-8')

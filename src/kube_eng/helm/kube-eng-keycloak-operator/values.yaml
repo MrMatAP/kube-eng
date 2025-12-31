@@ -1,13 +1,12 @@
 #
-# Default values for Kube Eng :: Keycloak
+# Default values for Kube Eng :: Keycloak Operator
 
 cluster:
-  mesh: "istio"
-  istio_profile: "ambient"
-  gateway_api: true
-  name: "cluster"
-  domain: "local"
-
-edge:
-  ns: edge
-  name: edge-ingres
+  name: cluster
+  edge:
+    kind: traefik
+    fqdn: prometheus.cluster.k8s
+    gateway:
+      name: gateway
+      ns: edge
+      section: prometheus

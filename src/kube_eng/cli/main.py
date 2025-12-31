@@ -16,10 +16,9 @@ from kube_eng.common import AnsibleEvent, AnsibleExecution
 console = rich.console.Console()
 
 
-def log_ansible_event(ev: AnsibleEvent) -> None:
+def _log_ansible_event(ev: AnsibleEvent) -> None:
     """
-    Prints events that completed and those that have no completion to the
-    console.
+    Callback to print the outcome of an Ansible event on the CLI console.
     Args:
         ev (AnsibleEvent): The Ansible event to print.
     """
@@ -33,6 +32,15 @@ async def config_list(config: RootConfig, args: argparse.Namespace) -> int:
     return 0
 
 async def config_get(config: RootConfig, args: argparse.Namespace) -> int:
+    """
+    Print the value of a configuration value in the configuration hierarchy.
+    Args:
+        config (RootConfig): The root configuration object
+        args (): The parsed command line arguments
+
+    Returns:
+        An integer exit code
+    """
     if 'key' not in args:
         return await config_list(config, args)
     path = args.key.split('.')
@@ -43,6 +51,15 @@ async def config_get(config: RootConfig, args: argparse.Namespace) -> int:
     return 0
 
 async def config_set(config: RootConfig, args: argparse.Namespace) -> int:
+    """
+    Set a configuration value in the configuration hierarchy.
+    Args:
+        config (RootConfig): The root configuration object
+        args (): The parsed command line arguments
+
+    Returns:
+        An integer exit code
+    """
     if 'key' not in args or 'value' not in args:
         console.print('Please specify both a key and a value')
         return 1
@@ -74,8 +91,17 @@ async def config_set(config: RootConfig, args: argparse.Namespace) -> int:
     return 0
 
 async def ansible_execute(config: RootConfig, args: argparse.Namespace) -> int:
-    ex = AnsibleExecution(config, log_ansible_event)
-    await ex.execute(playbook=cmd_to_playbook[args.command])
+    """
+    Execute the Ansible playbook corresponding to the command.
+    Args:
+        config (RootConfig): The root configuration object
+        args (): The parsed command line arguments
+
+    Returns:
+        An integer exit code
+    """
+    ex = AnsibleExecution(config, _log_ansible_event)
+    await ex.execute(playbook=cmd_to_playbook[args.playbook])
     return 0
 
 async def main() -> int:
@@ -109,19 +135,23 @@ async def main() -> int:
         apply_host_parser = subparsers.add_parser(
             'host-apply', help='Apply the host configuration'
         )
-        apply_host_parser.set_defaults(func=ansible_execute)
+        apply_host_parser.set_defaults(func=ansible_execute, playbook='host-apply')
         apply_cluster_parser = subparsers.add_parser(
             'cluster-apply', help='Apply the cluster configuration'
         )
-        apply_cluster_parser.set_defaults(func=ansible_execute)
+        apply_cluster_parser.set_defaults(func=ansible_execute, playbook='cluster-apply')
         destroy_cluster_parser = subparsers.add_parser(
             'cluster-destroy', help='Destroy the cluster'
         )
-        destroy_cluster_parser.set_defaults(func=ansible_execute)
+        destroy_cluster_parser.set_defaults(func=ansible_execute, playbook='cluster-destroy')
         apply_stack_parser = subparsers.add_parser(
             'stack-apply', help='Apply the stack configuration'
         )
-        apply_stack_parser.set_defaults(func=ansible_execute)
+        apply_stack_parser.set_defaults(func=ansible_execute, playbook='stack-apply')
+
+        helm_repackage_parser = subparsers.add_parser('helm-repackage', help='Repackage Helm charts')
+        helm_repackage_parser.set_defaults(func=ansible_execute, playbook='helm-repackage')
+
         args = parser.parse_args()
         config = RootConfig.load(config_path=args.config_path)
         config.save()

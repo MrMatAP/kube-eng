@@ -9,15 +9,23 @@
       ansible.builtin.file:
         path: "{{ preheat_path }}"
         state: directory
-    - name: Download the Gateway-API CRDs
+    - name: Preheat the Calico Operator CRD
       ansible.builtin.get_url:
-        url: "{{ cluster.mesh.istio_gateway_api_crd }}"
-        dest: "{{ preheat_path }}/istio_gateway_api_crds.yaml"
-    - name: Download the CRD for cert-manager PKI
+        url: "{{ cluster.cni.calico_operator_crds }}"
+        dest: "{{ preheat_path }}/calico-operator-crds.yaml"
+    - name: Preheat the Calico Tigera CRD
+      ansible.builtin.get_url:
+        url: "{{ cluster.cni.calico_tigera_crds }}"
+        dest: "{{ preheat_path }}/calico-tigera-crds.yaml"
+    - name: Preheat the Kubernetes Gateway CRDs
+      ansible.builtin.get_url:
+        url: "{{ cluster.edge.gateway_api_crds }}"
+        dest: "{{ preheat_path }}/gateway-api-crds.yaml"
+    - name: Preheat the CRD for cert-manager PKI
       ansible.builtin.get_url:
         url: "{{ cluster.pki.crd }}"
         dest: "{{ preheat_path }}/cert-manager-crds.yaml"
-    - name: Download the KeyCloak Operator CRDs
+    - name: Preheat the KeyCloak Operator CRDs
       ansible.builtin.get_url:
         url: "https://raw.githubusercontent.com/keycloak/keycloak-k8s-resources/{{ stack.keycloak.operator_version }}/kubernetes/{{ item }}"
         dest: "{{ preheat_path }}/{{ item }}"
@@ -79,7 +87,7 @@
     community.docker.docker_network:
       name: kind
 
-  - name: Create a local DNS server, if enabled
+  - name: Create a local DNS server, if enabled to run locally
     when: host.dns.kind == 'local'
     block:
     - name: Create a directory for DNS
@@ -93,19 +101,26 @@
         dns_local_config_path: "{{ host.dns.config_path }}"
         dns_local_forwarders: "{{ host.dns.forwarders }}"
         dns_local_zone: "{{ host.dns.zone }}"
-        dns_local_update_key: "{{ host.dns.key_secret | b64encode }}"
+        dns_local_update_key: "{{ host.dns.key_secret }}"
     - name: Create a volume for the DNS cache
       community.docker.docker_volume:
-        name: "{{ host.dns.volume_name }}"
+        name: "{{ host.dns.volume_name }}-cache"
+        state: present
+    - name: Create a volume for the DNS zones
+      community.docker.docker_volume:
+        name: "{{ host.dns.volume_name }}-zones"
         state: present
     - name: Start the local DNS server
       community.docker.docker_container:
         name: "{{ host.dns.name }}"
         image: "{{ host.dns.image }}"
-        restart: true
         mounts:
-        - source: "{{ host.dns.volume_name }}"
+        - source: "{{ host.dns.volume_name }}-cache"
           target: /var/cache/bind
+          type: volume
+        - source: "{{ host.dns.volume_name }}-zones"
+          target: /var/lib/bind
+          type: volume
         - source: "{{ host.dns.config_path }}/named.conf"
           target: /etc/bind/named.conf
           read_only: true
@@ -116,17 +131,17 @@
           type: bind
         - source: "{{ host.dns.config_path }}/db.{{ host.dns.zone }}"
           target: /var/lib/bind/db.{{ host.dns.zone }}
-          read_only: false
           type: bind
         ports:
-        - "127.0.0.1:53:53/udp"
-        - "127.0.0.1:53:53/tcp"
-        - "127.0.0.1:953:953/tcp"
+        - "127.0.0.1:{{ host.dns.port }}:53/udp"
+        - "127.0.0.1:{{ host.dns.port }}:53/tcp"
+        - "127.0.0.1:{{ host.dns.control_port }}:953/tcp"
         networks:
         - name: kind
           aliases: "{{ host.dns.name }}"
+        keep_volumes: false
         restart_policy: always
-        state: started
+        state: healthy
 
   - name: Create a local air-gapped registry, if enabled
     when: host.registry.enabled == true
@@ -171,7 +186,6 @@
       community.docker.docker_container:
         name: "{{ host.registry.name }}"
         image: "{{ host.registry.image }}"
-        restart: true
         mounts:
         - source: "{{ host.registry.volume_name }}"
           target: /data
@@ -192,12 +206,13 @@
         networks:
         - name: kind
           aliases: "{{ host.registry.name }}"
+        keep_volumes: false
         restart_policy: always
-        state: started
+        state: healthy
     - name: Update DNS with a record for the air gapped registry
       community.general.nsupdate:
         key_name: "{{ host.dns.key_name }}"
-        key_secret: "{{ host.dns.key_secret | b64encode }}"
+        key_secret: "{{ host.dns.key_secret }}"
         key_algorithm: "{{ host.dns.key_algorithm }}"
         server: "{{ host.dns.server }}"
         port: "{{ host.dns.port | int }}"
@@ -219,7 +234,6 @@
       community.docker.docker_container:
         name: "{{ host.postgresql.name }}"
         image: "{{ host.postgresql.image }}"
-        restart: true
         ports:
         - "127.0.0.1:{{ host.postgresql.port | int }}:5432"
         mounts:
@@ -231,12 +245,13 @@
         env:
           POSTGRES_PASSWORD: "{{ admin_password }}"
           PGDATA: /var/lib/postgresql/data
+        keep_volumes: false
         restart_policy: always
         state: healthy
     - name: Update DNS with a record for PostgreSQL
       community.general.nsupdate:
         key_name: "{{ host.dns.key_name }}"
-        key_secret: "{{ host.dns.key_secret | b64encode }}"
+        key_secret: "{{ host.dns.key_secret }}"
         key_algorithm: "{{ host.dns.key_algorithm }}"
         server: "{{ host.dns.server }}"
         port: "{{ host.dns.port | int }}"
@@ -258,7 +273,6 @@
       community.docker.docker_container:
         name: "{{ host.minio.name }}"
         image: "{{ host.minio.image }}"
-        restart: true
         ports:
         - "127.0.0.1:{{ host.minio.port | int }}:9000"
         - "127.0.0.1:{{ host.minio.console_port | int }}:9001"
@@ -272,12 +286,13 @@
           MINIO_ROOT_USER: admin
           MINIO_ROOT_PASSWORD: "{{ admin_password }}"
         command: "server /data --console-address ':9001'"
+        keep_volumes: false
         restart_policy: always
         state: healthy
     - name: Update DNS with a record for MinIO
       community.general.nsupdate:
         key_name: "{{ host.dns.key_name }}"
-        key_secret: "{{ host.dns.key_secret | b64encode }}"
+        key_secret: "{{ host.dns.key_secret }}"
         key_algorithm: "{{ host.dns.key_algorithm }}"
         server: "{{ host.dns.server }}"
         port: "{{ host.dns.port | int }}"
@@ -307,7 +322,6 @@
       community.docker.docker_container:
         name: "{{ host.kafka.name }}"
         image: "{{ host.kafka.image }}"
-        restart: true
         ports:
         - "127.0.0.1:{{ host.kafka.port | int }}:9092"
         mounts:
@@ -323,12 +337,13 @@
         networks:
         - name: kind
           aliases: "{{ host.kafka.name }}"
+        keep_volumes: false
         restart_policy: always
         state: healthy
     - name: Update DNS with a record for Kafka
       community.general.nsupdate:
         key_name: "{{ host.dns.key_name }}"
-        key_secret: "{{ host.dns.key_secret | b64encode }}"
+        key_secret: "{{ host.dns.key_secret }}"
         key_algorithm: "{{ host.dns.key_algorithm }}"
         server: "{{ host.dns.server }}"
         port: "{{ host.dns.port | int }}"
@@ -339,29 +354,27 @@
         type: A
         state: present
 
-  - name: Package and upload the helm charts
-    block:
-    - name: Package the Helm charts
-      ansible.builtin.command:
-        cmd: |
-          {{ host.tool.helm.path }} package 
-          --version {{ host.tool.helm.chart_version }} 
-          --dependency-update 
-          --destination {{ host.tool.helm.packaged_chart_path }} 
-          {{ host.tool.helm.chart_path }}/{{ item }}
-        creates: "{{ host.tool.helm.packaged_chart_path }}/{{ item }}-{{ host.tool.helm.chart_version }}.tgz"
-      loop:
-      - kube-eng-alloy
-      - kube-eng-cert-manager
-      - kube-eng-edge
-      - kube-eng-grafana
-      - kube-eng-istio
-      - kube-eng-jaeger
-      - kube-eng-keycloak
-      - kube-eng-keycloak-operator
-      - kube-eng-kiali
-      - kube-eng-loki
-      - kube-eng-prometheus
+  - name: Package the Helm charts
+    ansible.builtin.command:
+      cmd: |
+        {{ host.tool.helm.path }} package 
+        --version {{ host.tool.helm.chart_version }} 
+        --dependency-update 
+        --destination {{ host.tool.helm.packaged_chart_path }} 
+        {{ host.tool.helm.chart_path }}/{{ item }}
+      creates: "{{ host.tool.helm.packaged_chart_path }}/{{ item }}-{{ host.tool.helm.chart_version }}.tgz"
+    loop:
+    - kube-eng-alloy
+    - kube-eng-cert-manager
+    - kube-eng-edge
+    - kube-eng-grafana
+    - kube-eng-istio
+    - kube-eng-jaeger
+    - kube-eng-keycloak
+    - kube-eng-keycloak-operator
+    - kube-eng-kiali
+    - kube-eng-loki
+    - kube-eng-prometheus
 
 #
 # If you used a local DNS server, then you must now configure your host to point to 127.0.0.1:53

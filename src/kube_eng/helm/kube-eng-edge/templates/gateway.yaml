@@ -1,0 +1,119 @@
+# Edge Gateway
+{{- if ne .Values.cluster.edge.kind "istio" }}
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  annotations:
+    cert-manager.io/cluster-issuer: ca-issuer
+  labels:
+    {{ include "common.labels" . | nindent 4 }}
+  name: edge-gateway
+spec:
+  gatewayClassName: traefik
+  listeners:
+  - name: web
+    port: 8000
+    protocol: HTTP
+    allowedRoutes:
+      namespaces:
+        from: All
+  {{ if .Values.stack.prometheus.enabled }}
+  - name: prometheus
+    hostname: {{ .Values.stack.prometheus.fqdn }}
+    port: 8443
+    protocol: HTTPS
+    tls:
+      mode: Terminate
+      certificateRefs:
+      - kind: Secret
+        name: prometheus-cert
+    allowedRoutes:
+      namespaces:
+        from: All
+  {{ end }}
+  {{ if .Values.stack.alloy.enabled }}
+  - name: alloy
+    hostname: {{ .Values.stack.alloy.fqdn }}
+    port: 8443
+    protocol: HTTPS
+    tls:
+      mode: Terminate
+      certificateRefs:
+      - kind: Secret
+        name: alloy-cert
+    allowedRoutes:
+      namespaces:
+        from: All
+  {{ end }}
+  {{ if .Values.stack.grafana.enabled }}
+  - name: grafana
+    hostname: {{ .Values.stack.grafana.fqdn }}
+    port: 8443
+    protocol: HTTPS
+    tls:
+      mode: Terminate
+      certificateRefs:
+      - kind: Secret
+        name: grafana-cert
+    allowedRoutes:
+      namespaces:
+        from: All
+  {{ end }}
+  {{ if .Values.stack.jaeger.enabled }}
+  - name: jaeger
+    hostname: {{ .Values.stack.jaeger.fqdn }}
+    port: 8443
+    protocol: HTTPS
+    tls:
+      mode: Terminate
+      certificateRefs:
+      - kind: Secret
+        name: jaeger-cert
+    allowedRoutes:
+      namespaces:
+        from: All
+  {{ end }}
+  {{ if .Values.stack.keycloak.enabled }}
+  - name: keycloak
+    hostname: {{ .Values.stack.keycloak.fqdn }}
+    port: 8443
+    protocol: HTTPS
+    tls:
+      mode: Terminate
+      certificateRefs:
+      - kind: Secret
+        name: keycloak-cert
+    allowedRoutes:
+      namespaces:
+        from: All
+  {{ end }}
+  {{ if .Values.stack.kiali.enabled }}
+  - name: kiali
+    hostname: {{ .Values.stack.kiali.fqdn }}
+    port: 8443
+    protocol: HTTPS
+    tls:
+      mode: Terminate
+      certificateRefs:
+      - kind: Secret
+        name: kiali-cert
+    allowedRoutes:
+      namespaces:
+        from: All
+  {{ end }}
+  {{ if .Values.stack.loki.enabled }}
+  - name: loki
+    hostname: {{ .Values.stack.loki.fqdn }}
+    port: 8443
+    protocol: HTTPS
+    tls:
+      mode: Terminate
+      certificateRefs:
+      - kind: Secret
+        name: loki-cert
+    allowedRoutes:
+      namespaces:
+        from: All
+  {{ end }}
+{{ end }}
