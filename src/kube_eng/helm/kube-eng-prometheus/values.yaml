@@ -2,13 +2,14 @@
 # Default values for Kube Eng :: Prometheus
 
 cluster:
+  name: cluster
   edge:
-    kind: ingress
-    name: edge-ingress
-    ns: edge
-
-fqdn: prometheus.cluster.k8s
-
+    kind: traefik
+    fqdn: prometheus.cluster.k8s
+    gateway:
+      name: gateway
+      ns: edge
+      section: prometheus
 #
 # Dependency Chart overrides
 

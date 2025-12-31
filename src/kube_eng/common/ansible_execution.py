@@ -15,6 +15,8 @@ cmd_to_playbook = {
     'cluster-apply': 'cluster_apply.yml',
     'cluster-destroy': 'cluster_destroy.yml',
     'stack-apply': 'stack_apply.yml',
+
+    'helm-repackage': 'helm_repackage.yml'
 }
 
 class AnsibleStatusEnum(enum.StrEnum):

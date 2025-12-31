@@ -2,12 +2,14 @@
 # Default values for Kube Eng :: Grafana
 
 cluster:
+  name: cluster
   edge:
-    kind: ingress
-    name: edge-ingress
-    ns: edge
-
-fqdn: grafana.cluster.k8s
+    kind: traefik
+    fqdn: grafana.cluster.k8s
+    gateway:
+      name: gateway
+      ns: edge
+      section: grafana
 
 #
 # Dependency Chart overrides

@@ -2,3 +2,4 @@
 ---
 control_plane_nodes: 1
 worker_nodes: 3
+cni: kind

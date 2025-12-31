@@ -1,12 +1,14 @@
 # Default values for Kube Eng :: Loki
 
 cluster:
+  name: cluster
   edge:
-    kind: ingress
-    name: edge-ingress
-    ns: edge
-
-fqdn: loki.cluster.k8s
+    kind: traefik
+    fqdn: loki.cluster.k8s
+    gateway:
+      name: gateway
+      ns: edge
+      section: loki
 
 overrides:
   fullnameOverride: loki

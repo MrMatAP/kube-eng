@@ -32,6 +32,9 @@
       directory: "{{ host.tool.kind.config_path }}"
       ca_file_path: "{{ cluster.pki.config_path }}/ca.pem"
       airgap_registry_name: "{{ host.registry.name }}"
+      pod_subnet_cidr: "{{ cluster.pod_subnet_cidr }}"
+      service_subnet_cidr: "{{ cluster.service_subnet_cidr }}"
+      cni: "{{ cluster.cni.kind }}"
 
   - name: Create the cluster
     kind_cluster:
@@ -40,37 +43,99 @@
       tool_kind: "{{ host.tool.kind.path }}"
       state: present
 
-  - name: Install Istio, if enabled
-    when: "cluster.mesh.enabled == true"
+  - name: Install Calico CNI, if enabled
+    when: "cluster.cni.kind == 'calico'"
     block:
-    - name: Apply the Istio CRDs
+    - name: Apply the Calico Operator CRDs
       kubernetes.core.k8s:
         state: present
         apply: true
-        src: "{{ preheat_path }}/istio_gateway_api_crds.yaml"
+        src: "{{ preheat_path }}/calico-operator-crds.yaml"
         server_side_apply:
           field_manager: ansible
         wait: true
-    - name: Install Istio
-      kubernetes.core.helm:
-        name: istio
-        create_namespace: true
-        release_namespace: "{{ cluster.mesh.ns }}"
-        chart_ref: "oci://{{ host.registry.name }}.{{ cluster.name }}.{{ host.dns.zone }}:{{ host.registry.port | int }}/kube-eng/kube-eng-istio"
-        chart_version: "{{ host.tool.helm.chart_version }}"
-        binary_path: "{{ host.tool.helm.path }}"
+    - name: Apply the Calico Tigera Operator CRDs
+      kubernetes.core.k8s:
+        state: present
+        apply: true
+        src: "{{ preheat_path }}/calico-tigera-crds.yaml"
+        server_side_apply:
+          field_manager: ansible
         wait: true
-        values:
-          cluster:
-            mesh:
-              kind: "{{ cluster.mesh.kind }}"
-          istio:
-            ambient: "{{ cluster.mesh.kind == 'istio-ambient' }}"
-            gateway: true
-          overrides_istiod:
-            profile: "{{ cluster.mesh.kind == 'istio-ambient' | ternary('ambient', 'default') }}"
-          overrides_cni:
-            profile: "{{ cluster.mesh.kind == 'istio-ambient' | ternary('ambient', 'default') }}"
+    - name: Configure the Calico Installation
+      kubernetes.core.k8s:
+        state: present
+        apply: true
+        definition:
+          apiVersion: operator.tigera.io/v1
+          kind: Installation
+          metadata:
+            name: default
+          spec:
+            kubernetesProvider: Kind
+            serviceCIDRs:
+            - "{{ cluster.service_subnet_cidr }}"
+            calicoNetwork:
+              ipPools:
+              - name: default-ipv4-ippool
+                cidr: "{{ cluster.pod_subnet_cidr }}"
+                encapsulation: VXLANCrossSubnet
+                natOutgoing: Enabled
+                nodeSelector: all()
+                blockSize: 26
+    - name: Configure the Calico API Server
+      kubernetes.core.k8s:
+        state: present
+        apply: true
+        definition:
+          apiVersion: operator.tigera.io/v1
+          kind: APIServer
+          metadata:
+            name: default
+          spec: {}
+    - name: Configure the Calico Goldmane flow aggregator
+      kubernetes.core.k8s:
+        state: present
+        apply: true
+        definition:
+          apiVersion: operator.tigera.io/v1
+          kind: Goldmane
+          metadata:
+            name: default
+          spec: {}
+
+    # Note: This should not run at the same time as cloud-provider-kind, as it will create
+    # a conflict for the field-manager.
+  - name: Apply the Gateway API CRDs
+    kubernetes.core.k8s:
+      state: present
+      apply: true
+      src: "{{ preheat_path }}/gateway-api-crds.yaml"
+      server_side_apply:
+        field_manager: ansible
+      wait: true
+
+  - name: Deploy Istio, if enabled
+    when: "cluster.mesh.enabled == true"
+    kubernetes.core.helm:
+      name: istio
+      create_namespace: true
+      release_namespace: "{{ cluster.mesh.ns }}"
+      chart_ref: "oci://{{ host.registry.name }}.{{ cluster.name }}.{{ host.dns.zone }}:{{ host.registry.port | int }}/kube-eng/kube-eng-istio"
+      chart_version: "{{ host.tool.helm.chart_version }}"
+      binary_path: "{{ host.tool.helm.path }}"
+      wait: true
+      values:
+        cluster:
+          mesh:
+            kind: "{{ cluster.mesh.kind }}"
+        istio:
+          ambient: "{{ cluster.mesh.kind == 'istio-ambient' }}"
+          gateway: true
+        overrides_istiod:
+          profile: "{{ cluster.mesh.kind == 'istio-ambient' | ternary('ambient', 'default') }}"
+        overrides_cni:
+          profile: "{{ cluster.mesh.kind == 'istio-ambient' | ternary('ambient', 'default') }}"
 
   - name: Deploy cluster PKI
     block:
@@ -125,8 +190,6 @@
         values:
           overrides:
             namespace: "{{ cluster.pki.ns }}"
-            config:
-              enableGatewayAPI: "{{ cluster.edge.kind == 'istio-gateway-api' }}"
             prometheus:
               enabled: "{{ stack.prometheus.enabled | bool }}"
 

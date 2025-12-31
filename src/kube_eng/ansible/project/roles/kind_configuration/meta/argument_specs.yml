@@ -15,7 +15,7 @@ argument_specs:
         required: false
         default: 3
       directory:
-        description: Path to the directory to kind configuration
+        description: Path to the directory to hold kind configuration
         type: str
         required: true
       ca_file_path:
@@ -26,3 +26,16 @@ argument_specs:
         description: Name of the airgap registry
         type: str
         required: true
+      pod_subnet_cidr:
+        description: Pod subnet CIDR
+        type: str
+        required: true
+      service_subnet_cidr:
+        description: Service subnet CIDR
+        type: str
+        required: true
+      cni:
+        description: CNI plugin to use for the cluster
+        type: str
+        required: false
+        default: kind

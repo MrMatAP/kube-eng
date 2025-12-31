@@ -1,20 +1,14 @@
 # Default values for Kube Eng :: Alloy
 
 cluster:
-  control_plane_nodes: 1
-  worker_nodes: 3
-  mesh: "istio"
-  istio_profile: "istio-experimental"
-  gateway_api: true
-  edge_ns: edge
-  edge: edge-ingress
-  name: "cluster"
-  domain: "local"
-
-route:
-  name: route-alloy
-  hostname: alloy
-  sectionName: alloy
+  name: cluster
+  edge:
+    kind: traefik
+    fqdn: alloy.cluster.k8s
+    gateway:
+      name: gateway
+      ns: edge
+      section: alloy
 
 overrides:
   fullnameOverride: alloy
