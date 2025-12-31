@@ -24,6 +24,7 @@
     - kube-eng-kiali
     - kube-eng-loki
     - kube-eng-prometheus
+    - kube-eng-cilium
 
   - name: Upload the Helm charts to the local registry
     ansible.builtin.command:
@@ -43,3 +44,4 @@
     - kube-eng-kiali
     - kube-eng-loki
     - kube-eng-prometheus
+    - kube-eng-cilium

@@ -1,0 +1,8 @@
+#
+# Default values for Kube Eng :: Cilium
+
+cluster:
+  name: cluster
+
+#
+# Dependency Chart overrides
