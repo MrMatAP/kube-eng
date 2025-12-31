@@ -22,6 +22,7 @@
     - kube-eng-kiali
     - kube-eng-loki
     - kube-eng-prometheus
+    - kube-eng-cilium
 
   - name: Template the cluster configuration
     ansible.builtin.import_role:
@@ -42,6 +43,19 @@
       config_file: "{{ host.tool.kind.config_path }}/config.yaml"
       tool_kind: "{{ host.tool.kind.path }}"
       state: present
+
+  - name: Deploy Cilium CNI, if enabled
+    when: "cluster.cni.kind == 'cilium'"
+    block:
+    - name: Deploy the Cilium Helm chart
+      kubernetes.core.helm:
+        name: cilium
+        create_namespace: false
+        release_namespace: kube-system
+        chart_ref: "oci://{{ host.registry.name }}.{{ cluster.name }}.{{ host.dns.zone }}:{{ host.registry.port | int }}/kube-eng/kube-eng-cilium"
+        chart_version: "{{ host.tool.helm.chart_version }}"
+        binary_path: "{{ host.tool.helm.path }}"
+        wait: true
 
   - name: Install Calico CNI, if enabled
     when: "cluster.cni.kind == 'calico'"

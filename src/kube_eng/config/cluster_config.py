@@ -59,6 +59,7 @@ class ClusterEdgeConfig(RootConfigAware):
 class ClusterCNIKindEnum(str, enum.Enum):
     kind = "kind"
     calico = "calico"
+    cilium = "cilium"
 
 class ClusterCNIConfig(RootConfigAware):
     kind: ClusterCNIKindEnum = Field(default=ClusterCNIKindEnum.kind)

@@ -375,6 +375,7 @@
     - kube-eng-kiali
     - kube-eng-loki
     - kube-eng-prometheus
+    - kube-eng-cilium
 
 #
 # If you used a local DNS server, then you must now configure your host to point to 127.0.0.1:53
