@@ -26,14 +26,14 @@ dependencies:
   repository: https://istio-release.storage.googleapis.com/charts
   version: 1.28.2
   alias: overrides_cni
-  condition: istio.ambient
+  condition: ambient
 - name: ztunnel
   repository: https://istio-release.storage.googleapis.com/charts
   version: 1.28.2
   alias: overrides_ztunnel
-  condition: istio.ambient
+  condition: ambient
 - name: gateway
   repository: https://istio-release.storage.googleapis.com/charts
   version: 1.28.2
   alias: overrides_gateway
-  condition: istio.gateway
+  condition: classic_gateway

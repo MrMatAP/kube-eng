@@ -6,3 +6,7 @@ cluster:
 
 #
 # Dependency Chart overrides
+
+cilium:
+  cni:
+    exclusive: false
