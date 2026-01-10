@@ -1,13 +1,12 @@
 # Default values for Kube Eng :: Istio
-cluster:
-  mesh:
-    kind: istio-sidecar
 
-istio:
-  ambient: false
-  gateway: false
+ambient: true
+classic_gateway: false
 
+overrides_istiod:
+  defaultRevision: default
+  profile: ambient
 
-overrides_base: {}
+overrides_cni:
+  profile: ambient
 
-overrides_istiod: {}

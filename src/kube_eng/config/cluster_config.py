@@ -8,6 +8,14 @@ from pydantic import Field, computed_field
 from .base import RootConfigAware
 
 
+class ClusterCNIKindEnum(str, enum.Enum):
+    kind = "kind"
+    cilium = "cilium"
+
+class ClusterCNIConfig(RootConfigAware):
+    kind: ClusterCNIKindEnum = Field(default=ClusterCNIKindEnum.kind)
+    exclusive: bool = Field(default=False, description="If true, only one CNI plugin can be active at a time")
+
 class ClusterMeshKind(str, enum.Enum):
     none = "none"
     istio_sidecar = "istio-sidecar"
@@ -38,6 +46,7 @@ class ClusterPKIConfig(RootConfigAware):
         """
         return self._root_config.config_path / "pki"
 
+
 class ClusterEdgeKindEnum(str, enum.Enum):
     istio = "istio"
     istio_gateway_api = "istio-gateway-api"
@@ -55,27 +64,16 @@ class ClusterEdgeConfig(RootConfigAware):
     traefik_hostname: str = Field(default="edge")
     traefik_dashboard_hostname: str = Field(default="dashboard")
 
-
-class ClusterCNIKindEnum(str, enum.Enum):
-    kind = "kind"
-    calico = "calico"
-    cilium = "cilium"
-
-class ClusterCNIConfig(RootConfigAware):
-    kind: ClusterCNIKindEnum = Field(default=ClusterCNIKindEnum.kind)
-    calico_operator_crds: str = Field(default="https://raw.githubusercontent.com/projectcalico/calico/v3.31.3/manifests/operator-crds.yaml")
-    calico_tigera_crds: str = Field(default="https://raw.githubusercontent.com/projectcalico/calico/v3.31.3/manifests/tigera-operator.yaml")
-
 class ClusterConfig(RootConfigAware):
     name: str = Field(description="Name of the cluster", default_factory=socket.gethostname)
 
     pod_subnet_cidr: str = Field(default="10.244.0.0/16")
     service_subnet_cidr: str = Field(default="10.96.0.0/12")
-    cni: ClusterCNIConfig = Field(default_factory=ClusterCNIConfig)
 
     control_plane_nodes: int = Field(default=1)
     worker_nodes: int = Field(default=3)
 
+    cni: ClusterCNIConfig = Field(default_factory=ClusterCNIConfig)
     mesh: ClusterMeshConfig = Field(default_factory=ClusterMeshConfig)
     pki: ClusterPKIConfig = Field(default_factory=ClusterPKIConfig)
     edge: ClusterEdgeConfig = Field(default_factory=ClusterEdgeConfig)

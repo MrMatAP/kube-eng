@@ -47,7 +47,7 @@
   - name: Deploy Cilium CNI, if enabled
     when: "cluster.cni.kind == 'cilium'"
     block:
-    - name: Deploy the Cilium Helm chart
+    - name: Deploy Cilium
       kubernetes.core.helm:
         name: cilium
         create_namespace: false
@@ -56,67 +56,10 @@
         chart_version: "{{ host.tool.helm.chart_version }}"
         binary_path: "{{ host.tool.helm.path }}"
         wait: true
-
-  - name: Install Calico CNI, if enabled
-    when: "cluster.cni.kind == 'calico'"
-    block:
-    - name: Apply the Calico Operator CRDs
-      kubernetes.core.k8s:
-        state: present
-        apply: true
-        src: "{{ preheat_path }}/calico-operator-crds.yaml"
-        server_side_apply:
-          field_manager: ansible
-        wait: true
-    - name: Apply the Calico Tigera Operator CRDs
-      kubernetes.core.k8s:
-        state: present
-        apply: true
-        src: "{{ preheat_path }}/calico-tigera-crds.yaml"
-        server_side_apply:
-          field_manager: ansible
-        wait: true
-    - name: Configure the Calico Installation
-      kubernetes.core.k8s:
-        state: present
-        apply: true
-        definition:
-          apiVersion: operator.tigera.io/v1
-          kind: Installation
-          metadata:
-            name: default
-          spec:
-            kubernetesProvider: Kind
-            serviceCIDRs:
-            - "{{ cluster.service_subnet_cidr }}"
-            calicoNetwork:
-              ipPools:
-              - name: default-ipv4-ippool
-                cidr: "{{ cluster.pod_subnet_cidr }}"
-                encapsulation: VXLANCrossSubnet
-                natOutgoing: Enabled
-                nodeSelector: all()
-                blockSize: 26
-    - name: Configure the Calico API Server
-      kubernetes.core.k8s:
-        state: present
-        apply: true
-        definition:
-          apiVersion: operator.tigera.io/v1
-          kind: APIServer
-          metadata:
-            name: default
-          spec: {}
-    - name: Configure the Calico Goldmane flow aggregator
-      kubernetes.core.k8s:
-        state: present
-        apply: true
-        definition:
-          apiVersion: operator.tigera.io/v1
-          kind: Goldmane
-          metadata:
-            name: default
-          spec: {}
+        values:
+          cilium:
+            cni:
+              exclusive: "{{ cluster.cni.exclusive }}"
 
     # Note: This should not run at the same time as cloud-provider-kind, as it will create
     # a conflict for the field-manager.
@@ -130,26 +73,25 @@
       wait: true
 
   - name: Deploy Istio, if enabled
-    when: "cluster.mesh.enabled == true"
-    kubernetes.core.helm:
-      name: istio
-      create_namespace: true
-      release_namespace: "{{ cluster.mesh.ns }}"
-      chart_ref: "oci://{{ host.registry.name }}.{{ cluster.name }}.{{ host.dns.zone }}:{{ host.registry.port | int }}/kube-eng/kube-eng-istio"
-      chart_version: "{{ host.tool.helm.chart_version }}"
-      binary_path: "{{ host.tool.helm.path }}"
-      wait: true
-      values:
-        cluster:
-          mesh:
-            kind: "{{ cluster.mesh.kind }}"
-        istio:
+    when: "cluster.mesh.enabled | bool == true"
+    block:
+    - name: Deploy Istio
+      kubernetes.core.helm:
+        name: istio
+        create_namespace: true
+        release_namespace: "{{ cluster.mesh.ns }}"
+        chart_ref: "oci://{{ host.registry.name }}.{{ cluster.name }}.{{ host.dns.zone }}:{{ host.registry.port | int }}/kube-eng/kube-eng-istio"
+        chart_version: "{{ host.tool.helm.chart_version }}"
+        binary_path: "{{ host.tool.helm.path }}"
+        wait: true
+        values:
           ambient: "{{ cluster.mesh.kind == 'istio-ambient' }}"
-          gateway: true
-        overrides_istiod:
-          profile: "{{ cluster.mesh.kind == 'istio-ambient' | ternary('ambient', 'default') }}"
-        overrides_cni:
-          profile: "{{ cluster.mesh.kind == 'istio-ambient' | ternary('ambient', 'default') }}"
+          classic_gateway: "{{ cluster.edge.kind == 'istio' }}"
+          overrides_istiod:
+            defaultRevision: default
+            profile: "{{ (cluster.mesh.kind == 'istio-ambient') | ternary('ambient', 'default') }}"
+          overrides_cni:
+            profile: "{{ (cluster.mesh.kind == 'istio-ambient') | ternary('ambient', 'default') }}"
 
   - name: Deploy cluster PKI
     block:

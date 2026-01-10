@@ -9,14 +9,6 @@
       ansible.builtin.file:
         path: "{{ preheat_path }}"
         state: directory
-    - name: Preheat the Calico Operator CRD
-      ansible.builtin.get_url:
-        url: "{{ cluster.cni.calico_operator_crds }}"
-        dest: "{{ preheat_path }}/calico-operator-crds.yaml"
-    - name: Preheat the Calico Tigera CRD
-      ansible.builtin.get_url:
-        url: "{{ cluster.cni.calico_tigera_crds }}"
-        dest: "{{ preheat_path }}/calico-tigera-crds.yaml"
     - name: Preheat the Kubernetes Gateway CRDs
       ansible.builtin.get_url:
         url: "{{ cluster.edge.gateway_api_crds }}"
