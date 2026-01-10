@@ -5,7 +5,7 @@ from typing import Any
 from pydantic import Field, computed_field
 
 from kube_eng import __version__, __helm_chart_path__
-from .root_config_aware import RootConfigAware
+from .base import RootConfigAware
 
 class HostToolDockerConfig(RootConfigAware):
     path: pathlib.Path = Field(default=pathlib.Path('/usr/local/bin/docker'))

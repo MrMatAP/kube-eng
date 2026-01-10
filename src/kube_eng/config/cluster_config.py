@@ -5,7 +5,7 @@ from typing import Any
 
 from pydantic import Field, computed_field
 
-from .root_config_aware import RootConfigAware
+from .base import RootConfigAware
 
 
 class ClusterMeshKind(str, enum.Enum):
