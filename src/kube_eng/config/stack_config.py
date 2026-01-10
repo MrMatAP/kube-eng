@@ -1,6 +1,6 @@
 from pydantic import Field
 
-from .root_config_aware import RootConfigAware
+from .base import RootConfigAware
 
 
 class StackPrometheusConfig(RootConfigAware):

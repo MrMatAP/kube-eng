@@ -80,7 +80,7 @@ async def config_set(config: RootConfig, args: argparse.Namespace) -> int:
         console.print('You cannot set the value of an entire object. Set a path that resolves to an attribute instead.')
         return 1
     if issubclass(type(getattr(parent, leaf)), enum.Enum):
-        if args.value not in type(getattr(parent, leaf)).__members__:
+        if args.value not in list(type(getattr(parent, leaf))):
             console.print(f'The value {args.value} is not a valid option for {args.key}')
             return 1
         else:

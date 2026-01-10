@@ -9,7 +9,7 @@ import yaml
 from pydantic import BaseModel, Field, computed_field
 
 from kube_eng import __version__
-from .root_config_aware import RootConfigAware
+from .base import RootConfigAware
 
 from .cluster_config import ClusterConfig
 from .host_config import HostConfig, HostDNSKindEnum
