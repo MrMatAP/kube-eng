@@ -11,6 +11,10 @@ cluster:
       ns: edge
       section: kiali
 
+kiali:
+  auth:
+    strategy: anonymous
+
 prometheus:
   ns: prometheus
   hostname: prometheus

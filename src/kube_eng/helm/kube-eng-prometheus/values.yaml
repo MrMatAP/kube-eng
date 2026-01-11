@@ -15,33 +15,16 @@ cluster:
 
 overrides:
   nameOverride: prometheus
-  commonMetaLabels:
-    app: prometheus
-    version: 26.0.1
-  serviceAccounts:
-    server:
-      create: true
-      name: sa-prometheus
-  server:
-    fullnameOverride: prometheus
-    releaseNamespace: false
-    extraFlags:
-    - web.enable-lifecycle
-    - web.enable-admin-api
-    ingress:
-      enabled: false
-    persistentVolume:
-      enabled: true
-      size: 3Gi
-    service:
-      enabled: true
-      type: ClusterIP
   alertmanager:
     enabled: false
-  kube-state-metrics:
+    ingress:
+      enabled: false
+  grafana:
     enabled: true
-  prometheus-node-exporter:
-    fullnameOverride: prometheus-node-exporter
+    ingress:
+      enabled: false
+  prometheus:
     enabled: true
-  prometheus-pushgateway:
-    enabled: false
+    ingress:
+      enabled: false
+

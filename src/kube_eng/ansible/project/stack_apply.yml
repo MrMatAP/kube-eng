@@ -22,12 +22,15 @@
         binary_path: "{{ host.tool.helm.path }}"
         wait: true
         values:
-          traefik_enabled: "{{ cluster.edge.kind == 'ingress' }}"
           cluster:
             name: "{{ cluster.name }}"
             edge:
               kind: "{{ cluster.edge.kind }}"
               name: "{{ cluster.edge.name }}"
+          gateway:
+            classname: "{{ (cluster.edge.kind == 'traefik') | ternary('traefik', 'istio') }}"
+          traefik:
+            enabled: "{{ cluster.edge.kind == 'traefik' }}"
           stack:
             prometheus:
               enabled: "{{ stack.prometheus.enabled }}"
@@ -50,23 +53,17 @@
             loki:
               enabled: "{{ stack.loki.enabled }}"
               fqdn: "{{ stack.loki.hostname }}.{{ cluster.name }}.{{ host.dns.zone }}"
-    - name: Get the Traefik edge service, if enabled
-      when: cluster.edge.kind == 'traefik'
-      block:
-      - name: Register the Traefik edge service
-        kubernetes.core.k8s_info:
-          api_version: v1
-          kind: Service
-          name: edge-traefik
-          namespace: "{{ cluster.edge.ns }}"
-        register: edge_service
-      - name: Register the Traefik gateway
-        kubernetes.core.k8s_info:
-          api_version: gateway.networking.k8s.io/v1
-          kind: Gateway
-          name: edge-gateway
-          namespace: "{{ cluster.edge.ns }}"
-        register: edge_gateway
+
+  - name: Collect information about the Edge Gateway
+    kubernetes.core.k8s_info:
+      api_version: gateway.networking.k8s.io/v1
+      kind: Gateway
+      name: edge-gateway
+      namespace: "{{ cluster.edge.ns }}"
+    register: edge_gateway
+
+  - ansible.builtin.debug:
+      var: edge_gateway.resources[0].status.addresses[0].value
 
   - name: Deploy Prometheus
     when: "stack.prometheus.enabled | bool == true"
@@ -105,7 +102,7 @@
         protocol: "{{ host.dns.protocol }}"
         record: "{{ stack.prometheus.hostname }}.{{ cluster.name }}.{{ host.dns.zone }}."
         ttl: "{{ host.dns.ttl | int }}"
-        value: "{{ edge_service.resources[0].status.loadBalancer.ingress[0].ip }}"
+        value: "{{ edge_gateway.resources[0].status.addresses[0].value }}"
         type: A
         state: present
 
@@ -146,7 +143,7 @@
         protocol: "{{ host.dns.protocol }}"
         record: "{{ stack.alloy.hostname }}.{{ cluster.name }}.{{ host.dns.zone }}."
         ttl: "{{ host.dns.ttl | int }}"
-        value: "{{ edge_service.resources[0].status.loadBalancer.ingress[0].ip }}"
+        value: "{{ edge_gateway.resources[0].status.addresses[0].value }}"
         type: A
         state: present
 
@@ -187,7 +184,7 @@
         protocol: "{{ host.dns.protocol }}"
         record: "{{ stack.loki.hostname }}.{{ cluster.name }}.{{ host.dns.zone }}."
         ttl: "{{ host.dns.ttl | int }}"
-        value: "{{ edge_service.resources[0].status.loadBalancer.ingress[0].ip }}"
+        value: "{{ edge_gateway.resources[0].status.addresses[0].value }}"
         type: A
         state: present
 
@@ -285,7 +282,7 @@
         protocol: "{{ host.dns.protocol }}"
         record: "{{ stack.keycloak.hostname }}.{{ cluster.name }}.{{ host.dns.zone }}."
         ttl: "{{ host.dns.ttl | int }}"
-        value: "{{ edge_service.resources[0].status.loadBalancer.ingress[0].ip }}"
+        value: "{{ edge_gateway.resources[0].status.addresses[0].value }}"
         type: A
         state: present
 
@@ -412,7 +409,7 @@
         protocol: "{{ host.dns.protocol }}"
         record: "{{ stack.grafana.hostname }}.{{ cluster.name }}.{{ host.dns.zone }}."
         ttl: "{{ host.dns.ttl | int }}"
-        value: "{{ edge_service.resources[0].status.loadBalancer.ingress[0].ip }}"
+        value: "{{ edge_gateway.resources[0].status.addresses[0].value }}"
         type: A
         state: present
 
@@ -457,7 +454,7 @@
         protocol: "{{ host.dns.protocol }}"
         record: "{{ stack.jaeger.hostname }}.{{ cluster.name }}.{{ host.dns.zone }}."
         ttl: "{{ host.dns.ttl | int }}"
-        value: "{{ edge_service.resources[0].status.loadBalancer.ingress[0].ip }}"
+        value: "{{ edge_gateway.resources[0].status.addresses[0].value }}"
         type: A
         state: present
 
@@ -501,6 +498,9 @@
               gateway:
                 name: "{{ edge_gateway.resources[0].metadata.name }}"
                 ns: "{{ cluster.edge.ns }}"
+          kiali:
+            auth:
+              strategy: anonymous
           prometheus:
             hostname: "{{ stack.prometheus.hostname }}"
             ns: "{{ stack.prometheus.ns }}"
@@ -514,7 +514,7 @@
               type: 'basic'
               username: admin
               password: "{{ admin_password }}"
-    - name: Update DNS with a record for Alloy
+    - name: Update DNS with a record for Kiali
       community.general.nsupdate:
         key_name: "{{ host.dns.key_name }}"
         key_secret: "{{ host.dns.key_secret }}"
@@ -524,6 +524,6 @@
         protocol: "{{ host.dns.protocol }}"
         record: "{{ stack.kiali.hostname }}.{{ cluster.name }}.{{ host.dns.zone }}."
         ttl: "{{ host.dns.ttl | int }}"
-        value: "{{ edge_service.resources[0].status.loadBalancer.ingress[0].ip }}"
+        value: "{{ edge_gateway.resources[0].status.addresses[0].value }}"
         type: A
         state: present
