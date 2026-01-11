@@ -10,10 +10,10 @@ metadata:
     {{ include "common.labels" . | nindent 4 }}
   name: edge-gateway
 spec:
-  gatewayClassName: traefik
+  gatewayClassName: {{ .Values.gateway.classname }}
   listeners:
   - name: web
-    port: 8000
+    port: 80
     protocol: HTTP
     allowedRoutes:
       namespaces:
@@ -21,7 +21,7 @@ spec:
   {{ if .Values.stack.prometheus.enabled }}
   - name: prometheus
     hostname: {{ .Values.stack.prometheus.fqdn }}
-    port: 8443
+    port: 443
     protocol: HTTPS
     tls:
       mode: Terminate
@@ -35,7 +35,7 @@ spec:
   {{ if .Values.stack.alloy.enabled }}
   - name: alloy
     hostname: {{ .Values.stack.alloy.fqdn }}
-    port: 8443
+    port: 443
     protocol: HTTPS
     tls:
       mode: Terminate
@@ -49,7 +49,7 @@ spec:
   {{ if .Values.stack.grafana.enabled }}
   - name: grafana
     hostname: {{ .Values.stack.grafana.fqdn }}
-    port: 8443
+    port: 443
     protocol: HTTPS
     tls:
       mode: Terminate
@@ -63,7 +63,7 @@ spec:
   {{ if .Values.stack.jaeger.enabled }}
   - name: jaeger
     hostname: {{ .Values.stack.jaeger.fqdn }}
-    port: 8443
+    port: 443
     protocol: HTTPS
     tls:
       mode: Terminate
@@ -77,7 +77,7 @@ spec:
   {{ if .Values.stack.keycloak.enabled }}
   - name: keycloak
     hostname: {{ .Values.stack.keycloak.fqdn }}
-    port: 8443
+    port: 443
     protocol: HTTPS
     tls:
       mode: Terminate
@@ -91,7 +91,7 @@ spec:
   {{ if .Values.stack.kiali.enabled }}
   - name: kiali
     hostname: {{ .Values.stack.kiali.fqdn }}
-    port: 8443
+    port: 443
     protocol: HTTPS
     tls:
       mode: Terminate
@@ -105,7 +105,7 @@ spec:
   {{ if .Values.stack.loki.enabled }}
   - name: loki
     hostname: {{ .Values.stack.loki.fqdn }}
-    port: 8443
+    port: 443
     protocol: HTTPS
     tls:
       mode: Terminate

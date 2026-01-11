@@ -4,14 +4,18 @@
 cluster:
   name: cluster
   edge:
-    kind: traefik
+    kind: istio-ambient
     name: edge
     traefik_repository: docker.io/traefik
     traefik_tag: v3.6
     traefik_hostname: edge.cluster.k8s
     traefik_dashboard_hostname: dashboard
 
+gateway:
+  classname: istio
+
 traefik:
+  enabled: false
   ingressRoute:
     dashboard:
       enabled: true

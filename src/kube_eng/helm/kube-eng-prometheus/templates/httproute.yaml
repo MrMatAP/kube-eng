@@ -20,6 +20,6 @@ spec:
         type: PathPrefix
         value: /
     backendRefs:
-    - name: prometheus
-      port: 80
+    - name: prometheus-operated
+      port: 9090
 {{- end }}
