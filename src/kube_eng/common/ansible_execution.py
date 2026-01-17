@@ -38,13 +38,20 @@ class AnsibleEvent:
     changed: bool = dataclasses.field(default=False)
     warnings: list[str] = dataclasses.field(default_factory=list)
     status: AnsibleStatusEnum = dataclasses.field(default=AnsibleStatusEnum.empty)
+    stdout: str = dataclasses.field(default='')
+    stderr: str = dataclasses.field(default='')
+    verbose: bool = False
 
 
 class AnsibleExecution:
 
-    def __init__(self, config: RootConfig, ui_event_callback: collections.abc.Callable[[AnsibleEvent], None]):
+    def __init__(self,
+                 config: RootConfig,
+                 ui_event_callback: collections.abc.Callable[[AnsibleEvent], None],
+                 verbose: bool = False):
         self._config = config
         self._ui_event_callback = ui_event_callback
+        self._verbose = verbose
 
     async def execute(self, playbook: str):
         try:
@@ -59,7 +66,7 @@ class AnsibleExecution:
                 rotate_artifacts=5,
                 inventory=str(__ansible_path__ / 'inventory' / 'inventory.yml'),
                 host_pattern='localhost',
-                quiet=False,
+                quiet=True,
                 verbosity=2,
                 event_handler=self.ansible_event_handler,
                 cancel_callback=self.ansible_cancel_callback,
@@ -74,18 +81,22 @@ class AnsibleExecution:
     def ansible_event_handler(self, status: typing.Dict) -> bool:
         ev = AnsibleEvent(uuid=status.get('uuid', 'Unknown'),
                           counter=status.get('counter', 0),
-                          event=status.get('event', 'Unknown'))
+                          event=status.get('event', 'Unknown'),
+                          verbose=self._verbose)
         event_data = status.get('event_data', {})
         match ev.event:
             case 'playbook_on_start':
                 ev.task = f'Starting playbook {event_data.get("playbook")}'
                 ev.status = AnsibleStatusEnum.empty
+                ev.msg = 'Started playbook'
             case 'playbook_on_play_start':
-                ev.task = f'Starting play "{event_data.get("name")}"'
+                ev.task = f'Starting play {event_data.get("name")}'
                 ev.status = AnsibleStatusEnum.empty
+                ev.msg = 'Started play'
             case 'playbook_on_task_start':
                 ev.task = event_data.get("name")
                 ev.status = AnsibleStatusEnum.running
+                ev.msg = 'Started task'
             case 'runner_on_start':
                 # We do not capture this event
                 return True
@@ -109,7 +120,18 @@ class AnsibleExecution:
                 ev.task = event_data.get('task', 'Unknown')
                 ev.status = AnsibleStatusEnum.ok
                 ev.changed = event_data.get('changed', False)
-                ev.warnings = event_data.get('warnings', [])
+                ev.warnings = event_data.get('res', {}).get('warnings', [])
+                ev.msg = event_data.get('res', {}).get('msg', 'Task completed successfully')
+                ev.stdout = event_data.get('res', {}).get('stdout', '')
+                ev.stderr = event_data.get('res', {}).get('stderr', '')
+            case 'error':
+                ev.uuid = status.get('uuid', 'Unknown')
+                ev.task = event_data.get('task', 'Unknown')
+                ev.msg = 'Task failed'
+                ev.changed = False
+                ev.status = AnsibleStatusEnum.failed
+                ev.stdout = status.get('stdout', '')
+
             case 'playbook_on_stats' | 'playbook_on_include' | 'verbose' | 'runner_item_on_ok' | 'runner_on_skipped' | 'deprecated':
                 # We do not capture these events
                 return True
