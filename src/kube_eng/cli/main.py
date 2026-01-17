@@ -1,3 +1,4 @@
+import typing
 import enum
 import sys
 import pathlib
@@ -5,16 +6,45 @@ import argparse
 import asyncio
 import yaml
 
-import rich.status
 from pydantic import BaseModel
+import rich.console
+from rich.padding import Padding
 
 from kube_eng import __version__, __default_config_path__
-from kube_eng.common.ansible_execution import cmd_to_playbook
+from kube_eng.common.ansible_execution import cmd_to_playbook, AnsibleStatusEnum
 from kube_eng.config import RootConfig
 from kube_eng.common import AnsibleEvent, AnsibleExecution
 
 console = rich.console.Console()
 
+class CLIAnsibleEventLog:
+
+    _status_display: typing.Dict[AnsibleStatusEnum, str] = {
+        AnsibleStatusEnum.ok: 'green',
+        AnsibleStatusEnum.empty: 'dim green',
+        AnsibleStatusEnum.running: 'orange',
+        AnsibleStatusEnum.failed: 'red',
+    }
+
+    def __init__(self, ev: AnsibleEvent) -> None:
+        self._ev = ev
+
+    def __rich_console__(self, con: rich.console.Console, options: rich.console.ConsoleOptions):
+        yield f'* [white]{self._ev.task}[/white]'
+        yield Padding(f'{self._ev.msg}', pad=(0, 2, 0, 2), style=self._status_display[self._ev.status], expand=True)
+        if self._ev.verbose:
+            yield Padding(f'{self._ev.uuid} - {self._ev.event}', pad=(0,2,0,2), style='blue', expand=True)
+        if self._ev.stdout:
+            yield Padding('Stdout:', pad=(0,2,0,2), style='dim white', expand=True)
+            yield Padding(self._ev.stdout, pad=(0,2,0,4), style='dim white', expand=True)
+        if self._ev.stderr:
+            yield Padding('Stderr:', pad=(0,2,0,2), style='dim yellow', expand=True)
+            yield Padding(self._ev.stderr, pad=(0,2,0,4), style='dim yellow', expand=True)
+        if len(self._ev.warnings) > 0:
+            yield Padding('Warnings:', pad=(0,2,0,2), style='yellow', expand=True)
+            for warning in self._ev.warnings:
+                yield Padding(warning, pad=(0,2,0,4), style='yellow', expand=True)
+        con.print()
 
 def _log_ansible_event(ev: AnsibleEvent) -> None:
     """
@@ -24,7 +54,8 @@ def _log_ansible_event(ev: AnsibleEvent) -> None:
     """
     if ev.event in ['playbook_on_task_start', 'runner_on_start']:
         return
-    console.print(f'{ev.status.value}: {ev.task}')
+    #console.print(f'{ev.status.value}: {ev.task}')
+    console.print(CLIAnsibleEventLog(ev))
 
 async def config_list(config: RootConfig, args: argparse.Namespace) -> int:
     del args
@@ -102,7 +133,7 @@ async def ansible_execute(config: RootConfig, args: argparse.Namespace) -> int:
     Returns:
         An integer exit code
     """
-    ex = AnsibleExecution(config, _log_ansible_event)
+    ex = AnsibleExecution(config, _log_ansible_event, verbose=args.verbose)
     await ex.execute(playbook=cmd_to_playbook[args.playbook])
     return 0
 
@@ -117,6 +148,12 @@ async def main() -> int:
             default=__default_config_path__,
             help=f'Path to the config file, defaults to {__default_config_path__}',
         )
+        parser.add_argument('--verbose', '-v',
+                            action='store_true',
+                            default=False,
+                            required=False,
+                            dest='verbose',
+                            help='Enable verbose output')
         subparsers = parser.add_subparsers(required=True, help='Sub-commands'
         )
         config_parser = subparsers.add_parser('config', help='Configuration commands')

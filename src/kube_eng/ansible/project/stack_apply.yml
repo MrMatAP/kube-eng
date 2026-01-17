@@ -468,18 +468,6 @@
       vars:
         ns: "{{ stack.kiali.ns }}"
         mesh: "{{ cluster.mesh.kind }}"
-    - name: Deploy the Kiali Operator
-      kubernetes.core.helm:
-        name: kiali-operator
-        create_namespace: false
-        release_namespace: "{{ stack.kiali.ns }}"
-        chart_ref: kiali/kiali-operator
-        chart_version: "{{ stack.kiali.version }}"
-        binary_path: "{{ host.tool.helm.path }}"
-        wait: true
-        values:
-          cr:
-            create: false
     - name: Deploy the Kiali Helm Chart
       kubernetes.core.helm:
         name: kiali
