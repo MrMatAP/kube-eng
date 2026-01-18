@@ -30,6 +30,7 @@
     vars:
       control_plane_nodes: "{{ cluster.control_plane_nodes | int }}"
       worker_nodes: "{{ cluster.worker_nodes | int }}"
+      cluster_name: "{{ cluster.name }}"
       directory: "{{ host.tool.kind.config_path }}"
       ca_file_path: "{{ cluster.pki.config_path }}/ca.pem"
       airgap_registry_name: "{{ host.registry.name }}"
@@ -39,27 +40,19 @@
 
   - name: Create the cluster
     kind_cluster:
-      name: "{{ cluster.name }}"
+      cluster_name: "{{ cluster.name }}"
       config_file: "{{ host.tool.kind.config_path }}/config.yaml"
       tool_kind: "{{ host.tool.kind.path }}"
       state: present
 
-  - name: Deploy Cilium CNI, if enabled
-    when: "cluster.cni.kind == 'cilium'"
-    block:
-    - name: Deploy Cilium
-      kubernetes.core.helm:
-        name: cilium
-        create_namespace: false
-        release_namespace: kube-system
-        chart_ref: "oci://{{ host.registry.name }}.{{ cluster.name }}.{{ host.dns.zone }}:{{ host.registry.port | int }}/kube-eng/kube-eng-cilium"
-        chart_version: "{{ host.tool.helm.chart_version }}"
-        binary_path: "{{ host.tool.helm.path }}"
-        wait: true
-        values:
-          cilium:
-            cni:
-              exclusive: "{{ cluster.cni.exclusive }}"
+  - name: Apply the ServiceMonitor CRD
+    kubernetes.core.k8s:
+      state: present
+      apply: true
+      src: "{{ preheat_path }}/servicemonitor-crd.yaml"
+      server_side_apply:
+        field_manager: ansible
+      wait: true
 
     # Note: This should not run at the same time as cloud-provider-kind, as it will create
     # a conflict for the field-manager.
@@ -71,6 +64,23 @@
       server_side_apply:
         field_manager: ansible
       wait: true
+
+  - name: Deploy Cilium CNI, if enabled
+    when: "cluster.cni.kind == 'cilium'"
+    block:
+    - name: Deploy Cilium
+      kubernetes.core.helm:
+        name: cilium
+        create_namespace: true
+        release_namespace: cilium
+        chart_ref: "oci://{{ host.registry.name }}.{{ cluster.name }}.{{ host.dns.zone }}:{{ host.registry.port | int }}/kube-eng/kube-eng-cilium"
+        chart_version: "{{ host.tool.helm.chart_version }}"
+        binary_path: "{{ host.tool.helm.path }}"
+        wait: true
+        values:
+          cilium:
+            cni:
+              exclusive: "{{ cluster.cni.exclusive }}"
 
   - name: Deploy Istio, if enabled
     when: "cluster.mesh.enabled | bool == true"
