@@ -14,6 +14,11 @@ argument_specs:
         type: int
         required: false
         default: 3
+      cluster_name:
+        description: Name of the cluster
+        type: str
+        required: false
+        default: kube-eng
       directory:
         description: Path to the directory to hold kind configuration
         type: str

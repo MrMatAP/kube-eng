@@ -12,7 +12,7 @@ short_description: Manage kind clusters
 description:
 - Manage kind clusters
 options:
-    name:
+    cluster_name:
         description: The name of the cluster
         required: true
         type: str
@@ -43,15 +43,15 @@ author:
 
 EXAMPLES = r"""
 - name: Create a cluster
-  mrmat.kube_eng.kind_cluster:
-    name: sample-cluster
+  kind_cluster:
+    cluster_name: sample-cluster
     config_file: /path/to/config.yaml
     tool_kind: /path/to/kind
     state: present
   
 - name: Destroy a cluster
-  mrmat.kube_eng.kind_cluster:
-    name: sample-cluster
+  kind_cluster:
+    cluster_name: sample-cluster
     state: absent
 """
 
@@ -69,7 +69,7 @@ from ansible.module_utils.basic import AnsibleModule
 
 def run_module():
     module_args = dict(
-        name=dict(type='str', required=True),
+        cluster_name=dict(type='str', required=True),
         image=dict(type='str', required=False, default=''),
         config_file=dict(type='str', required=False),
         state=dict(
@@ -95,7 +95,7 @@ def run_module():
         result['msg'] = err
         module.fail_json(**result)
     clusters = out.splitlines()
-    cluster_state = 'present' if module.params['name'] in clusters else 'absent'
+    cluster_state = 'present' if module.params['cluster_name'] in clusters else 'absent'
     if cluster_state == module.params['state']:
         result['state'] = module.params['state']
         result['msg'] = 'Cluster is in desired state'
@@ -109,7 +109,7 @@ def run_module():
                     'delete',
                     'cluster',
                     '-n',
-                    module.params['name'],
+                    module.params['cluster_name'],
                 ],
             )
         case 'present':
@@ -118,7 +118,7 @@ def run_module():
                 'create',
                 'cluster',
                 '--name',
-                module.params['name'],
+                module.params['cluster_name'],
                 '--config',
                 module.params['config_file'],
             ]
