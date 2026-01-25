@@ -4,27 +4,87 @@
 cluster:
   name: cluster
   edge:
-    kind: traefik
+    kind: istio-gateway-api
     fqdn: prometheus.cluster.k8s
     gateway:
-      name: gateway
+      name: edge-gateway
       ns: edge
       section: prometheus
 #
 # Dependency Chart overrides
 
-overrides:
-  nameOverride: prometheus
+prometheus:
+  fullnameOverride: prometheus
   alertmanager:
     enabled: false
     ingress:
       enabled: false
   grafana:
-    enabled: true
+    enabled: false
     ingress:
       enabled: false
   prometheus:
     enabled: true
     ingress:
       enabled: false
-
+    serviceMonitor:
+      additionalLabels:
+        app.kubernetes.io/monitored-by: prometheus
+    prometheusSpec:
+      ruleSelector:
+        matchLabels:
+          app.kubernetes.io/monitored-by: prometheus
+      serviceMonitorSelector:
+        matchLabels:
+          app.kubernetes.io/monitored-by: prometheus
+      podMonitorSelector:
+        matchLabels:
+          app.kubernetes.io/monitored-by: prometheus
+      probeSelector:
+        matchLabels:
+          app.kubernetes.io/monitored-by: prometheus
+      scrapeConfigSelector:
+        matchLabels:
+          app.kubernetes.io/monitored-by: prometheus
+  kubeApiServer:
+    enabled: true
+    serviceMonitor:
+      enabled: true
+      additionalLabels:
+        app.kubernetes.io/monitored-by: prometheus
+  kubeControllerManager:
+    enabled: true
+    serviceMonitor:
+      enabled: false
+      additionalLabels:
+        app.kubernetes.io/monitored-by: prometheus
+  coreDns:
+    enabled: true
+    serviceMonitor:
+      enabled: true
+      additionalLabels:
+        app.kubernetes.io/monitored-by: prometheus
+  kubeEtcd:
+    enabled: true
+    serviceMonitor:
+      enabled: true
+      additionalLabels:
+        app.kubernetes.io/monitored-by: prometheus
+  kubeScheduler:
+    enabled: true
+    serviceMonitor:
+      enabled: false
+      additionalLabels:
+        app.kubernetes.io/monitored-by: prometheus
+  kube-state-metrics:
+    prometheus:
+      monitor:
+        enabled: true
+        additionalLabels:
+          app.kubernetes.io/monitored-by: prometheus
+  prometheus-node-exporter:
+    prometheus:
+      monitor:
+        enabled: true
+        additionalLabels:
+          app.kubernetes.io/monitored-by: prometheus

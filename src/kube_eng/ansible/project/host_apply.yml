@@ -9,6 +9,14 @@
       ansible.builtin.file:
         path: "{{ preheat_path }}"
         state: directory
+    - name: Preheat the ServiceMonitor CRD
+      ansible.builtin.get_url:
+        url: "{{ stack.prometheus.service_monitor_crd }}"
+        dest: "{{ preheat_path }}/servicemonitor-crd.yaml"
+    - name: Preheat the PodMonitor CRD
+      ansible.builtin.get_url:
+        url: "{{ stack.prometheus.pod_monitor_crd }}"
+        dest: "{{ preheat_path }}/podmonitor-crd.yaml"
     - name: Preheat the Kubernetes Gateway CRDs
       ansible.builtin.get_url:
         url: "{{ cluster.edge.gateway_api_crds }}"

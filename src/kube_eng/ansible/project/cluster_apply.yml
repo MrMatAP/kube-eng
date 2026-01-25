@@ -54,6 +54,15 @@
         field_manager: ansible
       wait: true
 
+  - name: Apply the PodMonitor CRD
+    kubernetes.core.k8s:
+      state: present
+      apply: true
+      src: "{{ preheat_path }}/podmonitor-crd.yaml"
+      server_side_apply:
+        field_manager: ansible
+      wait: true
+
     # Note: This should not run at the same time as cloud-provider-kind, as it will create
     # a conflict for the field-manager.
   - name: Apply the Gateway API CRDs
@@ -78,9 +87,20 @@
         binary_path: "{{ host.tool.helm.path }}"
         wait: true
         values:
+          cluster:
+            name: "{{ cluster.name }}"
+            edge:
+              kind: "{{ cluster.edge.kind }}"
+              fqdn: "{{ cluster.cni.hostname }}.{{ cluster.name }}.{{ host.dns.zone }}"
+              gateway:
+                name: "{{ cluster.edge.name }}"
+                ns: "{{ cluster.edge.ns }}"
           cilium:
             cni:
               exclusive: "{{ cluster.cni.exclusive }}"
+            ui:
+              enabled: "{{ cluster.cni.ui }}"
+
 
   - name: Deploy Istio, if enabled
     when: "cluster.mesh.enabled | bool == true"
@@ -158,5 +178,59 @@
             namespace: "{{ cluster.pki.ns }}"
             prometheus:
               enabled: "{{ stack.prometheus.enabled | bool }}"
+
+  - name: Deploy Edge
+    block:
+    - name: Create and label the Edge namespace
+      ansible.builtin.import_role:
+        name: create_namespace
+      vars:
+        ns: "{{ cluster.edge.ns }}"
+        mesh: "{{ cluster.mesh.kind }}"
+    - name: Deploy the Edge Helm chart
+      kubernetes.core.helm:
+        name: edge
+        create_namespace: false
+        release_namespace: "{{ cluster.edge.ns }}"
+        chart_ref: "oci://{{ host.registry.name }}.{{ cluster.name }}.{{ host.dns.zone }}:{{ host.registry.port | int }}/kube-eng/kube-eng-edge"
+        chart_version: "{{ host.tool.helm.chart_version }}"
+        binary_path: "{{ host.tool.helm.path }}"
+        wait: true
+        values:
+          cluster:
+            name: "{{ cluster.name }}"
+            edge:
+              kind: "{{ cluster.edge.kind }}"
+              name: "{{ cluster.edge.name }}"
+          gateway:
+            classname: "{{ (cluster.edge.kind == 'traefik') | ternary('traefik', 'istio') }}"
+          traefik:
+            enabled: "{{ cluster.edge.kind == 'traefik' }}"
+          stack:
+            cni:
+              enabled: "{{ cluster.cni.ui }}"
+              fqdn: "{{ cluster.cni.hostname }}.{{ cluster.name }}.{{ host.dns.zone }}"
+            prometheus:
+              enabled: "{{ stack.prometheus.enabled }}"
+              fqdn: "{{ stack.prometheus.hostname }}.{{ cluster.name }}.{{ host.dns.zone }}"
+            alloy:
+              enabled: "{{ stack.alloy.enabled }}"
+              fqdn: "{{ stack.alloy.hostname }}.{{ cluster.name }}.{{ host.dns.zone }}"
+            keycloak:
+              enabled: "{{ stack.keycloak.enabled }}"
+              fqdn: "{{ stack.keycloak.hostname }}.{{ cluster.name }}.{{ host.dns.zone }}"
+            grafana:
+              enabled: "{{ stack.grafana.enabled }}"
+              fqdn: "{{ stack.grafana.hostname }}.{{ cluster.name }}.{{ host.dns.zone }}"
+            jaeger:
+              enabled: "{{ stack.jaeger.enabled }}"
+              fqdn: "{{ stack.jaeger.hostname }}.{{ cluster.name }}.{{ host.dns.zone }}"
+            kiali:
+              enabled: "{{ stack.kiali.enabled }}"
+              fqdn: "{{ stack.kiali.hostname }}.{{ cluster.name }}.{{ host.dns.zone }}"
+            loki:
+              enabled: "{{ stack.loki.enabled }}"
+              fqdn: "{{ stack.loki.hostname }}.{{ cluster.name }}.{{ host.dns.zone }}"
+
 
 # You now need to start cloud-provider-kind as root

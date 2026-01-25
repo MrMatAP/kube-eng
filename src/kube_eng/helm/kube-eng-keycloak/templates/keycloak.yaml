@@ -55,6 +55,11 @@ spec:
   bootstrapAdmin:
     user:
       secret: keycloak-admin-secret
+  networkPolicy:
+    enabled: false
+  additionalOptions:
+    - name: metrics-enabled
+      value: "true"
   unsupported:
     podTemplate:
       metadata:

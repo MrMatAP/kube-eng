@@ -3,6 +3,13 @@
 
 cluster:
   name: cluster
+  edge:
+    kind: istio-gateway-api
+    fqdn: cni.cluster.k8s
+    gateway:
+      name: edge-gateway
+      ns: edge
+      section: cni
 
 #
 # Dependency Chart overrides
@@ -10,3 +17,68 @@ cluster:
 cilium:
   cni:
     exclusive: false
+  rollOutCiliumPods: true
+  hubble:
+    enabled: true
+    metrics:
+      enabled:
+        - dns
+        - drop
+        - tcp
+        - flow
+        - http
+      serviceMonitor:
+        enabled: true
+        labels:
+          app.kubernetes.io/monitored-by: prometheus
+    dashboards:
+      enabled: true
+    relay:
+      enabled: true
+      rollOutPods: true
+      prometheus:
+        enabled: true
+        serviceMonitor:
+          enabled: true
+          labels:
+            app.kubernetes.io/monitored-by: prometheus
+    ui:
+      enabled: true
+      rollOutPods: true
+
+  ingressController:
+    enabled: false
+  gatewayAPI:
+    enabled: true
+    enableProxyProtocol: true
+    enableAppProto: true
+    enableAlpn: true
+  hostNetwork:
+    enabled: false
+  logSystemLoad: true
+  prometheus:
+    metricsService: true
+    enabled: true
+    serviceMonitor:
+      enabled: true
+      labels:
+        app.kubernetes.io/monitored-by: prometheus
+    dashboards:
+      enabled: true
+  envoy:
+    prometheus:
+      enabled: true
+      serviceMonitor:
+        enabled: true
+        labels:
+          app.kubernetes.io/monitored-by: prometheus
+  operator:
+    prometheus:
+      metricsService: true
+      enabled: true
+      serviceMonitor:
+        enabled: true
+        labels:
+          app.kubernetes.io/monitored-by: prometheus
+    dashboards:
+      enabled: true

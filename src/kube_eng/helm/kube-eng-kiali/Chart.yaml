@@ -15,7 +15,6 @@ maintainers:
   url: https://github.com/MrMatAP
 appVersion: "v2.20.0"
 dependencies:
-- name: kiali-server
+- name: kiali-operator
   version: 2.20.0
   repository: https://kiali.org/helm-charts
-  alias: kiali

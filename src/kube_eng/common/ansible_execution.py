@@ -5,6 +5,7 @@ import collections.abc
 import uuid
 
 import ansible_runner
+import ansible_runner.config.runner
 import rich.emoji
 
 from kube_eng import __ansible_path__
@@ -74,7 +75,6 @@ class AnsibleExecution:
                 status_handler=self.ansible_status_handler,
                 artifacts_handler=self.ansible_artifacts_handler)
             t.join()
-            pass
         except Exception as e:
             print(e)
 
@@ -144,9 +144,16 @@ class AnsibleExecution:
         return False
 
     def ansible_finished_callback(self, runner: ansible_runner.Runner) -> None:
-        pass
+        if runner.status == 'failed':
+            ev = AnsibleEvent(uuid='0',
+                              counter=0,
+                              event='playbook_failed',
+                              verbose=self._verbose)
+            ev.stdout = runner.stdout.read()
+            ev.stderr = runner.stderr.read()
+            self._ui_event_callback(ev)
 
-    def ansible_status_handler(self, status_data: typing.Dict, runner_config) -> None:
+    def ansible_status_handler(self, status_data: typing.Dict, runner_config: ansible_runner.config.runner.RunnerConfig) -> None:
         pass
 
     def ansible_artifacts_handler(self, artifacts_file: str) -> None:

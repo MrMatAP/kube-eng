@@ -1,0 +1,28 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  labels:
+    {{ include "common.labels" . | nindent 4 }}
+    app.kubernetes.io/name: pm-kube-scheduler
+    app.kubernetes.io/monitored-by: prometheus
+  name: pm-kube-scheduler
+spec:
+  podMetricsEndpoints:
+  - honorLabels: true
+    interval: 10s
+    scheme: http
+    path: /metrics
+    port: probe-port
+    relabelings:
+    - action: replace
+      replacement: ${1}
+      sourceLabels:
+      - __meta_kubernetes_pod_node_name
+      targetLabel: node
+  namespaceSelector:
+    matchNames:
+    - kube-system
+  selector:
+    matchLabels:
+      component: kube-scheduler
+      tier: control-plane

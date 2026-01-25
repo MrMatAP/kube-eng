@@ -14,7 +14,7 @@ maintainers:
   url: https://github.com/MrMatAP
 appVersion: "12.3.0"
 dependencies:
-- name: grafana
-  version: 10.4.0
+- name: grafana-operator
+  version: 5.21.4
   repository: https://grafana.github.io/helm-charts
-  alias: overrides
+  alias: operator
