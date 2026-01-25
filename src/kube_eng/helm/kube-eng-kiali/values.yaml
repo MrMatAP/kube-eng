@@ -11,18 +11,23 @@ cluster:
       ns: edge
       section: kiali
 
-kiali:
-  auth:
-    strategy: anonymous
+kiali-operator:
+  watchNamespace: kiali
+  allowAdHocNamespaces: false
+  cr:
+    create: false
+    name: kiali
+    namespace: kiali
+    spec:
+      auth:
+        strategy: "anonymous"
 
 prometheus:
   ns: prometheus
   hostname: prometheus
-
 jaeger:
   ns: jaeger
   fqdn: jaeger.cluster.k8s
-
 grafana:
   ns: grafana
   fqdn: grafana.cluster.k8s

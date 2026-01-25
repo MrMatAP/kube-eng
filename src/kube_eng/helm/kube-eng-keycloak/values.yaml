@@ -4,10 +4,10 @@
 cluster:
   name: cluster
   edge:
-    kind: traefik
+    kind: istio-gateway-api
     fqdn: keycloak.cluster.k8s
     gateway:
-      name: gateway
+      name: edge-gateway
       ns: edge
       section: keycloak
 

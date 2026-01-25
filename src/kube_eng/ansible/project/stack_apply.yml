@@ -4,56 +4,8 @@
   tasks:
 
   # This will wait indefinitely if cloud-provider-kind is not running
-  - name: Deploy Edge
-    block:
-    - name: Create and label the Edge namespace
-      ansible.builtin.import_role:
-        name: create_namespace
-      vars:
-        ns: "{{ cluster.edge.ns }}"
-        mesh: "{{ cluster.mesh.kind }}"
-    - name: Deploy the Edge Helm chart
-      kubernetes.core.helm:
-        name: edge
-        create_namespace: false
-        release_namespace: "{{ cluster.edge.ns }}"
-        chart_ref: "oci://{{ host.registry.name }}.{{ cluster.name }}.{{ host.dns.zone }}:{{ host.registry.port | int }}/kube-eng/kube-eng-edge"
-        chart_version: "{{ host.tool.helm.chart_version }}"
-        binary_path: "{{ host.tool.helm.path }}"
-        wait: true
-        values:
-          cluster:
-            name: "{{ cluster.name }}"
-            edge:
-              kind: "{{ cluster.edge.kind }}"
-              name: "{{ cluster.edge.name }}"
-          gateway:
-            classname: "{{ (cluster.edge.kind == 'traefik') | ternary('traefik', 'istio') }}"
-          traefik:
-            enabled: "{{ cluster.edge.kind == 'traefik' }}"
-          stack:
-            prometheus:
-              enabled: "{{ stack.prometheus.enabled }}"
-              fqdn: "{{ stack.prometheus.hostname }}.{{ cluster.name }}.{{ host.dns.zone }}"
-            alloy:
-              enabled: "{{ stack.alloy.enabled }}"
-              fqdn: "{{ stack.alloy.hostname }}.{{ cluster.name }}.{{ host.dns.zone }}"
-            keycloak:
-              enabled: "{{ stack.keycloak.enabled }}"
-              fqdn: "{{ stack.keycloak.hostname }}.{{ cluster.name }}.{{ host.dns.zone }}"
-            grafana:
-              enabled: "{{ stack.grafana.enabled }}"
-              fqdn: "{{ stack.grafana.hostname }}.{{ cluster.name }}.{{ host.dns.zone }}"
-            jaeger:
-              enabled: "{{ stack.jaeger.enabled }}"
-              fqdn: "{{ stack.jaeger.hostname }}.{{ cluster.name }}.{{ host.dns.zone }}"
-            kiali:
-              enabled: "{{ stack.kiali.enabled }}"
-              fqdn: "{{ stack.kiali.hostname }}.{{ cluster.name }}.{{ host.dns.zone }}"
-            loki:
-              enabled: "{{ stack.loki.enabled }}"
-              fqdn: "{{ stack.loki.hostname }}.{{ cluster.name }}.{{ host.dns.zone }}"
 
+  # Attempt picking up the external IP of the Edge Gateway for 10 times, waiting 5 seconds between attempts
   - name: Collect information about the Edge Gateway
     kubernetes.core.k8s_info:
       api_version: gateway.networking.k8s.io/v1
@@ -61,9 +13,31 @@
       name: edge-gateway
       namespace: "{{ cluster.edge.ns }}"
     register: edge_gateway
+    until: edge_gateway.resources[0].status.addresses[0].value is defined
+    retries: 10
+    delay: 5
 
-  - ansible.builtin.debug:
-      var: edge_gateway.resources[0].status.addresses[0].value
+  - name: Do not continue if we do not have an Edge Gateway IP address at this point
+    when: edge_gateway.resources[0].status.addresses[0].value is not defined
+    ansible.builtin.fail:
+      msg: "Could not determine the external IP address of the Edge Gateway. Have you started cloud-provider-kind?"
+
+  - name: Deploy CNI UI, if enabled
+    when: "cluster.cni.ui | bool == true"
+    block:
+    - name: Update DNS with a record for CNI
+      community.general.nsupdate:
+        key_name: "{{ host.dns.key_name }}"
+        key_secret: "{{ host.dns.key_secret }}"
+        key_algorithm: "{{ host.dns.key_algorithm }}"
+        server: "{{ host.dns.server }}"
+        port: "{{ host.dns.port | int }}"
+        protocol: "{{ host.dns.protocol }}"
+        record: "{{ cluster.cni.hostname }}.{{ cluster.name }}.{{ host.dns.zone }}."
+        ttl: "{{ host.dns.ttl | int }}"
+        value: "{{ edge_gateway.resources[0].status.addresses[0].value }}"
+        type: A
+        state: present
 
   - name: Deploy Prometheus
     when: "stack.prometheus.enabled | bool == true"
@@ -285,6 +259,20 @@
         value: "{{ edge_gateway.resources[0].status.addresses[0].value }}"
         type: A
         state: present
+    - name: Wait until the Keycloak API responds
+      community.general.keycloak_realm_info:
+        auth_keycloak_url: "https://{{ stack.keycloak.hostname }}.{{ cluster.name }}.{{ host.dns.zone }}"
+        realm: master
+        # TODO: Make Ansible trust the generated PKI CA certificate
+        validate_certs: false
+      until: keycloak_realm_info.realm_info is defined
+      retries: 10
+      delay: 5
+      register: keycloak_realm_info
+    - name: Fail if the Keycloak API does not respond yet
+      when: keycloak_realm_info.realm_info is not defined
+      ansible.builtin.fail:
+        msg: "Keycloak API did not respond yet. Try restarting the stack apply playbook."
 
   - name: Deploy Grafana
     when: "stack.grafana.enabled | bool == true"
@@ -378,27 +366,18 @@
               gateway:
                 name: "{{ edge_gateway.resources[0].metadata.name }}"
                 ns: "{{ cluster.edge.ns }}"
-          overrides:
+          integration:
             adminUser: "{{ stack.grafana.admin_user }}"
             adminPassword: "{{ admin_password }}"
-            envRenderSecret:
-              GF_AUTH_GENERIC_OAUTH_CLIENT_ID: "{{ stack.grafana.client_id }}"
-              GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET: "{{ admin_password }}"
-            grafana.ini:
-              server:
-                root_url: "https://{{ stack.grafana.hostname }}.{{ cluster.name }}.{{ host.dns.zone }}/"
-              auth.generic_oauth:
-                auth_url: "https://{{ stack.keycloak.hostname }}.{{ cluster.name }}.{{ host.dns.zone }}/realms/master/protocol/openid-connect/auth"
-                token_url: "http://keycloak-service.{{ stack.keycloak.ns }}.svc.cluster.local:8080/realms/master/protocol/openid-connect/token"
-                api_url: "http://keycloak-service.{{ stack.keycloak.ns }}.svc.cluster.local:8080/realms/master/protocol/openid-connect/userinfo"
-            datasources:
-              datasources.yaml:
-                apiVersion: 1
-                datasources:
-                - name: Prometheus
-                  type: prometheus
-                  url: "http://prometheus.{{ stack.prometheus.ns }}.svc.cluster.local"
-                  isDefault: true
+            rootUrl: "https://{{ stack.grafana.hostname }}.{{ cluster.name }}.{{ host.dns.zone }}/"
+            oauth:
+              clientId: "{{ stack.grafana.client_id }}"
+              clientSecret: "{{ admin_password }}"
+              authUrl: "https://{{ stack.keycloak.hostname }}.{{ cluster.name }}.{{ host.dns.zone }}/realms/master/protocol/openid-connect/auth"
+              tokenUrl: "http://keycloak-service.{{ stack.keycloak.ns }}.svc.cluster.local:8080/realms/master/protocol/openid-connect/token"
+              apiUrl: "http://keycloak-service.{{ stack.keycloak.ns }}.svc.cluster.local:8080/realms/master/protocol/openid-connect/userinfo"
+            prometheus:
+              url: "http://prometheus-operated.{{ stack.prometheus.ns }}.svc.cluster.local:9090/"
     - name: Update DNS with a record for Grafana
       community.general.nsupdate:
         key_name: "{{ host.dns.key_name }}"

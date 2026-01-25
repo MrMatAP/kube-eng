@@ -18,6 +18,20 @@ spec:
     allowedRoutes:
       namespaces:
         from: All
+  {{ if .Values.stack.cni.enabled }}
+  - name: cni
+    hostname: {{ .Values.stack.cni.fqdn }}
+    port: 443
+    protocol: HTTPS
+    tls:
+      mode: Terminate
+      certificateRefs:
+      - kind: Secret
+        name: cni-cert
+    allowedRoutes:
+      namespaces:
+        from: All
+  {{ end }}
   {{ if .Values.stack.prometheus.enabled }}
   - name: prometheus
     hostname: {{ .Values.stack.prometheus.fqdn }}

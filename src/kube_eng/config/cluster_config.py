@@ -15,6 +15,8 @@ class ClusterCNIKindEnum(str, enum.Enum):
 class ClusterCNIConfig(RootConfigAware):
     kind: ClusterCNIKindEnum = Field(default=ClusterCNIKindEnum.kind)
     exclusive: bool = Field(default=False, description="If true, only one CNI plugin can be active at a time")
+    ui: bool = Field(default=False, description="If true, deploy CNI UI")
+    hostname: str = Field(default="cni", description="CNI UI hostname, if applicable")
 
 class ClusterMeshKind(str, enum.Enum):
     none = "none"

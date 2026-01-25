@@ -17,4 +17,4 @@ dependencies:
 - name: kube-prometheus-stack
   version: 80.13.3
   repository: https://prometheus-community.github.io/helm-charts
-  alias: overrides
+  alias: prometheus

@@ -6,71 +6,14 @@ cluster:
   edge:
     kind: istio-ambient
     name: edge
-    traefik_repository: docker.io/traefik
-    traefik_tag: v3.6
-    traefik_hostname: edge.cluster.k8s
-    traefik_dashboard_hostname: dashboard
 
 gateway:
   classname: istio
 
-traefik:
-  enabled: false
-  ingressRoute:
-    dashboard:
-      enabled: true
-  providers:
-    kubernetesCRD:
-      enabled: false
-    kubernetesIngress:
-      enabled: false
-    kubernetesGateway:
-      enabled: true
-  gateway:
-    enabled: false
-  healthcheck:
-    enabled: true
-# TODO: This requires the monitoring stack to be deployed first
-#  metrics:
-#    prometheus:
-#      service:
-#        enabled: true
-#      disableAPICheck: false
-#      serviceMonitor:
-#        enabled: true
-#      metricRelabelings:
-#      - sourceLabels: [__name__]
-#        separator: ;
-#        regex: ^fluentd_output_status_buffer_(oldest|newest)_.+
-#        replacement: $1
-#        action: drop
-#      relabelings:
-#      - sourceLabels: [__meta_kubernetes_pod_node_name]
-#        separator: ;
-#        regex: ^(.*)$
-#        targetLabel: nodename
-#        replacement: $1
-#        action: replace
-#      jobLabel: traefik
-#      interval: 30s
-#      honorLabels: true
-#    headerLabels:
-#      user_id: X-User-Id
-#      tenant: X-Tenant
-#    prometheusRule:
-#      enabled: true
-#      rules:
-#      - alert: TraefikDown
-#        expr: up{job="traefik"} == 0
-#        for: 5m
-#        labels:
-#          context: traefik
-#          severity: warning
-#        annotations:
-#          summary: "Traefik Down"
-#          description: "{{ $labels.pod }} on {{ $labels.nodename }} is down"
-
 stack:
+  cni:
+    enabled: true
+    fqdn: cni.cluster.k8s
   prometheus:
     enabled: true
     fqdn: prometheus.cluster.k8s

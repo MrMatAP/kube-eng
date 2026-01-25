@@ -7,6 +7,8 @@ class StackPrometheusConfig(RootConfigAware):
     enabled: bool = Field(default=True)
     ns: str = Field(default="prometheus")
     hostname: str = Field(default="prometheus")
+    service_monitor_crd: str = Field(default="https://raw.githubusercontent.com/prometheus-operator/prometheus-operator/main/example/prometheus-operator-crd/monitoring.coreos.com_servicemonitors.yaml")
+    pod_monitor_crd: str = Field(default="https://raw.githubusercontent.com/prometheus-operator/prometheus-operator/main/example/prometheus-operator-crd/monitoring.coreos.com_podmonitors.yaml")
 
 class StackAlloyConfig(RootConfigAware):
     enabled: bool = Field(default=True)
