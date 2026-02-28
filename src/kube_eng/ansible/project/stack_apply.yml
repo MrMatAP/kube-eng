@@ -423,7 +423,7 @@
             storage:
               cassandra:
                 password: "{{ admin_password }}"
-    - name: Update DNS with a record for Alloy
+    - name: Update DNS with a record for Jaeger
       community.general.nsupdate:
         key_name: "{{ host.dns.key_name }}"
         key_secret: "{{ host.dns.key_secret }}"
