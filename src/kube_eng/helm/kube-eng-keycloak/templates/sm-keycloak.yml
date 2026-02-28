@@ -1,0 +1,28 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  labels:
+    {{ include "common.labels" . | nindent 4 }}
+    app.kubernetes.io/name: sm-keycloak
+  name: sm-keycloak
+spec:
+  endpoints:
+  - honorLabels: true
+    interval: 10s
+    path: /metrics
+    port: management
+    relabelings:
+    - action: replace
+      replacement: ${1}
+      sourceLabels:
+      - __meta_kubernetes_pod_node_name
+      targetLabel: node
+  namespaceSelector:
+    matchNames:
+    - keycloak
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: keycloak
+      app.kubernetes.io/managed-by: keycloak-operator
+  targetLabels:
+  - k8s-app
