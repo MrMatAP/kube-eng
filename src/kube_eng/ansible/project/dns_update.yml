@@ -1,0 +1,157 @@
+---
+- name: Update DNS
+  hosts: localhost
+  tasks:
+
+  # Attempt picking up the external IP of the Edge Gateway for 10 times, waiting 5 seconds between attempts
+  - name: Collect information about the Edge Gateway
+    kubernetes.core.k8s_info:
+      api_version: gateway.networking.k8s.io/v1
+      kind: Gateway
+      name: edge-gateway
+      namespace: "{{ cluster.edge.ns }}"
+    register: edge_gateway
+    until: edge_gateway.resources[0].status.addresses[0].value is defined
+    retries: 10
+    delay: 5
+
+  - name: Do not continue if we do not have an Edge Gateway IP address at this point
+    when: edge_gateway.resources[0].status.addresses[0].value is not defined
+    ansible.builtin.fail:
+      msg: "Could not determine the external IP address of the Edge Gateway. Have you started cloud-provider-kind?"
+
+  - name: Update CNI UI DNS, if enabled
+    when: "cluster.cni.ui | bool == true"
+    block:
+    - name: Update DNS with a record for CNI
+      community.general.nsupdate:
+        key_name: "{{ host.dns.key_name }}"
+        key_secret: "{{ host.dns.key_secret }}"
+        key_algorithm: "{{ host.dns.key_algorithm }}"
+        server: "{{ host.dns.server }}"
+        port: "{{ host.dns.port | int }}"
+        protocol: "{{ host.dns.protocol }}"
+        record: "{{ cluster.cni.hostname }}.{{ cluster.name }}.{{ host.dns.zone }}."
+        ttl: "{{ host.dns.ttl | int }}"
+        value: "{{ edge_gateway.resources[0].status.addresses[0].value }}"
+        type: A
+        state: present
+
+  - name: Update Prometheus DNS, if enabled
+    when: "stack.prometheus.enabled | bool == true"
+    block:
+    - name: Update DNS with a record for Prometheus
+      community.general.nsupdate:
+        key_name: "{{ host.dns.key_name }}"
+        key_secret: "{{ host.dns.key_secret }}"
+        key_algorithm: "{{ host.dns.key_algorithm }}"
+        server: "{{ host.dns.server }}"
+        port: "{{ host.dns.port | int }}"
+        protocol: "{{ host.dns.protocol }}"
+        record: "{{ stack.prometheus.hostname }}.{{ cluster.name }}.{{ host.dns.zone }}."
+        ttl: "{{ host.dns.ttl | int }}"
+        value: "{{ edge_gateway.resources[0].status.addresses[0].value }}"
+        type: A
+        state: present
+
+  - name: Update Alloy DNS, if enabled
+    when: "stack.alloy.enabled | bool == true"
+    block:
+    - name: Update DNS with a record for Alloy
+      community.general.nsupdate:
+        key_name: "{{ host.dns.key_name }}"
+        key_secret: "{{ host.dns.key_secret }}"
+        key_algorithm: "{{ host.dns.key_algorithm }}"
+        server: "{{ host.dns.server }}"
+        port: "{{ host.dns.port | int }}"
+        protocol: "{{ host.dns.protocol }}"
+        record: "{{ stack.alloy.hostname }}.{{ cluster.name }}.{{ host.dns.zone }}."
+        ttl: "{{ host.dns.ttl | int }}"
+        value: "{{ edge_gateway.resources[0].status.addresses[0].value }}"
+        type: A
+        state: present
+
+  - name: Update Loki DNS, if enabled
+    when: "stack.loki.enabled | bool == true"
+    block:
+    - name: Update DNS with a record for Loki
+      community.general.nsupdate:
+        key_name: "{{ host.dns.key_name }}"
+        key_secret: "{{ host.dns.key_secret }}"
+        key_algorithm: "{{ host.dns.key_algorithm }}"
+        server: "{{ host.dns.server }}"
+        port: "{{ host.dns.port | int }}"
+        protocol: "{{ host.dns.protocol }}"
+        record: "{{ stack.loki.hostname }}.{{ cluster.name }}.{{ host.dns.zone }}."
+        ttl: "{{ host.dns.ttl | int }}"
+        value: "{{ edge_gateway.resources[0].status.addresses[0].value }}"
+        type: A
+        state: present
+
+  - name: Update Keycloak DNS, if enabled
+    when: "stack.keycloak.enabled | bool == true"
+    block:
+    - name: Update DNS with a record for Keycloak
+      community.general.nsupdate:
+        key_name: "{{ host.dns.key_name }}"
+        key_secret: "{{ host.dns.key_secret }}"
+        key_algorithm: "{{ host.dns.key_algorithm }}"
+        server: "{{ host.dns.server }}"
+        port: "{{ host.dns.port | int }}"
+        protocol: "{{ host.dns.protocol }}"
+        record: "{{ stack.keycloak.hostname }}.{{ cluster.name }}.{{ host.dns.zone }}."
+        ttl: "{{ host.dns.ttl | int }}"
+        value: "{{ edge_gateway.resources[0].status.addresses[0].value }}"
+        type: A
+        state: present
+
+  - name: Update Grafana DNS, if enabled
+    when: "stack.grafana.enabled | bool == true"
+    block:
+    - name: Update DNS with a record for Grafana
+      community.general.nsupdate:
+        key_name: "{{ host.dns.key_name }}"
+        key_secret: "{{ host.dns.key_secret }}"
+        key_algorithm: "{{ host.dns.key_algorithm }}"
+        server: "{{ host.dns.server }}"
+        port: "{{ host.dns.port | int }}"
+        protocol: "{{ host.dns.protocol }}"
+        record: "{{ stack.grafana.hostname }}.{{ cluster.name }}.{{ host.dns.zone }}."
+        ttl: "{{ host.dns.ttl | int }}"
+        value: "{{ edge_gateway.resources[0].status.addresses[0].value }}"
+        type: A
+        state: present
+
+  - name: Update Jaeger DNS, if enabled
+    when: "stack.jaeger.enabled | bool == true"
+    block:
+    - name: Update DNS with a record for Jaeger
+      community.general.nsupdate:
+        key_name: "{{ host.dns.key_name }}"
+        key_secret: "{{ host.dns.key_secret }}"
+        key_algorithm: "{{ host.dns.key_algorithm }}"
+        server: "{{ host.dns.server }}"
+        port: "{{ host.dns.port | int }}"
+        protocol: "{{ host.dns.protocol }}"
+        record: "{{ stack.jaeger.hostname }}.{{ cluster.name }}.{{ host.dns.zone }}."
+        ttl: "{{ host.dns.ttl | int }}"
+        value: "{{ edge_gateway.resources[0].status.addresses[0].value }}"
+        type: A
+        state: present
+
+  - name: Update Kiali DNS, if enabled
+    when: "stack.kiali.enabled | bool == true"
+    block:
+    - name: Update DNS with a record for Kiali
+      community.general.nsupdate:
+        key_name: "{{ host.dns.key_name }}"
+        key_secret: "{{ host.dns.key_secret }}"
+        key_algorithm: "{{ host.dns.key_algorithm }}"
+        server: "{{ host.dns.server }}"
+        port: "{{ host.dns.port | int }}"
+        protocol: "{{ host.dns.protocol }}"
+        record: "{{ stack.kiali.hostname }}.{{ cluster.name }}.{{ host.dns.zone }}."
+        ttl: "{{ host.dns.ttl | int }}"
+        value: "{{ edge_gateway.resources[0].status.addresses[0].value }}"
+        type: A
+        state: present

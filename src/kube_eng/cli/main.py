@@ -191,6 +191,9 @@ async def main() -> int:
         helm_repackage_parser = subparsers.add_parser('helm-repackage', help='Repackage Helm charts')
         helm_repackage_parser.set_defaults(func=ansible_execute, playbook='helm-repackage')
 
+        dns_update_parser = subparsers.add_parser('dns-update', help='Update DNS records')
+        dns_update_parser.set_defaults(func=ansible_execute, playbook='dns-update')
+
         args = parser.parse_args()
         config = RootConfig.load(config_path=args.config_path)
         config.save()
