@@ -52,10 +52,19 @@ prometheus:
       enabled: true
       additionalLabels:
         app.kubernetes.io/monitored-by: prometheus
+  kubelet:
+    enabled: true
+    serviceMonitor:
+      https: true
+      insecureSkipVerify: true
+      cAdvisor: true
+      probes: true
+      additionalLabels:
+        app.kubernetes.io/monitored-by: prometheus
   kubeControllerManager:
     enabled: true
     serviceMonitor:
-      enabled: false
+      enabled: true
       additionalLabels:
         app.kubernetes.io/monitored-by: prometheus
   coreDns:
@@ -66,23 +75,42 @@ prometheus:
         app.kubernetes.io/monitored-by: prometheus
   kubeEtcd:
     enabled: true
+    service:
+      port: 2381
+      targetPort: 2381
     serviceMonitor:
       enabled: true
+      scheme: http
+      insecureSkipVerify: true
       additionalLabels:
         app.kubernetes.io/monitored-by: prometheus
   kubeScheduler:
     enabled: true
     serviceMonitor:
-      enabled: false
+      enabled: true
+      additionalLabels:
+        app.kubernetes.io/monitored-by: prometheus
+  kubeProxy:
+    enabled: true
+    serviceMonitor:
+      enabled: true
       additionalLabels:
         app.kubernetes.io/monitored-by: prometheus
   kube-state-metrics:
+    releaseLabel: true
+    networkPolicy:
+      enabled: false
+      flavor: cilium
+    selfMonitor:
+      enabled: true
     prometheus:
       monitor:
         enabled: true
         additionalLabels:
           app.kubernetes.io/monitored-by: prometheus
   prometheus-node-exporter:
+    networkPolicy:
+      enabled: false
     prometheus:
       monitor:
         enabled: true
