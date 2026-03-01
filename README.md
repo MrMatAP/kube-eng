@@ -2,9 +2,54 @@
 
 A local Kubernetes cluster suitable for local engineering.
 
-## How to run this
+## Usage
 
-Start docker. Consider making customisations in `cluster.yaml`. All services
+kube-eng provides both a command-line interface (CLI) and a text-based user interface (TUI) for managing your local Kubernetes cluster.
+
+### Command-Line Interface (CLI)
+
+The CLI provides direct access to all kube-eng commands:
+
+```shell
+# Show help and available commands
+$ kube-eng --help
+
+# Specify a custom configuration path
+$ kube-eng --config /path/to/config/dir <command>
+```
+
+Common CLI commands are typically invoked through the Makefile targets (see below).
+
+### Text-Based User Interface (TUI)
+
+The TUI provides an interactive, visual interface for managing your cluster configuration:
+
+```shell
+# Launch the TUI with default configuration
+$ kube-eng-tui
+
+# Launch with a custom configuration path
+$ kube-eng-tui --config /path/to/config/dir
+```
+
+The TUI features:
+- **Configuration Tab**: Interactive forms to edit all configuration settings
+  - Host Configuration: Tools, DNS, Registry, PostgreSQL, MinIO, Kafka
+  - Cluster Configuration: Basic settings, CNI, Service Mesh, PKI, Edge
+  - Stack Configuration: Prometheus, Alloy, Loki, Keycloak, Grafana, Jaeger, Kiali
+- **Collapsible Sections**: Organize settings into logical groups
+- **Smart Field Validation**: Path and port validators with real-time feedback
+- **Dynamic Fields**: Fields enable/disable based on related checkbox states
+- **Apply Button**: Save all configuration changes at once
+
+Navigation:
+- Use `Tab` to move between fields
+- Use `Enter` to toggle checkboxes and activate buttons
+- Use `q` to quit the application
+
+## Quick Start
+
+Start docker. Consider making customisations in `cluster.yaml` or use the TUI to configure your cluster. All services
 are preconfigured with an admin password stored in `.admin-password`. If not
 pre-specified then that admin password will be generated. The pre-heat target will cache all
 required images locally so you don't have to download them again on the road.
@@ -60,6 +105,33 @@ $ docker pull localhost:5001/postgres:15
 
 > There is no need to adjust the image configuration of the included or any extra deployments. The cluster's containerd
 > configuration is preconfigured to mirror them through the air gapped registry.
+
+## Debugging
+
+### Debug pod
+
+`var/debug/debug-pod.yaml` provides a minimal pod with `curl` available, useful for testing connectivity and HTTP endpoints from within the cluster.
+
+```shell
+# Deploy
+$ kubectl apply -f var/debug/debug-pod.yaml
+
+# Wait for it to be running
+$ kubectl wait --for=condition=Ready pod/debug
+
+# Exec into it
+$ kubectl exec -it debug -- sh
+
+# Clean up when done
+$ kubectl delete -f var/debug/debug-pod.yaml
+```
+
+To target a specific namespace, pass `-n <namespace>` to each command. For example, to test a service from within the `prometheus` namespace:
+
+```shell
+$ kubectl apply -n prometheus -f var/debug/debug-pod.yaml
+$ kubectl exec -n prometheus -it debug -- sh
+```
 
 ## Limitations
 
