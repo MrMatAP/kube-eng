@@ -88,9 +88,6 @@ class HostToolCloudProviderMDNSConfig(RootConfigAware):
         """
         return self._root_config.config_path / "cloud_provider_mdns"
 
-class HostToolKustomizeConfig(RootConfigAware):
-    path: pathlib.Path = Field(default=pathlib.Path('/opt/homebrew/bin/kustomize'))
-
 class HostToolConfig(RootConfigAware):
     docker: HostToolDockerConfig = Field(default_factory=HostToolDockerConfig)
     kind: HostToolKindConfig = Field(default_factory=HostToolKindConfig)
@@ -98,7 +95,6 @@ class HostToolConfig(RootConfigAware):
     helm: HostToolHelmConfig = Field(default_factory=HostToolHelmConfig)
     cloud_provider_kind: HostToolCloudProviderKindConfig = Field(default_factory=HostToolCloudProviderKindConfig)
     cloud_provider_mdns: HostToolCloudProviderMDNSConfig = Field(default_factory=HostToolCloudProviderMDNSConfig)
-    kustomize: HostToolKustomizeConfig = Field(default_factory=HostToolKustomizeConfig)
 
 
 class HostDNSKindEnum(str, enum.Enum):

@@ -1,14 +1,13 @@
+"""
+Common TUI widgets for headers, body, and logging.
+"""
+
 from typing_extensions import Literal
 
 from rich.text import Text
 from textual import on
 from textual.app import ComposeResult
-from textual.containers import (
-    Horizontal,
-    Vertical,
-    VerticalGroup,
-    HorizontalGroup
-)
+from textual.containers import Horizontal, Vertical
 from textual.events import Resize
 from textual.widgets import Label, DataTable
 from textual.widgets._data_table import CursorType
@@ -19,30 +18,25 @@ from kube_eng.common import AnsibleEvent
 
 class AppHeader(Horizontal):
     """
-    A nicer-looking app header
+    Application header widget with branding
     """
 
     def compose(self) -> ComposeResult:
-        yield Label(f'[b]kube-eng[/] [dim]{__version__}[/]', id='app-title')
+        yield Label('kube-eng', id='app-title-left')
+        yield Label(__version__, id='app-title-right')
+
 
 class AppBody(Vertical):
+    """
+    Main application body container
+    """
     pass
-
-class FormGroup(VerticalGroup):
-
-    def __init__(self, title: str, *args, **kwargs) -> None:
-        super().__init__(*args)
-        self.classes = 'form-group'
-        self.border_title = title
-
-class FormLine(HorizontalGroup):
-    DEFAULT_CLASSES = 'form-line'
-
-class FormActions(HorizontalGroup):
-    DEFAULT_CLASSES = 'form-actions'
 
 
 class TUILog(DataTable):
+    """
+    Log table widget for displaying Ansible execution events
+    """
 
     def __init__(self, *, show_header: bool = True, show_row_labels: bool = True,
                  fixed_rows: int = 0, fixed_columns: int = 0, zebra_stripes: bool = False,
