@@ -15,6 +15,17 @@ nodes:
     controllerManager:
       extraArgs:
         allocate-node-cidrs: "true"
+        bind-address: "0.0.0.0"
+    scheduler:
+      extraArgs:
+         bind-address: "0.0.0.0"
+    etcd:
+      local:
+        extraArgs:
+          listen-metrics-urls: "http://0.0.0.0:2381"
+  - |
+    kind: KubeProxyConfiguration
+    metricsBindAddress: "0.0.0.0:10249"
   extraMounts:
   - containerPath: /etc/containerd/certs.d
     hostPath: "{{ directory }}/certs.d"
