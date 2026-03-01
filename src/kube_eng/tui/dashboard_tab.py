@@ -7,7 +7,7 @@ from kube_eng import __version__
 
 
 class DashboardScreen(Screen):
-    BINDINGS = [('q', 'quit', 'Quit')]
+    BINDINGS = [('ctrl+q', 'quit', 'Quit')]
 
     def compose(self) -> ComposeResult:
         yield Header()

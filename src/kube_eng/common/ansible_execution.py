@@ -1,3 +1,4 @@
+import asyncio
 import dataclasses
 import enum
 import typing
@@ -54,6 +55,13 @@ class AnsibleExecution:
         self._config = config
         self._ui_event_callback = ui_event_callback
         self._verbose = verbose
+        self._cancelled: bool = False
+
+    def cancel(self) -> None:
+        """
+        Cancel the current Ansible execution.
+        """
+        self._cancelled = True
 
     async def execute(self, playbook: str):
         try:
@@ -75,7 +83,9 @@ class AnsibleExecution:
                 finished_callback=self.ansible_finished_callback,
                 status_handler=self.ansible_status_handler,
                 artifacts_handler=self.ansible_artifacts_handler)
-            t.join()
+            await asyncio.to_thread(t.join)
+        except OSError as oe:
+            print(f'Failed to create a directory for artefacts of the current Ansible execution: {oe}')
         except Exception as e:
             print(e)
 
@@ -114,6 +124,8 @@ class AnsibleExecution:
                 ev.task = event_data.get("res", {}).get("msg", "Unknown")
                 ev.status = AnsibleStatusEnum.failed
                 ev.changed = status.get('event_data', {}).get('changed', False)
+                self._ui_event_callback(ev)
+                return True
             case 'runner_on_ok':
                 # We only run on localhost, re-map the event from the runner
                 # uuid to the task uuid
@@ -142,9 +154,20 @@ class AnsibleExecution:
         return True
 
     def ansible_cancel_callback(self) -> bool:
-        return False
+        """
+        The Ansible executor will invoke this method to check if the execution should be cancelled.
+        Frontends may invoke the cancel method to set a cancellation flag which will be returned to Ansible here.
+        Returns:
+            True if the execution should be cancelled, False otherwise.
+        """
+        return self._cancelled
 
     def ansible_finished_callback(self, runner: ansible_runner.Runner) -> None:
+        """
+        The Ansible executor will invoke this method when the execution is finished.
+        Args:
+            runner (ansible_runner.Runner): The Ansible runner instance that completed the execution.
+        """
         if runner.status == 'failed':
             ev = AnsibleEvent(uuid='0',
                               counter=0,
