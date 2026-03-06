@@ -42,9 +42,19 @@ options {
     minimal-responses no;
 
     forwarders {
-        {{ dns_local_forwarders }}
+        8.8.8.8 port 853 tls google-tls;
+        1.1.1.1 port 853 tls cloudflare-tls;
     };
+};
 
+tls cloudflare-tls {
+    remote-hostname "one.one.one.one";
+    ca-file "/etc/bind/trust.pem";
+};
+
+tls google-tls {
+    remote-hostname "dns.google";
+    ca-file "/etc/bind/trust.pem";
 };
 
 include "/etc/bind/update.key";
@@ -60,6 +70,5 @@ statistics-channels {
 zone "{{ dns_local_zone }}." {
     type primary;
     file "/var/lib/bind/db.{{ dns_local_zone }}";
-    dnssec-policy default;
     allow-update { key update-key; };
 };

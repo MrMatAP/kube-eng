@@ -67,6 +67,20 @@
         csr_path: "{{ cluster.pki.config_path }}/ca.csr"
         provider: selfsigned
         return_content: true
+    - name: Obtain the location of the current certifi trust store
+      ansible.builtin.command:
+        cmd: "python -mcertifi"
+      register: trust_store_location
+    - name: Copy the certifi trust store to the PKI directory
+      ansible.builtin.copy:
+        src: "{{ trust_store_location.stdout }}"
+        dest: "{{ cluster.pki.config_path }}/trust.pem"
+        remote_src: true
+    - name: Append the local CA to the certifi trust store
+      ansible.builtin.lineinfile:
+        path: "{{ cluster.pki.config_path }}/trust.pem"
+        line: "{{ lookup('file', cluster.pki.config_path + '/ca.pem') }}"
+        insertafter: EOF
 
   - name: Template the cloud-provider-kind configuration
     ansible.builtin.import_role:
@@ -99,7 +113,6 @@
         name: dns_local_configuration
       vars:
         dns_local_config_path: "{{ host.dns.config_path }}"
-        dns_local_forwarders: "{{ host.dns.forwarders }}"
         dns_local_zone: "{{ host.dns.zone }}"
         dns_local_update_key: "{{ host.dns.key_secret }}"
     - name: Create a volume for the DNS cache
@@ -121,6 +134,10 @@
         - source: "{{ host.dns.volume_name }}-zones"
           target: /var/lib/bind
           type: volume
+        - source: "{{ cluster.pki.config_path }}/trust.pem"
+          target: /etc/bind/trust.pem
+          read_only: true
+          type: bind
         - source: "{{ host.dns.config_path }}/named.conf"
           target: /etc/bind/named.conf
           read_only: true
@@ -262,34 +279,72 @@
         type: A
         state: present
 
-  - name: Create a local MinIO instance, if enabled
-    when: host.minio.enabled == true
+  - name: Create a local RustFS (S3) instance, if enabled
+    when: host.s3.enabled == true
     block:
-    - name: Create a volume for Minio
+    - name: Create a volume for RustFS (S3)
       community.docker.docker_volume:
-        name: "{{ host.minio.volume_name }}"
+        name: "{{ host.s3.volume_name }}"
         state: present
-    - name: Start MinIO
+    - name: Configure the RustFS (S3) config directory
+      ansible.builtin.file:
+        path: "{{ host.s3.config_path }}/config"
+        state: directory
+    - name: Create a private key for RustFS (S3)
+      community.crypto.openssl_privatekey:
+        path: "{{ host.s3.config_path }}/rustfs_key.pem"
+        type: "{{ cluster.pki.key_type }}"
+        curve: "{{ cluster.pki.key_curve }}"
+        size: "{{ cluster.pki.key_size }}"
+        state: present
+    - name: Generate a CSR for RustFS (S3)
+      community.crypto.openssl_csr:
+        path: "{{ host.s3.config_path }}/rustfs_cert.csr"
+        privatekey_path: "{{ host.s3.config_path }}/rustfs_key.pem"
+        common_name: "{{ host.s3.name }}.{{ cluster.name }}.{{ host.dns.zone }}"
+        subject_alt_name:
+        - "DNS:{{ host.s3.name }}.{{ cluster.name }}.{{ host.dns.zone }}"
+        - "DNS:{{ host.s3.name }}"
+        - "DNS:localhost"
+        basic_constraints_critical: true
+        basic_constraints:
+        - "CA:FALSE"
+    - name: Sign the certificate for RustFS (S3)
+      community.crypto.x509_certificate:
+        path: "{{ host.s3.config_path }}/rustfs_cert.pem"
+        csr_path: "{{ host.s3.config_path }}/rustfs_cert.csr"
+        ownca_path: "{{ cluster.pki.config_path }}/ca.pem"
+        ownca_privatekey_path: "{{ cluster.pki.config_path }}/ca.key"
+        ownca_not_after: "{{ cluster.pki.crt_validity }}"
+        provider: ownca
+    - name: Start RustFS (S3)
       community.docker.docker_container:
-        name: "{{ host.minio.name }}"
-        image: "{{ host.minio.image }}"
+        name: "{{ host.s3.name }}"
+        image: "{{ host.s3.image }}"
         ports:
-        - "127.0.0.1:{{ host.minio.port | int }}:9000"
-        - "127.0.0.1:{{ host.minio.console_port | int }}:9001"
+        - "127.0.0.1:{{ host.s3.port | int }}:9000"
+        - "127.0.0.1:{{ host.s3.console_port | int }}:9001"
         mounts:
-        - source: "{{ host.minio.volume_name }}"
+        - source: "{{ host.s3.volume_name }}"
           target: /data
+        - source: "{{ host.s3.config_path }}"
+          target: /opt/tls
+          read_only: true
+          type: bind
         networks:
         - name: kind
-          aliases: "{{ host.minio.name }}"
+          aliases: "{{ host.s3.name }}"
         env:
-          MINIO_ROOT_USER: admin
-          MINIO_ROOT_PASSWORD: "{{ admin_password }}"
-        command: "server /data --console-address ':9001'"
+          RUSTFS_ACCESS_KEY: admin
+          RUSTFS_SECRET_KEY: "{{ admin_password }}"
+          RUSTFS_CONSOLE_ENABLE: "true"
+          RUSTFS_SERVER_DOMAINS: "{{ cluster.name }}.{{ host.dns.zone }}"
+          RUSTFS_TLS_PATH: "/opt/tls/"
+        command: "/data"
         keep_volumes: false
         restart_policy: always
         state: healthy
-    - name: Update DNS with a record for MinIO
+    - name: Update DNS with a record for RustFS (S3)
       community.general.nsupdate:
         key_name: "{{ host.dns.key_name }}"
         key_secret: "{{ host.dns.key_secret }}"
@@ -297,7 +352,7 @@
         server: "{{ host.dns.server }}"
         port: "{{ host.dns.port | int }}"
         protocol: "{{ host.dns.protocol }}"
-        record: "{{ host.minio.name }}.{{ cluster.name }}.{{ host.dns.zone }}."
+        record: "{{ host.s3.name }}.{{ cluster.name }}.{{ host.dns.zone }}."
         ttl: "{{ host.dns.ttl | int }}"
         value: 127.0.0.1
         type: A
