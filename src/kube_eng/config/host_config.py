@@ -106,7 +106,6 @@ class HostDNSConfig(RootConfigAware):
     name: str = Field(default="dns", description='Name of the DNS container')
     image: str = Field(default="ubuntu/bind9:latest", description="DNS container image")
     volume_name: str = Field(default="dns-volume", description='Name of the DNS volume')
-    forwarders: str = Field(default='8.8.8.8; 4.4.4.4; 2001:4860:4860::8888; 2001:4860:4860::8844;', description="DNS forwarders")
     server: str = Field(default="127.0.0.1", description="DNS server IP address. This should be 127.0.0.1 for local DNS")
     port: int = Field(default=53, description="DNS server port to bind, used for local DNS server only")
     control_port: int = Field(default=953, description="DNS server control port, used for local DNS server only")
@@ -151,13 +150,23 @@ class HostPostgresqlConfig(RootConfigAware):
     image: str = Field(default="postgres:16-alpine")
     volume_name: str = Field(default="pg-volume")
 
-class HostMinioConfig(RootConfigAware):
+class HostS3Config(RootConfigAware):
     enabled: bool = Field(default=True)
-    name: str = Field(default="minio")
+    name: str = Field(default="s3")
     port: int = Field(default=9000)
     console_port: int = Field(default=9001)
-    image: str = Field(default="minio/minio:latest")
-    volume_name: str = Field(default="minio-volume")
+    image: str = Field(default="rustfs/rustfs:latest")
+    volume_name: str = Field(default="s3-volume")
+
+    @computed_field
+    @property
+    def config_path(self) -> pathlib.Path:
+        """
+        Directory to store Kafka configuration in.
+        Returns:
+            Path to the S3 configuration directory.
+        """
+        return self._root_config.config_path / "s3"
 
 class HostKafkaConfig(RootConfigAware):
     enabled: bool = Field(default=True)
@@ -181,5 +190,5 @@ class HostConfig(RootConfigAware):
     dns: HostDNSConfig = Field(default_factory=HostDNSConfig)
     registry: HostRegistryConfig = Field(default_factory=HostRegistryConfig)
     postgresql: HostPostgresqlConfig = Field(default_factory=HostPostgresqlConfig)
-    minio: HostMinioConfig = Field(default_factory=HostMinioConfig)
+    s3: HostS3Config = Field(default_factory=HostS3Config)
     kafka: HostKafkaConfig = Field(default_factory=HostKafkaConfig)

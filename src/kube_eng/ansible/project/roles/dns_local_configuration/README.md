@@ -14,7 +14,6 @@ Role Variables
 | Variable              | Type | Required | Default                                                       | Description                                                      |
 |-----------------------|------|----------|---------------------------------------------------------------|------------------------------------------------------------------|
 | dns_local_config_path | str  | true     | N/A                                                           | Directory in which to generate the configuration                 |
-| dns_local_forwarders  | str  | false    | 8.8.8.8; 4.4.4.4; 2001:4860:4860::8888; 2001:4860:4860::8844; | Semicolon-separated IP addresses where to forward DNS queries to |
 | dns_local_zone        | str  | true     | N/A                                                           | Name of the zone to authoritatively host                         |
 | dns_local_update_key  | str  | true     | N/A                                                           | TSIG key to use for DDNS updates                                 |
 
