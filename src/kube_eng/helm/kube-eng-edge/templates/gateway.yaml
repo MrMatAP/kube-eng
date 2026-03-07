@@ -8,7 +8,7 @@ metadata:
     cert-manager.io/cluster-issuer: ca-issuer
   labels:
     {{ include "common.labels" . | nindent 4 }}
-  name: edge-gateway
+  name: {{ .Values.cluster.edge.name }}
 spec:
   gatewayClassName: {{ .Values.gateway.classname }}
   listeners:
