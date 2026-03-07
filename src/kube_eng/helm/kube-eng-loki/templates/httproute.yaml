@@ -5,7 +5,7 @@ kind: HTTPRoute
 metadata:
   name: loki
   labels:
-      {{ include "common.labels" . | nindent 4 }}
+    {{ include "common.labels" . | nindent 4 }}
     app.kubernetes.io/name: loki
 spec:
   parentRefs:
