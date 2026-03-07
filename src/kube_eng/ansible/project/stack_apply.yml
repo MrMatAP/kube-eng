@@ -10,7 +10,7 @@
     kubernetes.core.k8s_info:
       api_version: gateway.networking.k8s.io/v1
       kind: Gateway
-      name: edge-gateway
+      name: "{{ cluster.edge.name }}"
       namespace: "{{ cluster.edge.ns }}"
     register: edge_gateway
     until: edge_gateway.resources[0].status.addresses[0].value is defined
@@ -64,7 +64,7 @@
               kind: "{{ cluster.edge.kind }}"
               fqdn: "{{ stack.prometheus.hostname }}.{{ cluster.name }}.{{ host.dns.zone }}"
               gateway:
-                name: "{{ edge_gateway.resources[0].metadata.name }}"
+                name: "{{ cluster.edge.name }}"
                 ns: "{{ cluster.edge.ns }}"
     - name: Update DNS with a record for Prometheus
       community.general.nsupdate:
@@ -105,7 +105,7 @@
               kind: "{{ cluster.edge.kind }}"
               fqdn: "{{ stack.alloy.hostname }}.{{ cluster.name }}.{{ host.dns.zone }}"
               gateway:
-                name: "{{ edge_gateway.resources[0].metadata.name }}"
+                name: "{{ cluster.edge.name }}"
                 ns: "{{ cluster.edge.ns }}"
     - name: Update DNS with a record for Alloy
       community.general.nsupdate:
@@ -146,7 +146,7 @@
               kind: "{{ cluster.edge.kind }}"
               fqdn: "{{ stack.loki.hostname }}.{{ cluster.name }}.{{ host.dns.zone }}"
               gateway:
-                name: "{{ edge_gateway.resources[0].metadata.name }}"
+                name: "{{ cluster.edge.name }}"
                 ns: "{{ cluster.edge.ns }}"
     - name: Update DNS with a record for Loki
       community.general.nsupdate:
@@ -197,7 +197,7 @@
               kind: "{{ cluster.edge.kind }}"
               fqdn: "{{ stack.keycloak.hostname }}.{{ cluster.name }}.{{ host.dns.zone }}"
               gateway:
-                name: "{{ edge_gateway.resources[0].metadata.name }}"
+                name: "{{ cluster.edge.name }}"
                 ns: "{{ cluster.edge.ns }}"
     - name: Create a Keycloak user in PostgreSQL
       community.postgresql.postgresql_user:
@@ -239,7 +239,7 @@
               kind: "{{ cluster.edge.kind }}"
               fqdn: "{{ stack.keycloak.hostname }}.{{ cluster.name }}.{{ host.dns.zone }}"
               gateway:
-                name: "{{ edge_gateway.resources[0].metadata.name }}"
+                name: "{{ cluster.edge.name }}"
                 ns: "{{ cluster.edge.ns }}"
           keycloak:
             admin_password: "{{ admin_password }}"
@@ -364,7 +364,7 @@
               kind: "{{ cluster.edge.kind }}"
               fqdn: "{{ stack.grafana.hostname }}.{{ cluster.name }}.{{ host.dns.zone }}"
               gateway:
-                name: "{{ edge_gateway.resources[0].metadata.name }}"
+                name: "{{ cluster.edge.name }}"
                 ns: "{{ cluster.edge.ns }}"
           integration:
             adminUser: "{{ stack.grafana.admin_user }}"
@@ -417,7 +417,7 @@
               kind: "{{ cluster.edge.kind }}"
               fqdn: "{{ stack.jaeger.hostname }}.{{ cluster.name }}.{{ host.dns.zone }}"
               gateway:
-                name: "{{ edge_gateway.resources[0].metadata.name }}"
+                name: "{{ cluster.edge.name }}"
                 ns: "{{ cluster.edge.ns }}"
           overrides:
             storage:
@@ -463,7 +463,7 @@
               kind: "{{ cluster.edge.kind }}"
               fqdn: "{{ stack.kiali.hostname }}.{{ cluster.name }}.{{ host.dns.zone }}"
               gateway:
-                name: "{{ edge_gateway.resources[0].metadata.name }}"
+                name: "{{ cluster.edge.name }}"
                 ns: "{{ cluster.edge.ns }}"
           kiali:
             auth:
