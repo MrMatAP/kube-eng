@@ -16,5 +16,4 @@ appVersion: "v1.12.1"
 dependencies:
 - name: alloy
   repository: https://grafana.github.io/helm-charts
-  version: 1.5.1
-  alias: overrides
+  version: 1.6.1

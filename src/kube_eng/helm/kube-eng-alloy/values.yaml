@@ -10,13 +10,15 @@ cluster:
       ns: edge
       section: alloy
 
-overrides:
-  fullnameOverride: alloy
+alloy:
   alloy:
     configMap:
       create: false
       name: alloy
       key: config.alloy
+    enableReporting: false
+    mounts:
+      varlog: false
   controller:
     type: 'deployment'
     replicas: 1
@@ -24,3 +26,9 @@ overrides:
     enabled: false
   serviceAccount:
     name: sa-alloy
+  networkPolicy:
+    enabled: false
+  serviceMonitor:
+    enabled: true
+    additionalLabels:
+      app.kubernetes.io/monitored-by: prometheus
