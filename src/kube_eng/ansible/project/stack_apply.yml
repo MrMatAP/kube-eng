@@ -124,6 +124,18 @@
   - name: Deploy Loki
     when: "stack.loki.enabled | bool == true"
     block:
+    - name: Create the loki S3 buckets
+      s3_bucket:
+        admin_access_key: admin
+        admin_secret_key: "{{ admin_password }}"
+        s3_endpoint: "https://{{ host.s3.name }}.{{ cluster.name }}.{{ host.dns.zone }}:9000"
+        truststore_path: "{{ cluster.pki.config_path }}/ca.pem"
+        bucket_name: "{{ item }}"
+        state: present
+      loop:
+      - loki-admin
+      - loki-ruler
+      - loki-chunks
     - name: Create and label the Loki namespace
       ansible.builtin.import_role:
         name: create_namespace
@@ -148,6 +160,12 @@
               gateway:
                 name: "{{ cluster.edge.name }}"
                 ns: "{{ cluster.edge.ns }}"
+          loki:
+            loki:
+              storage:
+                s3:
+                  accessKeyId: admin
+                  secretAccessKey: "{{ admin_password }}"
     - name: Update DNS with a record for Loki
       community.general.nsupdate:
         key_name: "{{ host.dns.key_name }}"

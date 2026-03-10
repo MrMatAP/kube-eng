@@ -338,7 +338,6 @@
           RUSTFS_ACCESS_KEY: admin
           RUSTFS_SECRET_KEY: "{{ admin_password }}"
           RUSTFS_CONSOLE_ENABLE: "true"
-          RUSTFS_SERVER_DOMAINS: "{{ cluster.name }}.{{ host.dns.zone }}"
           RUSTFS_TLS_PATH: "/opt/tls/"
         command: "/data"
         keep_volumes: false

@@ -10,12 +10,17 @@ cluster:
       ns: edge
       section: loki
 
-overrides:
-  fullnameOverride: loki
+loki:
   deploymentMode: SingleBinary
+  singleBinary:
+    replicas: 1
+    persistence:
+      enabled: true
+      size: 3Gi
   loki:
     auth_enabled: false
     commonConfig:
+      path_prefix: /var/loki
       replication_factor: 1
     storage:
       bucketNames:
@@ -24,32 +29,13 @@ overrides:
         admin: loki-admin
       type: s3
       s3:
-        s3: http://loki:lokiloki@minio:9000
-        endpoint: http://loki:lokiloki@minio:9000
-        # If you changed the region
-        #region: covenant
-        insecure: true
+        endpoint: https://s3:9000
         s3ForcePathStyle: true
-      tsdb_shipper:
-        active_index_directory: /loki/index
-        cache_location: /loki/index_cache
-        cache_ttl: 24h
-      object_store:
-        type: s3
-        s3:
-          endpoint: http://loki:lokiloki@minio:9000
-          # If you changed the region
-          #region: covenant
-          insecure: true
-    storage_ config:
-      tsdb_shipper:
-        active_index_directory: /loki/index
-        cache_location: /loki/index_cache
-      aws:
-        s3: http://loki:lokiloki@minio:9000
-        # If you changed the region
-        #region: covenant
-        s3forcepathstyle: true
+        accessKeyId: null
+        secretAccessKey: null
+        signatureVersion: v4
+        http_config:
+          insecure_skip_verify: true
     schemaConfig:
       configs:
       - from: 2024-04-01
@@ -57,28 +43,44 @@ overrides:
         object_store: s3
         schema: v13
         index:
+          prefix: loki_index_
+          period: 24h
+    pattern_ingester:
+      enabled: true
+    limits_config:
+      allow_structured_metadata: true
+      volume_enabled: true
+    ruler:
+      enable_api: true
+    minio:
+      enabled: false
+    storage_config:
+      tsdb_shipper:
+        active_index_directory: /var/loki/index
+        cache_location: /var/loki/index_cache
+        cache_ttl: 24h         # Can be increased for faster performance over longer query periods, uses more disk space
+    schema_config:
+      configs:
+      - from: 2020-07-01
+        store: tsdb
+        object_store: s3
+        schema: v13
+        index:
           prefix: index_
           period: 24h
-
+  memberlist:
+    service:
+      publishNotReadyAddresses: true
+  gateway:
+    enabled: false
   enterprise:
     enabled: false
-  test:
-    enabled: true
-  lokiCanary:
-    enabled: true
-  adminApi:
-    replicas: 1
-  gateway:
-    enabled: true
-  enterpriseGateway:
-    replicas: 0
-  ingress:
-    enabled: false
-
-  # Single Binary Deployment
-  singleBinary:
-    replicas: 1
-
+  chunksCache:
+    resources:
+      limits:
+        memory: 4Gi
+      requests:
+        memory: 4Gi
   # Simple Scalable Mode
   write:
     replicas: 0
