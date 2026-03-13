@@ -1,0 +1,52 @@
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata:
+  labels:
+    {{ include "common.labels" . | nindent 4 }}
+    app.kubernetes.io/name: ap-loki-allow
+  name: ap-loki-allow
+spec:
+  action: ALLOW
+  rules:
+  - from:
+    - source:
+        principals:
+        - cluster.local/ns/alloy/sa/sa-alloy
+    to:
+    - operation:
+        ports:
+        - "3100"
+  - from:
+    - source:
+        principals:
+          - cluster.local/ns/prometheus/sa/prometheus-prometheus
+    to:
+      - operation:
+          ports:
+            - "3100"
+            - "3500"
+  - from:
+    - source:
+        principals:
+        - cluster.local/ns/loki/sa/loki
+        - cluster.local/ns/loki/sa/loki-canary
+    to:
+      - operation:
+          ports:
+          - "7946"
+          - "11211"
+          - "3100"
+          - "9095"
+  targetRefs:
+  - group: ""
+    kind: Service
+    name: loki
+  - group: ""
+    kind: Service
+    name: loki-canary
+  - group: ""
+    kind: Service
+    name: loki-chunks-cache
+  - group: ""
+    kind: Service
+    name: loki-results-cache

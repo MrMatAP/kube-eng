@@ -1,0 +1,31 @@
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata:
+  labels:
+    {{ include "common.labels" . | nindent 4 }}
+    app.kubernetes.io/name: ap-keycloak-allow
+  name: ap-keycloak-allow
+spec:
+  action: ALLOW
+  rules:
+  - from:
+    - source:
+        principals:
+        - cluster.local/ns/grafana/sa/grafana-sa
+        - cluster.local/ns/kiali/sa/kiali-service-account
+    to:
+    - operation:
+        ports:
+        - "8080"
+  - from:
+    - source:
+        principals:
+          - cluster.local/ns/prometheus/sa/prometheus-prometheus
+    to:
+      - operation:
+          ports:
+            - "9000"
+  targetRefs:
+  - group: ""
+    kind: Service
+    name: keycloak-service
