@@ -1,0 +1,44 @@
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata:
+  labels:
+    {{ include "common.labels" . | nindent 4 }}
+    app.kubernetes.io/name: ap-prometheus-allow
+  name: ap-prometheus-allow
+spec:
+  action: ALLOW
+  rules:
+  - from:
+    - source:
+        principals:
+        - cluster.local/ns/grafana/sa/grafana-sa
+        - cluster.local/ns/kiali/sa/kiali-service-account
+        - cluster.local/ns/edge/sa/edge-istio
+    to:
+    - operation:
+        ports:
+        - "9090"
+  - from:
+      - source:
+          principals:
+          - cluster.local/ns/prometheus/sa/prometheus-prometheus
+          - cluster.local/ns/prometheus/sa/prometheus-operator
+    to:
+      - operation:
+          ports:
+            - "9090"
+            - "8080"
+            - "10250"
+  targetRefs:
+  - group: ""
+    kind: Service
+    name: prometheus-operated
+  - group: ""
+    kind: Service
+    name: prometheus-prometheus
+  - group: ""
+    kind: Service
+    name: prometheus-kube-state-metrics
+  - group: ""
+    kind: Service
+    name: prometheus-operator

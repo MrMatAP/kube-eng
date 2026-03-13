@@ -1,0 +1,23 @@
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata:
+  labels:
+    {{ include "common.labels" . | nindent 4 }}
+    app.kubernetes.io/name: ap-alloy-allow
+  name: ap-alloy-allow
+spec:
+  action: ALLOW
+  rules:
+  - from:
+    - source:
+        principals:
+        - cluster.local/ns/edge/sa/edge-istio
+        - cluster.local/ns/prometheus/sa/prometheus-prometheus
+    to:
+    - operation:
+        ports:
+        - "12345"
+  targetRefs:
+  - group: ""
+    kind: Service
+    name: alloy
