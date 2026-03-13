@@ -14,3 +14,8 @@ argument_specs:
         required: false
         choices: ['none', 'istio-sidecar', 'istio-ambient']
         default: istio
+      waypoint:
+        description: Enroll this namespace to use an Istio waypoint
+        type: bool
+        required: false
+        default: false

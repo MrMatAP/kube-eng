@@ -15,6 +15,7 @@ Role Variables
 |----------|------|----------|---------|------------------------------------------------------------------------------|
 | name     | str  | true     | N/A     | Name of the namespace                                                        |
 | mesh     | str  | false    | istio   | The mesh currently in use. One of 'none', 'istio-sidecar' or 'istio-ambient' |
+| waypoint | bool | false    | false   | Enroll this namespace to use an Istio waypoint                               |
 
 Dependencies
 ------------
@@ -35,6 +36,7 @@ Example Playbook
     vars:
       name: "{{ stack.cert_manager.ns }}
       mesh: "{{ cluster.mesh.kind }}"
+      waypoint: true
 ```
 
 License
