@@ -81,8 +81,7 @@ spec:
       disable_login_form: "false"
     auth_generic_oauth:
       enabled: "true"
-      allow_sign_up: "false"
-
+      allow_sign_up: "true"
       name: Keycloak-OAuth
       client_id: ${AUTH_CLIENT_ID}
       client_secret: ${AUTH_CLIENT_SECRET}
