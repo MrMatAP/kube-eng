@@ -2,13 +2,6 @@
 
 cluster:
   name: cluster
-  edge:
-    kind: traefik
-    fqdn: loki.cluster.k8s
-    gateway:
-      name: gateway
-      ns: edge
-      section: loki
 
 loki:
   deploymentMode: SingleBinary
