@@ -31,6 +31,8 @@ prometheus:
       additionalLabels:
         app.kubernetes.io/monitored-by: prometheus
     prometheusSpec:
+      externalLabels:
+        origin_prometheus: local
       ruleSelector:
         matchLabels:
           app.kubernetes.io/monitored-by: prometheus
