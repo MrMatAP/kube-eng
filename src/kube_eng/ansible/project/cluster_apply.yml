@@ -122,6 +122,48 @@
             profile: "{{ (cluster.mesh.kind == 'istio-ambient') | ternary('ambient', 'default') }}"
           overrides_cni:
             profile: "{{ (cluster.mesh.kind == 'istio-ambient') | ternary('ambient', 'default') }}"
+    - name: Create a service entry for the S3 service, if enabled
+      when: "host.s3.enabled | bool == true"
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: networking.istio.io/v1
+          kind: ServiceEntry
+          metadata:
+            name: service-s3
+            namespace: "{{ cluster.mesh.ns }}"
+            labels:
+              app.kubernetes.io/name: service-s3
+          spec:
+            location: MESH_EXTERNAL
+            resolution: DNS
+            hosts:
+            - "{{ host.s3.name }}.kind"
+            ports:
+            - name: s3-https
+              number: 9000
+              protocol: TLS
+    - name: Create a service entry for the PG service, if enabled
+      when: "host.postgresql.enabled | bool == true"
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: networking.istio.io/v1
+          kind: ServiceEntry
+          metadata:
+            name: service-pg
+            namespace: "{{ cluster.mesh.ns }}"
+            labels:
+              app.kubernetes.io/name: service-pg
+          spec:
+            location: MESH_EXTERNAL
+            resolution: DNS
+            hosts:
+            - "{{ host.postgresql.name }}.kind"
+            ports:
+            - name: postgres
+              number: 5432
+              protocol: TCP
 
   - name: Deploy cluster PKI
     block:

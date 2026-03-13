@@ -19,7 +19,9 @@ cilium:
     exclusive: false
   rollOutCiliumPods: true
   hubble:
-    enabled: true
+    enabled: false
+    dashboards:
+      enabled: true
     metrics:
       enabled:
         - dns
@@ -29,24 +31,29 @@ cilium:
         - http
         - "policy:sourceContext=app|workload-name|pod|reserved-identity;destinationContext=app|workload-name|pod|dns|reserved-identity;labelsContext=source_namespace,destination_namespace"
       serviceMonitor:
-        enabled: true
+        enabled: false
+        jobLabel: app.kubernetes.io/name
         labels:
           app.kubernetes.io/monitored-by: prometheus
-    dashboards:
-      enabled: true
+        relabelings:
+        - sourceLabels: [__meta_kubernetes_pod_node_name]
+          action: replace
+          targetLabel: node
     relay:
-      enabled: true
-      rollOutPods: true
+      enabled: false
       prometheus:
-        enabled: true
+        enabled: false
         serviceMonitor:
           enabled: true
           labels:
             app.kubernetes.io/monitored-by: prometheus
+          jobLabel: app.kubernetes.io/name
+          relabelings:
+          - sourceLabels: [ __meta_kubernetes_pod_node_name ]
+            action: replace
+            targetLabel: node
     ui:
-      enabled: true
-      rollOutPods: true
-
+      enabled: false
   ingressController:
     enabled: false
   gatewayAPI:
@@ -64,6 +71,11 @@ cilium:
       enabled: true
       labels:
         app.kubernetes.io/monitored-by: prometheus
+      jobLabel: app.kubernetes.io/name
+      relabelings:
+      - sourceLabels: [ __meta_kubernetes_pod_node_name ]
+        action: replace
+        targetLabel: node
     dashboards:
       enabled: true
   envoy:
@@ -73,6 +85,11 @@ cilium:
         enabled: true
         labels:
           app.kubernetes.io/monitored-by: prometheus
+        jobLabel: app.kubernetes.io/name
+        relabelings:
+        - sourceLabels: [ __meta_kubernetes_pod_node_name ]
+          action: replace
+          targetLabel: node
   operator:
     prometheus:
       metricsService: true
@@ -81,5 +98,10 @@ cilium:
         enabled: true
         labels:
           app.kubernetes.io/monitored-by: prometheus
+        jobLabel: app.kubernetes.io/name
+        relabelings:
+        - sourceLabels: [ __meta_kubernetes_pod_node_name ]
+          action: replace
+          targetLabel: node
     dashboards:
       enabled: true
