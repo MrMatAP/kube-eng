@@ -45,6 +45,7 @@ class StackKialiConfig(RootConfigAware):
     ns: str = Field(default="kiali")
     hostname: str = Field(default="kiali")
     version: str = Field(default="v2.18.0")
+    client_id: str = Field(default="kiali")
 
 class StackConfig(RootConfigAware):
     prometheus: StackPrometheusConfig = Field(default_factory=StackPrometheusConfig)

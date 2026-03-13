@@ -7,13 +7,35 @@ metadata:
     app.kubernetes.io/name: kiali
 spec:
   auth:
-    strategy: "anonymous"
+    strategy: "openid"
+    openid:
+      api_token: id_token
+      client_id: "{{ .Values.integration.keycloak.client_id }}"
+      disable_rbac: true
+      issuer_uri: "{{ .Values.integration.keycloak.issuer_uri }}"
+      scopes:
+      - openid
+      - profile
+      - email
+      username_claim: name
   deployment:
     replicas: 1
     network_policy:
       enabled: false
+  server:
+    web_schema: "https"
+    web_fqdn: "{{ .Values.cluster.edge.fqdn }}"
+    web_port: "443"
   external_services:
     istio:
       istio_api_enabled: true
     prometheus:
-      url: http://prometheus-operated.prometheus.svc.cluster.local:9090
+      url: "{{ .Values.integration.prometheus.url }}"
+    grafana:
+      enabled: true
+      external_url: "{{ .Values.integration.grafana.external_url }}"
+      internal_url: "{{ .Values.integration.grafana.internal_url }}"
+      auth:
+        type: bearer
+        username: {{ .Values.integration.grafana.auth.username }}
+        token: {{ .Values.integration.grafana.auth.token }}

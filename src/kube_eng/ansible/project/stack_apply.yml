@@ -48,6 +48,7 @@
       vars:
         ns: "{{ stack.prometheus.ns }}"
         mesh: "{{ cluster.mesh.kind }}"
+        waypoint: "{{ cluster.mesh.kind == 'istio-ambient' }}"
     - name: Deploy the Prometheus Helm Chart
       kubernetes.core.helm:
         name: prometheus
@@ -66,6 +67,11 @@
               gateway:
                 name: "{{ cluster.edge.name }}"
                 ns: "{{ cluster.edge.ns }}"
+          prometheus:
+            prometheus:
+              prometheusSpec:
+                externalLabels:
+                  origin_prometheus: "{{ cluster.name }}"
     - name: Update DNS with a record for Prometheus
       community.general.nsupdate:
         key_name: "{{ host.dns.key_name }}"
@@ -80,106 +86,6 @@
         type: A
         state: present
 
-  - name: Deploy Alloy
-    when: "stack.alloy.enabled | bool == true"
-    block:
-    - name: Create and label the Alloy namespace
-      ansible.builtin.import_role:
-        name: create_namespace
-      vars:
-        ns: "{{ stack.alloy.ns }}"
-        mesh: "{{ cluster.mesh.kind }}"
-    - name: Deploy the Alloy Helm Chart
-      kubernetes.core.helm:
-        name: alloy
-        create_namespace: false
-        release_namespace: "{{ stack.alloy.ns }}"
-        chart_ref: "oci://{{ host.registry.name }}.{{ cluster.name }}.{{ host.dns.zone }}:{{ host.registry.port | int }}/kube-eng/kube-eng-alloy"
-        chart_version: "{{ host.tool.helm.chart_version }}"
-        binary_path: "{{ host.tool.helm.path }}"
-        wait: true
-        values:
-          cluster:
-            name: "{{ cluster.name }}"
-            edge:
-              kind: "{{ cluster.edge.kind }}"
-              fqdn: "{{ stack.alloy.hostname }}.{{ cluster.name }}.{{ host.dns.zone }}"
-              gateway:
-                name: "{{ cluster.edge.name }}"
-                ns: "{{ cluster.edge.ns }}"
-    - name: Update DNS with a record for Alloy
-      community.general.nsupdate:
-        key_name: "{{ host.dns.key_name }}"
-        key_secret: "{{ host.dns.key_secret }}"
-        key_algorithm: "{{ host.dns.key_algorithm }}"
-        server: "{{ host.dns.server }}"
-        port: "{{ host.dns.port | int }}"
-        protocol: "{{ host.dns.protocol }}"
-        record: "{{ stack.alloy.hostname }}.{{ cluster.name }}.{{ host.dns.zone }}."
-        ttl: "{{ host.dns.ttl | int }}"
-        value: "{{ edge_gateway.resources[0].status.addresses[0].value }}"
-        type: A
-        state: present
-
-  - name: Deploy Loki
-    when: "stack.loki.enabled | bool == true"
-    block:
-    - name: Create the loki S3 buckets
-      s3_bucket:
-        admin_access_key: admin
-        admin_secret_key: "{{ admin_password }}"
-        s3_endpoint: "https://{{ host.s3.name }}.{{ cluster.name }}.{{ host.dns.zone }}:9000"
-        truststore_path: "{{ cluster.pki.config_path }}/ca.pem"
-        bucket_name: "{{ item }}"
-        state: present
-      loop:
-      - loki-admin
-      - loki-ruler
-      - loki-chunks
-    - name: Create and label the Loki namespace
-      ansible.builtin.import_role:
-        name: create_namespace
-      vars:
-        ns: "{{ stack.loki.ns }}"
-        mesh: "{{ cluster.mesh.kind }}"
-    - name: Deploy the Loki Helm chart
-      kubernetes.core.helm:
-        name: loki
-        create_namespace: false
-        release_namespace: "{{ stack.loki.ns }}"
-        chart_ref: "oci://{{ host.registry.name }}.{{ cluster.name }}.{{ host.dns.zone }}:{{ host.registry.port | int }}/kube-eng/kube-eng-loki"
-        chart_version: "{{ host.tool.helm.chart_version }}"
-        binary_path: "{{ host.tool.helm.path }}"
-        wait: true
-        values:
-          cluster:
-            name: "{{ cluster.name }}"
-            edge:
-              kind: "{{ cluster.edge.kind }}"
-              fqdn: "{{ stack.loki.hostname }}.{{ cluster.name }}.{{ host.dns.zone }}"
-              gateway:
-                name: "{{ cluster.edge.name }}"
-                ns: "{{ cluster.edge.ns }}"
-          loki:
-            loki:
-              storage:
-                s3:
-                  accessKeyId: admin
-                  secretAccessKey: "{{ admin_password }}"
-    - name: Update DNS with a record for Loki
-      community.general.nsupdate:
-        key_name: "{{ host.dns.key_name }}"
-        key_secret: "{{ host.dns.key_secret }}"
-        key_algorithm: "{{ host.dns.key_algorithm }}"
-        server: "{{ host.dns.server }}"
-        port: "{{ host.dns.port | int }}"
-        protocol: "{{ host.dns.protocol }}"
-        record: "{{ stack.loki.hostname }}.{{ cluster.name }}.{{ host.dns.zone }}."
-        ttl: "{{ host.dns.ttl | int }}"
-        value: "{{ edge_gateway.resources[0].status.addresses[0].value }}"
-        type: A
-        state: present
-
   - name: Deploy Keycloak
     when: "stack.keycloak.enabled | bool == true"
     block:
@@ -189,6 +95,7 @@
       vars:
         ns: "{{ stack.keycloak.ns }}"
         mesh: "{{ cluster.mesh.kind }}"
+        waypoint: "{{ cluster.mesh.kind == 'istio-ambient' }}"
     - name: Deploy the Keycloak Operator CRDs
       kubernetes.core.k8s:
         src: "{{ item }}"
@@ -262,7 +169,7 @@
           keycloak:
             admin_password: "{{ admin_password }}"
             db_password: "{{ admin_password }}"
-            db_host: "{{ host.postgresql.name }}.{{ cluster.name }}.{{ host.dns.zone }}"
+            db_host: "{{ host.postgresql.name }}.kind"
             db_port: "{{ host.postgresql.port }}"
     - name: Update DNS with a record for Keycloak
       community.general.nsupdate:
@@ -301,6 +208,7 @@
       vars:
         ns: "{{ stack.grafana.ns }}"
         mesh: "{{ cluster.mesh.kind }}"
+        waypoint: "{{ cluster.mesh.kind == 'istio-ambient' }}"
     - name: Register Grafana in Keycloak
       community.general.keycloak_client:
         auth_keycloak_url: "https://{{ stack.keycloak.hostname }}.{{ cluster.name }}.{{ host.dns.zone }}"
@@ -410,6 +318,103 @@
         type: A
         state: present
 
+  - name: Deploy Alloy
+    when: "stack.alloy.enabled | bool == true"
+    block:
+    - name: Create and label the Alloy namespace
+      ansible.builtin.import_role:
+        name: create_namespace
+      vars:
+        ns: "{{ stack.alloy.ns }}"
+        mesh: "{{ cluster.mesh.kind }}"
+        waypoint: "{{ cluster.mesh.kind == 'istio-ambient' }}"
+    - name: Deploy the Alloy Helm Chart
+      kubernetes.core.helm:
+        name: alloy
+        create_namespace: false
+        release_namespace: "{{ stack.alloy.ns }}"
+        chart_ref: "oci://{{ host.registry.name }}.{{ cluster.name }}.{{ host.dns.zone }}:{{ host.registry.port | int }}/kube-eng/kube-eng-alloy"
+        chart_version: "{{ host.tool.helm.chart_version }}"
+        binary_path: "{{ host.tool.helm.path }}"
+        wait: true
+        values:
+          cluster:
+            name: "{{ cluster.name }}"
+            edge:
+              kind: "{{ cluster.edge.kind }}"
+              fqdn: "{{ stack.alloy.hostname }}.{{ cluster.name }}.{{ host.dns.zone }}"
+              gateway:
+                name: "{{ cluster.edge.name }}"
+                ns: "{{ cluster.edge.ns }}"
+    - name: Update DNS with a record for Alloy
+      community.general.nsupdate:
+        key_name: "{{ host.dns.key_name }}"
+        key_secret: "{{ host.dns.key_secret }}"
+        key_algorithm: "{{ host.dns.key_algorithm }}"
+        server: "{{ host.dns.server }}"
+        port: "{{ host.dns.port | int }}"
+        protocol: "{{ host.dns.protocol }}"
+        record: "{{ stack.alloy.hostname }}.{{ cluster.name }}.{{ host.dns.zone }}."
+        ttl: "{{ host.dns.ttl | int }}"
+        value: "{{ edge_gateway.resources[0].status.addresses[0].value }}"
+        type: A
+        state: present
+
+  - name: Deploy Loki
+    when: "stack.loki.enabled | bool == true"
+    block:
+    - name: Create the loki S3 buckets
+      s3_bucket:
+        admin_access_key: admin
+        admin_secret_key: "{{ admin_password }}"
+        s3_endpoint: "https://{{ host.s3.name }}.{{ cluster.name }}.{{ host.dns.zone }}:9000"
+        truststore_path: "{{ cluster.pki.config_path }}/ca.pem"
+        bucket_name: "{{ item }}"
+        state: present
+      loop:
+      - loki-admin
+      - loki-ruler
+      - loki-chunks
+    - name: Create and label the Loki namespace
+      ansible.builtin.import_role:
+        name: create_namespace
+      vars:
+        ns: "{{ stack.loki.ns }}"
+        mesh: "{{ cluster.mesh.kind }}"
+        waypoint: "{{ cluster.mesh.kind == 'istio-ambient' }}"
+    - name: Deploy the Loki Helm chart
+      kubernetes.core.helm:
+        name: loki
+        create_namespace: false
+        release_namespace: "{{ stack.loki.ns }}"
+        chart_ref: "oci://{{ host.registry.name }}.{{ cluster.name }}.{{ host.dns.zone }}:{{ host.registry.port | int }}/kube-eng/kube-eng-loki"
+        chart_version: "{{ host.tool.helm.chart_version }}"
+        binary_path: "{{ host.tool.helm.path }}"
+        wait: true
+        values:
+          cluster:
+            name: "{{ cluster.name }}"
+          loki:
+            loki:
+              storage:
+                s3:
+                  endpoint: https://{{ host.s3.name }}.kind:{{ host.s3.port }}
+                  accessKeyId: admin
+                  secretAccessKey: "{{ admin_password }}"
+    - name: Update DNS with a record for Loki
+      community.general.nsupdate:
+        key_name: "{{ host.dns.key_name }}"
+        key_secret: "{{ host.dns.key_secret }}"
+        key_algorithm: "{{ host.dns.key_algorithm }}"
+        server: "{{ host.dns.server }}"
+        port: "{{ host.dns.port | int }}"
+        protocol: "{{ host.dns.protocol }}"
+        record: "{{ stack.loki.hostname }}.{{ cluster.name }}.{{ host.dns.zone }}."
+        ttl: "{{ host.dns.ttl | int }}"
+        value: "{{ edge_gateway.resources[0].status.addresses[0].value }}"
+        type: A
+        state: present
+
   - name: Deploy Jaeger
     when: "stack.jaeger.enabled | bool == true"
     block:
@@ -455,16 +460,82 @@
         type: A
         state: present
 
-
   - name: Deploy Kiali
     when: "stack.kiali.enabled | bool == true"
     block:
+    - name: Register Kiali in Keycloak
+      community.general.keycloak_client:
+        auth_keycloak_url: "https://{{ stack.keycloak.hostname }}.{{ cluster.name }}.{{ host.dns.zone }}"
+        auth_realm: master
+        auth_username: admin
+        auth_password: "{{ admin_password }}"
+        client_id: "{{ stack.kiali.client_id }}"
+        name: "{{ stack.kiali.client_id }}"
+        description: "Kube Eng :: Kiali"
+        enabled: true
+        protocol: openid-connect
+        public_client: false
+        client_authenticator_type: client-secret
+        secret: "{{ admin_password }}"
+        root_url: "https://{{ stack.kiali.hostname }}.{{ cluster.name }}.{{ host.dns.zone }}/"
+        base_url: "https://{{ stack.kiali.hostname }}.{{ cluster.name }}.{{ host.dns.zone }}/"
+        admin_url: "https://{{ stack.kiali.hostname }}.{{ cluster.name }}.{{ host.dns.zone }}/"
+        redirect_uris:
+        - "https://{{ stack.kiali.hostname }}.{{ cluster.name }}.{{ host.dns.zone }}/*"
+        standard_flow_enabled: true
+        implicit_flow_enabled: false
+        direct_access_grants_enabled: true
+        default_client_scopes:
+        - email
+        - offline_access
+        - profile
+        - groups
+        # TODO: Make Ansible trust the generated PKI CA certificate
+        validate_certs: false
+    - name: Collect information about the Kiali Service Account
+      kubernetes.core.k8s_info:
+        api_version: grafana.integreatly.org/v1beta1
+        kind: GrafanaServiceAccount
+        name: kiali-grafana-serviceaccount
+        namespace: "{{ stack.grafana.ns }}"
+      register: kiali_grafana_sa
+    - name: Collect information about the Kiali Service Account token
+      kubernetes.core.k8s_info:
+        api_version: v1
+        kind: Secret
+        name: "{{ kiali_grafana_sa.resources[0].status.account.tokens[0].secret.name }}"
+        namespace: "{{ kiali_grafana_sa.resources[0].status.account.tokens[0].secret.namespace }}"
+      register: kiali_grafana_sa_token
     - name: Create and label the Kiali namespace
       ansible.builtin.import_role:
         name: create_namespace
       vars:
         ns: "{{ stack.kiali.ns }}"
         mesh: "{{ cluster.mesh.kind }}"
+        waypoint: "{{ cluster.mesh.kind == 'istio-ambient' }}"
+    - name: Create a secret for the Kiali OIDC client secret
+      kubernetes.core.k8s:
+        definition:
+          apiVersion: v1
+          kind: Secret
+          metadata:
+            name: kiali
+            namespace: "{{ stack.kiali.ns }}"
+          type: Opaque
+          stringData:
+            oidc-secret: "{{ admin_password }}"
+        state: present
+    - name: Create a CA trust store ConfigMap for Kiali
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: v1
+          kind: ConfigMap
+          metadata:
+            name: kiali-cabundle
+            namespace: "{{ stack.kiali.ns }}"
+          data:
+            additional-ca-bundle.pem: "{{ lookup('ansible.builtin.file', '{{ cluster.pki.config_path }}/ca.pem') }}"
     - name: Deploy the Kiali Helm Chart
       kubernetes.core.helm:
         name: kiali
@@ -483,22 +554,22 @@
               gateway:
                 name: "{{ cluster.edge.name }}"
                 ns: "{{ cluster.edge.ns }}"
-          kiali:
-            auth:
-              strategy: anonymous
-          prometheus:
-            hostname: "{{ stack.prometheus.hostname }}"
-            ns: "{{ stack.prometheus.ns }}"
-          jaeger:
-            ns: "{{ stack.jaeger.ns }}"
-            fqdn: "{{ stack.jaeger.hostname }}.{{ cluster.name }}.{{ host.dns.zone }}"
-          grafana:
-            fqdn: "{{ stack.grafana.hostname }}.{{ cluster.name }}.{{ host.dns.zone }}"
-            ns: "{{ stack.grafana.ns }}"
-            auth:
-              type: 'basic'
-              username: admin
-              password: "{{ admin_password }}"
+          integration:
+            keycloak:
+              client_id: "{{ stack.kiali.client_id }}"
+              issuer_uri: "https://{{ stack.keycloak.hostname }}.{{ cluster.name }}.{{ host.dns.zone }}/realms/master"
+            prometheus:
+              hostname: "{{ stack.prometheus.hostname }}"
+              ns: "{{ stack.prometheus.ns }}"
+              url: "http://prometheus-operated.{{ stack.prometheus.ns }}.svc.cluster.local:9090/"
+            grafana:
+              fqdn: "{{ stack.grafana.hostname }}.{{ cluster.name }}.{{ host.dns.zone }}"
+              ns: "{{ stack.grafana.ns }}"
+              internal_url: "http://grafana-service.{{ stack.grafana.ns }}.svc.cluster.local:3000/"
+              external_url: "https://{{ stack.grafana.hostname }}.{{ cluster.name }}.{{ host.dns.zone }}/"
+              auth:
+                username: "{{ kiali_grafana_sa.resources[0].status.account.login }}"
+                token: "{{ kiali_grafana_sa_token.resources[0].data.token | b64decode }}"
     - name: Update DNS with a record for Kiali
       community.general.nsupdate:
         key_name: "{{ host.dns.key_name }}"
