@@ -29,6 +29,6 @@ alloy:
   networkPolicy:
     enabled: false
   serviceMonitor:
-    enabled: true
+    enabled: false
     additionalLabels:
       app.kubernetes.io/monitored-by: prometheus
