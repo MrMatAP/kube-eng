@@ -3,10 +3,18 @@ apiVersion: v1
 kind: Namespace
 metadata:
   name: "{{ ns }}"
+{% set label_list = [] -%}
+{% if mesh == 'istio-ambient' -%}
+  {% set label_list = label_list + ['istio.io/dataplane-mode: ambient'] -%}
+{% elif mesh == 'istio-sidecar' -%}
+  {% set label_list = label_list + ['istio-injection: enabled'] -%}
+{% endif -%}
+{% if waypoint -%}
+  {% set label_list = label_list + ['istio.io/use-waypoint: waypoint'] -%}
+{% endif -%}
+{% if label_list | length > 0 %}
   labels:
-    {% if mesh == 'istio-ambient' %}
-    istio.io/dataplane-mode: ambient
-    {% elif mesh == 'istio-sidecar' %}
-    istio-injection: enabled
-    {% else %}
-    {% endif %}
+{% for label in label_list %}
+    {{ label }}
+{% endfor %}
+{%- endif %}

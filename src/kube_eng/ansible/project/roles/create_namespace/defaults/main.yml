@@ -2,3 +2,4 @@
 ---
 # defaults file for create_namespace
 istio_profile: ambient
+waypoint: false
