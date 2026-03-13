@@ -1,11 +1,11 @@
 apiVersion: monitoring.coreos.com/v1
-kind: PodMonitor
+kind: ServiceMonitor
 metadata:
   labels:
     {{ include "common.labels" . | nindent 4 }}
-    app.kubernetes.io/name: pm-istio-ztunnel
+    app.kubernetes.io/name: sm-loki
     app.kubernetes.io/monitored-by: prometheus
-  name: pm-istio-ztunnel
+  name: sm-loki
 spec:
   jobLabel: app.kubernetes.io/name
   namespaceSelector:
@@ -13,13 +13,15 @@ spec:
     - {{ .Release.Namespace }}
   selector:
     matchLabels:
-      app.kubernetes.io/name: ztunnel
-      app.kubernetes.io/part-of: istio
-  podMetricsEndpoints:
+      app.kubernetes.io/name: loki
+    matchExpressions:
+    - key: app.kubernetes.io/component
+      operator: DoesNotExist
+  endpoints:
   - honorLabels: false
     interval: 10s
     scheme: http
-    port: ztunnel-stats
+    port: http-metrics
     path: /metrics
     relabelings:
     - action: replace

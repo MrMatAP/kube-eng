@@ -7,22 +7,23 @@ metadata:
     app.kubernetes.io/monitored-by: prometheus
   name: sm-istio-istiod
 spec:
+  jobLabel: app.kubernetes.io/name
+  namespaceSelector:
+    matchNames:
+    - {{ .Release.Namespace }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: istiod
+      app.kubernetes.io/part-of: istio
   endpoints:
-  - honorLabels: true
+  - honorLabels: false
     interval: 10s
-    path: /metrics
+    scheme: http
     port: http-monitoring
+    path: /metrics
     relabelings:
     - action: replace
       replacement: ${1}
       sourceLabels:
       - __meta_kubernetes_pod_node_name
       targetLabel: node
-  namespaceSelector:
-    matchNames:
-    - istio-system
-  selector:
-    matchLabels:
-      app.kubernetes.io/name: istiod
-  targetLabels:
-  - istio
