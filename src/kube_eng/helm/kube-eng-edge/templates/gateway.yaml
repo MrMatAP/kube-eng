@@ -8,30 +8,11 @@ metadata:
     cert-manager.io/cluster-issuer: ca-issuer
   labels:
     {{ include "common.labels" . | nindent 4 }}
+    app.kubernetes.io/name: {{ .Values.cluster.edge.name }}
   name: {{ .Values.cluster.edge.name }}
 spec:
   gatewayClassName: {{ .Values.gateway.classname }}
   listeners:
-  - name: web
-    port: 80
-    protocol: HTTP
-    allowedRoutes:
-      namespaces:
-        from: All
-  {{ if .Values.stack.cni.enabled }}
-  - name: cni
-    hostname: {{ .Values.stack.cni.fqdn }}
-    port: 443
-    protocol: HTTPS
-    tls:
-      mode: Terminate
-      certificateRefs:
-      - kind: Secret
-        name: cni-cert
-    allowedRoutes:
-      namespaces:
-        from: All
-  {{ end }}
   {{ if .Values.stack.prometheus.enabled }}
   - name: prometheus
     hostname: {{ .Values.stack.prometheus.fqdn }}
@@ -74,20 +55,6 @@ spec:
       namespaces:
         from: All
   {{ end }}
-  {{ if .Values.stack.jaeger.enabled }}
-  - name: jaeger
-    hostname: {{ .Values.stack.jaeger.fqdn }}
-    port: 443
-    protocol: HTTPS
-    tls:
-      mode: Terminate
-      certificateRefs:
-      - kind: Secret
-        name: jaeger-cert
-    allowedRoutes:
-      namespaces:
-        from: All
-  {{ end }}
   {{ if .Values.stack.keycloak.enabled }}
   - name: keycloak
     hostname: {{ .Values.stack.keycloak.fqdn }}
@@ -112,20 +79,6 @@ spec:
       certificateRefs:
       - kind: Secret
         name: kiali-cert
-    allowedRoutes:
-      namespaces:
-        from: All
-  {{ end }}
-  {{ if .Values.stack.loki.enabled }}
-  - name: loki
-    hostname: {{ .Values.stack.loki.fqdn }}
-    port: 443
-    protocol: HTTPS
-    tls:
-      mode: Terminate
-      certificateRefs:
-      - kind: Secret
-        name: loki-cert
     allowedRoutes:
       namespaces:
         from: All
