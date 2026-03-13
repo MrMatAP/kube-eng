@@ -11,9 +11,6 @@ gateway:
   classname: istio
 
 stack:
-  cni:
-    enabled: true
-    fqdn: cni.cluster.k8s
   prometheus:
     enabled: true
     fqdn: prometheus.cluster.k8s
