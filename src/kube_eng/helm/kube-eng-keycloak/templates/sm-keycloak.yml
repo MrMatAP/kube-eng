@@ -4,8 +4,16 @@ metadata:
   labels:
     {{ include "common.labels" . | nindent 4 }}
     app.kubernetes.io/name: sm-keycloak
+    app.kubernetes.io/monitored-by: prometheus
   name: sm-keycloak
 spec:
+  jobLabel: app.kubernetes.io/instance
+  namespaceSelector:
+    matchNames:
+    - {{ .Release.Namespace }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/managed-by: keycloak-operator
   endpoints:
   - honorLabels: true
     interval: 10s
@@ -17,12 +25,3 @@ spec:
       sourceLabels:
       - __meta_kubernetes_pod_node_name
       targetLabel: node
-  namespaceSelector:
-    matchNames:
-    - keycloak
-  selector:
-    matchLabels:
-      app.kubernetes.io/instance: keycloak
-      app.kubernetes.io/managed-by: keycloak-operator
-  targetLabels:
-  - k8s-app

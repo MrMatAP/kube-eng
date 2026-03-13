@@ -3,24 +3,22 @@ kind: PodMonitor
 metadata:
   labels:
     {{ include "common.labels" . | nindent 4 }}
-    app.kubernetes.io/name: pm-istio-ztunnel
+    app.kubernetes.io/name: pm-istio-waypoint
     app.kubernetes.io/monitored-by: prometheus
-  name: pm-istio-ztunnel
+  name: pm-istio-waypoint
 spec:
-  jobLabel: app.kubernetes.io/name
+  jobLabel: gateway.networking.k8s.io/gateway-class-name
   namespaceSelector:
-    matchNames:
-    - {{ .Release.Namespace }}
+    any: true
   selector:
     matchLabels:
-      app.kubernetes.io/name: ztunnel
-      app.kubernetes.io/part-of: istio
+      gateway.networking.k8s.io/gateway-class-name: istio-waypoint
   podMetricsEndpoints:
   - honorLabels: false
     interval: 10s
     scheme: http
-    port: ztunnel-stats
-    path: /metrics
+    port: metrics
+    path: /stats/prometheus
     relabelings:
     - action: replace
       replacement: ${1}

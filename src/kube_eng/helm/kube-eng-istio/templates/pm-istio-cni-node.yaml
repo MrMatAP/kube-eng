@@ -7,21 +7,23 @@ metadata:
     app.kubernetes.io/monitored-by: prometheus
   name: pm-istio-cni-node
 spec:
-  podMetricsEndpoints:
-  - honorLabels: true
-    interval: 10s
-    scheme: http
-    path: /metrics
-    port: metrics
-    relabelings:
-    - action: replace
-      replacement: ${1}
-      sourceLabels:
-      - __meta_kubernetes_pod_node_name
-      targetLabel: node
+  jobLabel: app.kubernetes.io/name
   namespaceSelector:
     matchNames:
     - istio-system
   selector:
     matchLabels:
       app.kubernetes.io/name: istio-cni
+      app.kubernetes.io/instance: istio
+  podMetricsEndpoints:
+  - honorLabels: false
+    interval: 10s
+    scheme: http
+    port: metrics
+    path: /metrics
+    relabelings:
+    - action: replace
+      replacement: ${1}
+      sourceLabels:
+      - __meta_kubernetes_pod_node_name
+      targetLabel: node
