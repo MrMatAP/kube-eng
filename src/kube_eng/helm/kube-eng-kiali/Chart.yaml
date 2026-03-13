@@ -16,5 +16,5 @@ maintainers:
 appVersion: "v2.20.0"
 dependencies:
 - name: kiali-operator
-  version: 2.20.0
+  version: 2.23.0
   repository: https://kiali.org/helm-charts
