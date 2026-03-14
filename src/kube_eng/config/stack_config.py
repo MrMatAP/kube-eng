@@ -34,6 +34,10 @@ class StackGrafanaConfig(RootConfigAware):
     client_id: str = Field(default="grafana")
     admin_user: str = Field(default="admin")
 
+class StackTempoConfig(RootConfigAware):
+    enabled: bool = Field(default=True)
+    ns: str = Field(default="tempo")
+    hostname: str = Field(default="tempo")
 
 class StackJaegerConfig(RootConfigAware):
     enabled: bool = Field(default=True)
@@ -53,5 +57,6 @@ class StackConfig(RootConfigAware):
     loki: StackLokiConfig = Field(default_factory=StackLokiConfig)
     keycloak: StackKeycloakConfig = Field(default_factory=StackKeycloakConfig)
     grafana: StackGrafanaConfig = Field(default_factory=StackGrafanaConfig)
+    tempo: StackTempoConfig = Field(default_factory=StackTempoConfig)
     jaeger: StackJaegerConfig = Field(default_factory=StackJaegerConfig)
     kiali: StackKialiConfig = Field(default_factory=StackKialiConfig)

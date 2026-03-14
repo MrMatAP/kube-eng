@@ -1,0 +1,31 @@
+#
+# Default values for Kube Eng :: Tempo
+
+cluster:
+  name: cluster
+  edge:
+    kind: istio-gateway-api
+    fqdn: prometheus.cluster.k8s
+    gateway:
+      name: edge-gateway
+      ns: edge
+      section: prometheus
+
+tempo:
+  tempo:
+    reportingEnabled: false
+    storage:
+      trace:
+        backend: s3
+        s3:
+          bucket: tempo-traces
+          endpoint: s3.kind
+          access_key: null
+          secret_key: null
+          insecure: true
+  serviceMonitor:
+    enabled: true
+    additionalLabels:
+      app.kubernetes.io/monitored-by: prometheus
+  networkPolicy:
+    enabled: false
