@@ -5,11 +5,11 @@ cluster:
   name: cluster
   edge:
     kind: istio-gateway-api
-    fqdn: prometheus.cluster.k8s
+    fqdn: tempo.cluster.k8s
     gateway:
       name: edge-gateway
       ns: edge
-      section: prometheus
+      section: tempo
 
 tempo:
   tempo:
