@@ -27,7 +27,7 @@ class HostToolKubectlConfig(RootConfigAware):
     path: pathlib.Path = Field(default=pathlib.Path('/opt/homebrew/bin/kubectl'))
 
 class HostToolHelmConfig(RootConfigAware):
-    path: pathlib.Path = Field(default=pathlib.Path('/opt/homebrew/Cellar/helm@3/3.19.4/bin/helm'))
+    path: pathlib.Path = Field(default=pathlib.Path('/opt/homebrew/Cellar/helm@3/3.20.1/bin/helm'))
 
     @computed_field
     @property
