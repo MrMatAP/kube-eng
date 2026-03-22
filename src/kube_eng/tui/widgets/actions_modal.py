@@ -4,7 +4,7 @@ Modal dialog for selecting and triggering Ansible actions.
 
 from textual import on
 from textual.app import ComposeResult
-from textual.containers import Container, VerticalScroll
+from textual.containers import Container
 from textual.screen import ModalScreen
 from textual.widgets import Button, Static, OptionList
 from textual.widgets.option_list import Option

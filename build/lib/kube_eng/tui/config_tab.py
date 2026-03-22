@@ -1,5 +1,4 @@
 import pathlib
-from encodings import normalize_encoding
 
 from textual import on
 from textual.app import ComposeResult

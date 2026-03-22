@@ -4,7 +4,6 @@ Form-related widgets for building configuration forms.
 
 from enum import Enum
 
-from textual.app import ComposeResult
 from textual.containers import VerticalGroup, HorizontalGroup
 from textual.widgets import Select
 

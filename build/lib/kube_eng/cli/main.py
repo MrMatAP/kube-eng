@@ -7,7 +7,7 @@ import rich.status
 
 from kube_eng import __version__, __default_config_path__
 from kube_eng.config import RootConfig
-from kube_eng.common import AnsibleEvent, AnsibleExecution, AnsibleStatusEnum
+from kube_eng.common import AnsibleEvent, AnsibleExecution
 
 console = rich.console.Console()
 
