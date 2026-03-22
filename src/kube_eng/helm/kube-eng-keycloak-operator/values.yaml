@@ -7,6 +7,6 @@ cluster:
     kind: traefik
     fqdn: prometheus.cluster.k8s
     gateway:
-      name: gateway
+      name: edge
       ns: edge
       section: prometheus

@@ -27,6 +27,7 @@ loki:
         accessKeyId: null
         secretAccessKey: null
         signatureVersion: v4
+        # TODO: Inject the CA
         http_config:
           insecure_skip_verify: true
     schemaConfig:

@@ -775,23 +775,23 @@ spec:
 ---
 {{ end }}
 
-{{ if .Values.stack.keycloak.enabled }}
+{{ if .Values.stack.alloy.enabled }}
 ---
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
-  name: keycloak-cert
+  name: alloy-cert
   labels:
     {{ include "common.labels" . | nindent 4 }}
-    app.kubernetes.io/name: keycloak-cert
+    app.kubernetes.io/name: alloy-cert
 spec:
-  secretName: keycloak-cert
+  secretName: alloy-cert
   privateKey:
     algorithm: ECDSA
     size: 256
   isCA: false
   dnsNames:
-  - {{ .Values.stack.keycloak.fqdn }}
+  - {{ .Values.stack.alloy.fqdn }}
   duration: 2160h
   renewBefore: 360h
   issuerRef:
@@ -801,10 +801,10 @@ spec:
 apiVersion: networking.istio.io/v1
 kind: Gateway
 metadata:
-  name: keycloak-gw
+  name: alloy-gw
   labels:
     {{ include "common.labels" . | nindent 4 }}
-    app.kubernetes.io/name: keycloak-gw
+    app.kubernetes.io/name: alloy-gw
 spec:
   selector:
     istio: ingressgateway
@@ -814,7 +814,7 @@ spec:
       name: http
       protocol: HTTP
     hosts:
-    - {{ .Values.stack.keycloak.fqdn }}
+    - {{ .Values.stack.alloy.fqdn }}
     tls:
       httpsRedirect: true
   - port:
@@ -822,12 +822,67 @@ spec:
       name: https
       protocol: HTTPS
     hosts:
-    - {{ .Values.stack.keycloak.fqdn }}
+    - {{ .Values.stack.alloy.fqdn }}
     tls:
       mode: SIMPLE
-      credentialName: keycloak-cert
+      credentialName: alloy-cert
 ---
 {{ end }}
+
+{{ if .Values.stack.tempo.enabled }}
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: tempo-cert
+  labels:
+    {{ include "common.labels" . | nindent 4 }}
+    app.kubernetes.io/name: tempo-cert
+spec:
+  secretName: tempo-cert
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+  isCA: false
+  dnsNames:
+  - {{ .Values.stack.tempo.fqdn }}
+  duration: 2160h
+  renewBefore: 360h
+  issuerRef:
+    name: ca-issuer
+    kind: ClusterIssuer
+---
+apiVersion: networking.istio.io/v1
+kind: Gateway
+metadata:
+  name: tempo-gw
+  labels:
+    {{ include "common.labels" . | nindent 4 }}
+    app.kubernetes.io/name: tempo-gw
+spec:
+  selector:
+    istio: ingressgateway
+  servers:
+  - port:
+      number: 80
+      name: http
+      protocol: HTTP
+    hosts:
+    - {{ .Values.stack.tempo.fqdn }}
+    tls:
+      httpsRedirect: true
+  - port:
+      number: 443
+      name: https
+      protocol: HTTPS
+    hosts:
+    - {{ .Values.stack.tempo.fqdn }}
+    tls:
+      mode: SIMPLE
+      credentialName: tempo-cert
+---
+{{ end }}
+
 
 {{ if .Values.stack.grafana.enabled }}
 ---
@@ -883,23 +938,23 @@ spec:
 ---
 {{ end }}
 
-{{ if .Values.stack.jaeger.enabled }}
+{{ if .Values.stack.keycloak.enabled }}
 ---
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
-  name: jaeger-cert
+  name: keycloak-cert
   labels:
     {{ include "common.labels" . | nindent 4 }}
-    app.kubernetes.io/name: jaeger-cert
+    app.kubernetes.io/name: keycloak-cert
 spec:
-  secretName: jaeger-cert
+  secretName: keycloak-cert
   privateKey:
     algorithm: ECDSA
     size: 256
   isCA: false
   dnsNames:
-  - {{ .Values.stack.jaeger.fqdn }}
+  - {{ .Values.stack.keycloak.fqdn }}
   duration: 2160h
   renewBefore: 360h
   issuerRef:
@@ -909,10 +964,10 @@ spec:
 apiVersion: networking.istio.io/v1
 kind: Gateway
 metadata:
-  name: jaeger-gw
+  name: keycloak-gw
   labels:
     {{ include "common.labels" . | nindent 4 }}
-    app.kubernetes.io/name: jaeger-gw
+    app.kubernetes.io/name: keycloak-gw
 spec:
   selector:
     istio: ingressgateway
@@ -922,7 +977,7 @@ spec:
       name: http
       protocol: HTTP
     hosts:
-    - {{ .Values.stack.jaeger.fqdn }}
+    - {{ .Values.stack.keycloak.fqdn }}
     tls:
       httpsRedirect: true
   - port:
@@ -930,10 +985,10 @@ spec:
       name: https
       protocol: HTTPS
     hosts:
-    - {{ .Values.stack.jaeger.fqdn }}
+    - {{ .Values.stack.keycloak.fqdn }}
     tls:
       mode: SIMPLE
-      credentialName: jaeger-cert
+      credentialName: keycloak-cert
 ---
 {{ end }}
 

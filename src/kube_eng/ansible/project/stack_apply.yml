@@ -438,22 +438,31 @@
         name: tempo
         create_namespace: false
         release_namespace: "{{ stack.tempo.ns }}"
-        chart_ref: "oci://{{ host.registry.name }}.{{ cluster.name }}.{{ host.dns.zone }}:{{ host.registry.port | int }}/kube-eng/kube-eng-loki"
+        chart_ref: "oci://{{ host.registry.name }}.{{ cluster.name }}.{{ host.dns.zone }}:{{ host.registry.port | int }}/kube-eng/kube-eng-tempo"
         chart_version: "{{ host.tool.helm.chart_version }}"
         binary_path: "{{ host.tool.helm.path }}"
         wait: true
         values:
           cluster:
             name: "{{ cluster.name }}"
+            edge:
+              kind: "{{ cluster.edge.kind }}"
+              fqdn: "{{ stack.tempo.hostname }}.{{ cluster.name }}.{{ host.dns.zone }}"
+              gateway:
+                name: "{{ cluster.edge.name }}"
+                ns: "{{ cluster.edge.ns }}"
           tempo:
             tempo:
               storage:
                 trace:
                   backend: s3
                   s3:
-                    endpoint: https://{{ host.s3.name }}.kind:{{ host.s3.port }}
+                    endpoint: "{{ host.s3.name }}.kind:{{ host.s3.port }}"
                     access_key: admin
                     secret_key: "{{ admin_password }}"
+                    region: us-east-1
+                    insecure: false
+                    tls_insecure_skip_verify: true
     - name: Update DNS with a record for Tempo
       community.general.nsupdate:
         key_name: "{{ host.dns.key_name }}"
@@ -463,52 +472,6 @@
         port: "{{ host.dns.port | int }}"
         protocol: "{{ host.dns.protocol }}"
         record: "{{ stack.tempo.hostname }}.{{ cluster.name }}.{{ host.dns.zone }}."
-        ttl: "{{ host.dns.ttl | int }}"
-        value: "{{ edge_gateway.resources[0].status.addresses[0].value }}"
-        type: A
-        state: present
-
-
-  - name: Deploy Jaeger
-    when: "stack.jaeger.enabled | bool == true"
-    block:
-    - name: Create and label the Jaeger namespace
-      ansible.builtin.import_role:
-        name: create_namespace
-      vars:
-        ns: "{{ stack.jaeger.ns }}"
-        mesh: "{{ cluster.mesh.kind }}"
-    - name: Deploy the Jaeger Helm Chart
-      kubernetes.core.helm:
-        name: jaeger
-        create_namespace: false
-        release_namespace: "{{ stack.jaeger.ns }}"
-        chart_ref: "oci://{{ host.registry.name }}.{{ cluster.name }}.{{ host.dns.zone }}:{{ host.registry.port | int }}/kube-eng/kube-eng-jaeger"
-        chart_version: "{{ host.tool.helm.chart_version }}"
-        binary_path: "{{ host.tool.helm.path }}"
-        wait: true
-        values:
-          cluster:
-            name: "{{ cluster.name }}"
-            edge:
-              kind: "{{ cluster.edge.kind }}"
-              fqdn: "{{ stack.jaeger.hostname }}.{{ cluster.name }}.{{ host.dns.zone }}"
-              gateway:
-                name: "{{ cluster.edge.name }}"
-                ns: "{{ cluster.edge.ns }}"
-          overrides:
-            storage:
-              cassandra:
-                password: "{{ admin_password }}"
-    - name: Update DNS with a record for Jaeger
-      community.general.nsupdate:
-        key_name: "{{ host.dns.key_name }}"
-        key_secret: "{{ host.dns.key_secret }}"
-        key_algorithm: "{{ host.dns.key_algorithm }}"
-        server: "{{ host.dns.server }}"
-        port: "{{ host.dns.port | int }}"
-        protocol: "{{ host.dns.protocol }}"
-        record: "{{ stack.jaeger.hostname }}.{{ cluster.name }}.{{ host.dns.zone }}."
         ttl: "{{ host.dns.ttl | int }}"
         value: "{{ edge_gateway.resources[0].status.addresses[0].value }}"
         type: A

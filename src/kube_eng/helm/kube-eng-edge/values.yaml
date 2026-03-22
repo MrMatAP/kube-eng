@@ -12,23 +12,20 @@ gateway:
 
 stack:
   prometheus:
-    enabled: true
+    enabled: false
     fqdn: prometheus.cluster.k8s
   alloy:
     enabled: false
     fqdn: alloy.cluster.k8s
-  keycloak:
+  tempo:
     enabled: false
-    fqdn: keycloak.cluster.k8s
+    fqdn: tempo.cluster.k8s
   grafana:
     enabled: false
     fqdn: grafana.cluster.k8s
-  jaeger:
+  keycloak:
     enabled: false
-    fqdn: jaeger.cluster.k8s
+    fqdn: keycloak.cluster.k8s
   kiali:
     enabled: false
     fqdn: kiali.cluster.k8s
-  loki:
-    enabled: false
-    fqdn: loki.cluster.k8s

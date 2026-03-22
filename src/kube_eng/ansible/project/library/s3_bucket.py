@@ -114,9 +114,14 @@ def run_module():
             result['msg'] = 'Bucket deleted'
     except botocore.exceptions.ClientError as err:
         result['changed'] = False
-        code = err.response.get("ResponseMetadata", {}).get("HTTPStatusCode", "UNK")
+        code = err.response.get("Error", {}).get("Code", "Unknown")
+        if module.params['state'] == 'present' and code == 'BucketAlreadyExists':
+            result['msg'] = 'Bucket is present'
+            result['changed'] = False
+            module.exit_json(**result)
+        status_code = err.response.get("ResponseMetadata", {}).get("HTTPStatusCode", "Unknown")
         msg = err.response.get("Error", {}).get("Message", "An unknown error occurred")
-        result['msg'] = f'[{code}] - {msg}'
+        result['msg'] = f'[{status_code}] - {msg}'
         module.fail_json(**result)
 
     result['changed'] = True

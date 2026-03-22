@@ -7,7 +7,7 @@ cluster:
     kind: istio-gateway-api
     fqdn: grafana.cluster.k8s
     gateway:
-      name: edge-gateway
+      name: edge
       ns: edge
       section: grafana
 

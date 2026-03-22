@@ -41,6 +41,20 @@ spec:
       namespaces:
         from: All
   {{ end }}
+  {{ if .Values.stack.tempo.enabled }}
+  - name: tempo
+    hostname: {{ .Values.stack.tempo.fqdn }}
+    port: 443
+    protocol: HTTPS
+    tls:
+      mode: Terminate
+      certificateRefs:
+      - kind: Secret
+        name: tempo-cert
+    allowedRoutes:
+      namespaces:
+        from: All
+  {{ end }}
   {{ if .Values.stack.grafana.enabled }}
   - name: grafana
     hostname: {{ .Values.stack.grafana.fqdn }}

@@ -1,7 +1,7 @@
 
 {{/* Common labels */}}
 {{ define "common.labels" }}
-app: prometheus
+app: tempo
 version: {{ .Chart.AppVersion }}
 app.kubernetes.io/part-of: stack
 app.kubernetes.io/component: prometheus
