@@ -14,13 +14,12 @@ from textual.widgets import (
     Button,
     Select,
     Collapsible,
-    TabbedContent,
 )
 
 from kube_eng.config import RootConfig
 from kube_eng.config.cluster_config import ClusterCNIKindEnum, ClusterMeshKind, ClusterEdgeKindEnum
 from kube_eng.config.host_config import HostDNSKindEnum
-from kube_eng.tui.widgets import FormGroup, FormLine, FormActions, EnumSelect, ConfigSidebar
+from kube_eng.tui.widgets import FormLine, FormActions, ConfigSidebar
 from kube_eng.tui.validators import ExecutablePathInput, PortValidator
 
 

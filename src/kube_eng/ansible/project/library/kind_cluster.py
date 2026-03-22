@@ -64,7 +64,7 @@ msg:
   type: str
 """
 
-from ansible.module_utils.basic import AnsibleModule
+from ansible.module_utils.basic import AnsibleModule  # noqa: E402
 
 
 def run_module():
@@ -92,7 +92,7 @@ def run_module():
     )
     if rc != 0:
         result['msg'] = 'Failed to get clusters'
-        result['msg'] = err
+        result['msg'] = str(err)
         module.fail_json(**result)
     clusters = out.splitlines()
     cluster_state = 'present' if module.params['cluster_name'] in clusters else 'absent'
@@ -125,7 +125,7 @@ def run_module():
             if module.params['image'] != '':
                 kind_command.extend(['--image', module.params['image']])
             rc, out, err = module.run_command(check_rc=True, args=kind_command)
-    result['msg'] = err
+    result['msg'] = str(err)
     result['changed'] = True
     if rc != 0:
         result['state'] = module.params['state']

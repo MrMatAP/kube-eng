@@ -1,6 +1,5 @@
 import enum
 import pathlib
-from typing import Any
 
 from pydantic import Field, computed_field
 
