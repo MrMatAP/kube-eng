@@ -51,7 +51,7 @@ jobs:
         enable-cache: true
         python-version: 3.13.7
     - name: Lint
-      run: uvx ruff check --output-format=github
+      run: uvx ruff check --output-format=github src
     - name: Build
       run: uv build --wheel
     - name: Test
