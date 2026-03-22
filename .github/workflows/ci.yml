@@ -49,7 +49,7 @@ jobs:
       uses: astral-sh/setup-uv@v6.0.0
       with:
         enable-cache: true
-        python-version: 3.13.7
+        python-version: 3.14.2
     - name: Lint
       run: uvx ruff check --output-format=github src
     - name: Build
