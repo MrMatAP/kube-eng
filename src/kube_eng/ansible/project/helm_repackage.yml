@@ -18,7 +18,6 @@
     - kube-eng-edge
     - kube-eng-grafana
     - kube-eng-istio
-    - kube-eng-jaeger
     - kube-eng-tempo
     - kube-eng-keycloak
     - kube-eng-keycloak-operator
@@ -39,7 +38,6 @@
     - kube-eng-edge
     - kube-eng-grafana
     - kube-eng-istio
-    - kube-eng-jaeger
     - kube-eng-keycloak
     - kube-eng-keycloak-operator
     - kube-eng-kiali

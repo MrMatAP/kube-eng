@@ -7,7 +7,7 @@ cluster:
     kind: istio-gateway-api
     fqdn: keycloak.cluster.k8s
     gateway:
-      name: edge-gateway
+      name: edge
       ns: edge
       section: keycloak
 

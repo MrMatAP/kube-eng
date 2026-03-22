@@ -16,7 +16,6 @@
     - kube-eng-edge
     - kube-eng-grafana
     - kube-eng-istio
-    - kube-eng-jaeger
     - kube-eng-tempo
     - kube-eng-keycloak
     - kube-eng-keycloak-operator
@@ -265,9 +264,9 @@
             grafana:
               enabled: "{{ stack.grafana.enabled }}"
               fqdn: "{{ stack.grafana.hostname }}.{{ cluster.name }}.{{ host.dns.zone }}"
-            jaeger:
-              enabled: "{{ stack.jaeger.enabled }}"
-              fqdn: "{{ stack.jaeger.hostname }}.{{ cluster.name }}.{{ host.dns.zone }}"
+            tempo:
+              enabled: "{{ stack.tempo.enabled }}"
+              fqdn: "{{ stack.tempo.hostname }}.{{ cluster.name }}.{{ host.dns.zone }}"
             kiali:
               enabled: "{{ stack.kiali.enabled }}"
               fqdn: "{{ stack.kiali.hostname }}.{{ cluster.name }}.{{ host.dns.zone }}"

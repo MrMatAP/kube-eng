@@ -7,22 +7,28 @@ cluster:
     kind: istio-gateway-api
     fqdn: tempo.cluster.k8s
     gateway:
-      name: edge-gateway
+      name: edge
       ns: edge
       section: tempo
 
 tempo:
   tempo:
     reportingEnabled: false
+    metricsGenerator:
+      enabled: false
     storage:
       trace:
         backend: s3
         s3:
           bucket: tempo-traces
-          endpoint: s3.kind
+          endpoint: "https://s3.kind:9000"
           access_key: null
           secret_key: null
-          insecure: true
+          region: us-east-1
+          insecure: false
+          # TODO: Inject the CA
+          tls_insecure_skip_verify: true
+
   serviceMonitor:
     enabled: true
     additionalLabels:

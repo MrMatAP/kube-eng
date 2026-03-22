@@ -1,7 +1,7 @@
 apiVersion: v2
 name: kube-eng-tempo
 version: 0.0.0
-description: A Helm chart for Grafana Tempo
+description: A Helm chart for Grafana Tempo in a kube-eng cluster
 type: application
 keywords:
 - kube-eng

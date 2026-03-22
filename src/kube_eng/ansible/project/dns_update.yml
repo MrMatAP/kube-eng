@@ -122,10 +122,10 @@
         type: A
         state: present
 
-  - name: Update Jaeger DNS, if enabled
-    when: "stack.jaeger.enabled | bool == true"
+  - name: Update Tempo DNS, if enabled
+    when: "stack.tempo.enabled | bool == true"
     block:
-    - name: Update DNS with a record for Jaeger
+    - name: Update DNS with a record for Tempo
       community.general.nsupdate:
         key_name: "{{ host.dns.key_name }}"
         key_secret: "{{ host.dns.key_secret }}"
@@ -133,7 +133,7 @@
         server: "{{ host.dns.server }}"
         port: "{{ host.dns.port | int }}"
         protocol: "{{ host.dns.protocol }}"
-        record: "{{ stack.jaeger.hostname }}.{{ cluster.name }}.{{ host.dns.zone }}."
+        record: "{{ stack.tempo.hostname }}.{{ cluster.name }}.{{ host.dns.zone }}."
         ttl: "{{ host.dns.ttl | int }}"
         value: "{{ edge_gateway.resources[0].status.addresses[0].value }}"
         type: A

@@ -6,7 +6,7 @@ cluster:
     kind: traefik
     fqdn: alloy.cluster.k8s
     gateway:
-      name: gateway
+      name: edge
       ns: edge
       section: alloy
 

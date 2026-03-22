@@ -55,7 +55,7 @@ class ClusterEdgeKindEnum(str, enum.Enum):
     traefik = "traefik"
 
 class ClusterEdgeConfig(RootConfigAware):
-    kind: ClusterEdgeKindEnum = Field(default=ClusterEdgeKindEnum.traefik)
+    kind: ClusterEdgeKindEnum = Field(default=ClusterEdgeKindEnum.istio_gateway_api)
     name: str = Field(default="edge")
     ns: str = Field(default="edge")
     gateway_api_crds: str = Field(
