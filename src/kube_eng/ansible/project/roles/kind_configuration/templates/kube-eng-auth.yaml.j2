@@ -1,0 +1,33 @@
+---
+apiVersion: apiserver.config.k8s.io/v1
+kind: AuthenticationConfiguration
+jwt:
+- issuer:
+    url: "{{ oidc_issuer_url }}"
+    discoveryURL: "{{ oidc_discovery_url }}"
+    audiences:
+    - "{{ oidc_client_id }}"
+    certificateAuthority: |
+      {{ lookup('ansible.builtin.file', ca_file_path) | indent(6) }}
+{#  claimValidationRules:#}
+{#  - expression: 'claims.exp - claims.nbf <= 86400'#}
+{#    message: total token lifetime must not exceed 24 hours#}
+  claimMappings:
+    # username represents an option for the username attribute.
+    # This is the only required attribute.
+    username:
+      claim: "preferred_username"
+      prefix: ""
+    groups:
+      claim: "roles"
+      prefix: ""
+    uid:
+      claim: 'sub'
+  userValidationRules:
+  # expression is a CEL expression that evaluates to a boolean.
+  # all the expressions must evaluate to true for the user to be valid.
+  - expression: "!user.username.startsWith('system:')"
+    # Message customizes the error message seen in the API server logs when the validation fails.
+    message: 'username cannot used reserved system: prefix'
+  - expression: "user.groups.all(group, !group.startsWith('system:'))"
+    message: 'groups cannot used reserved system: prefix'

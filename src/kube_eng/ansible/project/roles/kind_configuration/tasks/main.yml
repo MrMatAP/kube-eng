@@ -7,6 +7,11 @@
     path: "{{ directory }}"
     state: directory
 
+- name: Template cluster authentication configuration
+  ansible.builtin.template:
+    src: templates/kube-eng-auth.yaml.j2
+    dest: "{{ directory }}/kube-eng-auth.yaml"
+
 - name: Template the cluster configuration
   ansible.builtin.template:
     src: templates/config.yaml.j2

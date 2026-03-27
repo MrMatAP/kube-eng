@@ -44,3 +44,25 @@ argument_specs:
         type: str
         required: false
         default: kind
+      oidc_discovery_url:
+        description: OIDC discovery URL for the API server (e.g. https://idp.example.com/realms/master)
+        type: str
+        required: true
+      oidc_issuer_url:
+        description: OIDC issuer URL for the API server (e.g. https://idp.example.com/realms/master)
+        type: str
+        required: true
+      oidc_client_id:
+        description: OIDC client ID registered in the IDP for the Kubernetes cluster
+        type: str
+        required: true
+      oidc_username_claim:
+        description: JWT claim to use as the username
+        type: str
+        required: false
+        default: preferred_username
+      oidc_groups_claim:
+        description: JWT claim to use as the user's groups
+        type: str
+        required: false
+        default: groups

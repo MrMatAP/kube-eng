@@ -33,55 +33,6 @@
       - keycloaks.k8s.keycloak.org-v1.yml
       - keycloakrealmimports.k8s.keycloak.org-v1.yml
 
-  - name: Create public key infrastructure (PKI)
-    block:
-    - name: Create a directory for PKI
-      ansible.builtin.file:
-        path: "{{ cluster.pki.config_path }}"
-        state: directory
-    - name: Create a private key for the local CA
-      community.crypto.openssl_privatekey:
-        path: "{{ cluster.pki.config_path }}/ca.key"
-        type: "{{ cluster.pki.key_type }}"
-        curve: "{{ cluster.pki.key_curve }}"
-        size: "{{ cluster.pki.key_size }}"
-        return_content: true
-        state: present
-    - name: Generate a CSR for the local CA
-      community.crypto.openssl_csr:
-        path: "{{ cluster.pki.config_path }}/ca.csr"
-        privatekey_path: "{{ cluster.pki.config_path }}/ca.key"
-        common_name: "{{ cluster.name }} Local CA"
-        key_usage_critical: true
-        key_usage:
-        - keyCertSign
-        - cRLSign
-        basic_constraints_critical: true
-        basic_constraints:
-        - "CA:TRUE"
-        - "pathlen:1"
-    - name: Create a self-signed local CA
-      community.crypto.x509_certificate:
-        path: "{{ cluster.pki.config_path }}/ca.pem"
-        privatekey_path: "{{ cluster.pki.config_path }}/ca.key"
-        csr_path: "{{ cluster.pki.config_path }}/ca.csr"
-        provider: selfsigned
-        return_content: true
-    - name: Obtain the location of the current certifi trust store
-      ansible.builtin.command:
-        cmd: "python -mcertifi"
-      register: trust_store_location
-    - name: Copy the certifi trust store to the PKI directory
-      ansible.builtin.copy:
-        src: "{{ trust_store_location.stdout }}"
-        dest: "{{ cluster.pki.config_path }}/trust.pem"
-        remote_src: true
-    - name: Append the local CA to the certifi trust store
-      ansible.builtin.lineinfile:
-        path: "{{ cluster.pki.config_path }}/trust.pem"
-        line: "{{ lookup('file', cluster.pki.config_path + '/ca.pem') }}"
-        insertafter: EOF
-
   - name: Template the cloud-provider-kind configuration
     ansible.builtin.import_role:
       name: cloud_provider_kind_configuration
@@ -101,6 +52,55 @@
     community.docker.docker_network:
       name: kind
 
+  - name: Establish the local PKI
+    block:
+    - name: Create a directory for the local PKI
+      ansible.builtin.file:
+        path: "{{ host.pki.config_path }}"
+        state: directory
+    - name: Create a private key
+      community.crypto.openssl_privatekey:
+        path: "{{ host.pki.ca_key_path }}"
+        type: "{{ host.pki.key_type }}"
+        curve: "{{ host.pki.key_curve }}"
+        size: "{{ host.pki.key_size }}"
+        return_content: true
+        state: present
+    - name: Generate a CSR
+      community.crypto.openssl_csr:
+        path: "{{ host.pki.config_path }}/ca.csr"
+        privatekey_path: "{{ host.pki.ca_key_path }}"
+        common_name: "{{ cluster.name }} Local CA"
+        key_usage_critical: true
+        key_usage:
+        - keyCertSign
+        - cRLSign
+        basic_constraints_critical: true
+        basic_constraints:
+        - "CA:TRUE"
+        - "pathlen:1"
+    - name: Create a self-signed CA
+      community.crypto.x509_certificate:
+        path: "{{ host.pki.ca_path }}"
+        privatekey_path: "{{ host.pki.ca_key_path }}"
+        csr_path: "{{ host.pki.config_path }}/ca.csr"
+        provider: selfsigned
+        return_content: true
+    - name: Obtain the location of the current certifi trust store
+      ansible.builtin.command:
+        cmd: "python -mcertifi"
+      register: trust_store_location
+    - name: Copy the certifi trust store to the PKI directory
+      ansible.builtin.copy:
+        src: "{{ trust_store_location.stdout }}"
+        dest: "{{ host.pki.ca_truststore_path }}"
+        remote_src: true
+    - name: Append the local CA to the certifi trust store
+      ansible.builtin.lineinfile:
+        path: "{{ host.pki.ca_truststore_path }}"
+        line: "{{ lookup('ansible.builtin.file', host.pki.ca_path) }}"
+        insertafter: EOF
+
   - name: Create a local DNS server, if enabled to run locally
     when: host.dns.kind == 'local'
     block:
@@ -117,24 +117,24 @@
         dns_local_update_key: "{{ host.dns.key_secret }}"
     - name: Create a volume for the DNS cache
       community.docker.docker_volume:
-        name: "{{ host.dns.volume_name }}-cache"
+        name: "{{ host.dns.cache_volume_name }}"
         state: present
     - name: Create a volume for the DNS zones
       community.docker.docker_volume:
-        name: "{{ host.dns.volume_name }}-zones"
+        name: "{{ host.dns.zones_volume_name }}"
         state: present
     - name: Start the local DNS server
       community.docker.docker_container:
         name: "{{ host.dns.name }}"
         image: "{{ host.dns.image }}"
         mounts:
-        - source: "{{ host.dns.volume_name }}-cache"
+        - source: "{{ host.dns.cache_volume_name }}"
           target: /var/cache/bind
           type: volume
-        - source: "{{ host.dns.volume_name }}-zones"
+        - source: "{{ host.dns.zones_volume_name }}"
           target: /var/lib/bind
           type: volume
-        - source: "{{ cluster.pki.config_path }}/trust.pem"
+        - source: "{{ host.pki.ca_truststore_path }}"
           target: /etc/bind/trust.pem
           read_only: true
           type: bind
@@ -150,9 +150,9 @@
           target: /var/lib/bind/db.{{ host.dns.zone }}
           type: bind
         ports:
-        - "127.0.0.1:{{ host.dns.port }}:53/udp"
-        - "127.0.0.1:{{ host.dns.port }}:53/tcp"
-        - "127.0.0.1:{{ host.dns.control_port }}:953/tcp"
+        - "{{ host.dns.host_ip }}:{{ host.dns.host_port | int }}:{{ host.dns.port | int }}/udp"
+        - "{{ host.dns.host_ip }}:{{ host.dns.host_port | int }}:{{ host.dns.port | int }}/tcp"
+        - "{{ host.dns.host_ip }}:{{ host.dns.host_control_port | int }}:{{ host.dns.control_port | int }}/tcp"
         networks:
         - name: kind
           aliases: "{{ host.dns.name }}"
@@ -160,46 +160,51 @@
         restart_policy: always
         state: healthy
 
-  - name: Create a local air-gapped registry, if enabled
+  - name: Create a local registry, if enabled
     when: host.registry.enabled == true
     block:
-    - name: Configure the air-gapped registry
-      ansible.builtin.import_role:
-        name: registry_configuration
-      vars:
-        directory: "{{ host.registry.config_path }}"
-    - name: Create a private key for the air-gapped registry
+    - name: Create a directory for the registry
+      ansible.builtin.file:
+        path: "{{ host.registry.config_path }}"
+        state: directory
+    - name: Create a private key for the registry
       community.crypto.openssl_privatekey:
         path: "{{ host.registry.config_path }}/registry.key"
-        type: "{{ cluster.pki.key_type }}"
-        curve: "{{ cluster.pki.key_curve }}"
-        size: "{{ cluster.pki.key_size }}"
+        type: "{{ host.pki.key_type }}"
+        curve: "{{ host.pki.key_curve }}"
+        size: "{{ host.pki.key_size }}"
         state: present
-    - name: Generate a CSR for the air-gapped registry
+    - name: Generate a CSR for the registry
       community.crypto.openssl_csr:
         path: "{{ host.registry.config_path }}/registry.csr"
         privatekey_path: "{{ host.registry.config_path }}/registry.key"
-        common_name: "{{ host.registry.name }}.{{ cluster.name }}.{{ host.dns.zone }}"
+        common_name: "{{ host.registry.name }}.{{ host.dns.zone }}"
         subject_alt_name:
-        - "DNS:{{ host.registry.name }}.{{ cluster.name }}.{{ host.dns.zone }}"
+        - "DNS:{{ host.registry.name }}.{{ host.dns.zone }}"
+        - "DNS:{{ host.registry.name }}.kind"
         - "DNS:{{ host.registry.name }}"
         - "DNS:localhost"
         basic_constraints_critical: true
         basic_constraints:
         - "CA:FALSE"
-    - name: Sign the certificate for the air-gapped registry
+    - name: Sign the certificate for the registry
       community.crypto.x509_certificate:
         path: "{{ host.registry.config_path }}/registry.pem"
         csr_path: "{{ host.registry.config_path }}/registry.csr"
-        ownca_path: "{{ cluster.pki.config_path }}/ca.pem"
-        ownca_privatekey_path: "{{ cluster.pki.config_path }}/ca.key"
-        ownca_not_after: "{{ cluster.pki.crt_validity }}"
+        ownca_path: "{{ host.pki.ca_path }}"
+        ownca_privatekey_path: "{{ host.pki.ca_key_path }}"
+        ownca_not_after: "{{ host.pki.crt_validity }}"
         provider: ownca
-    - name: Create a volume for the air-gapped registry
+    - name: Configure the registry
+      ansible.builtin.import_role:
+        name: registry_configuration
+      vars:
+        directory: "{{ host.registry.config_path }}"
+    - name: Create a volume for the registry
       community.docker.docker_volume:
         name: "{{ host.registry.volume_name }}"
         state: present
-    - name: Start the air-gapped registry
+    - name: Start the registry
       community.docker.docker_container:
         name: "{{ host.registry.name }}"
         image: "{{ host.registry.image }}"
@@ -219,14 +224,14 @@
           read_only: true
           type: bind
         ports:
-        - "127.0.0.1:{{ host.registry.port | int }}:5000"
+        - "{{ host.registry.host_ip }}:{{ host.registry.host_port | int }}:{{ host.registry.port | int }}/tcp"
         networks:
         - name: kind
           aliases: "{{ host.registry.name }}"
         keep_volumes: false
         restart_policy: always
         state: healthy
-    - name: Update DNS with a record for the air gapped registry
+    - name: Update DNS with a record for the registry
       community.general.nsupdate:
         key_name: "{{ host.dns.key_name }}"
         key_secret: "{{ host.dns.key_secret }}"
@@ -234,9 +239,9 @@
         server: "{{ host.dns.server }}"
         port: "{{ host.dns.port | int }}"
         protocol: "{{ host.dns.protocol }}"
-        record: "{{ host.registry.name }}.{{ cluster.name }}.{{ host.dns.zone }}."
+        record: "{{ host.registry.name }}.{{ host.dns.zone }}."
         ttl: "{{ host.dns.ttl | int }}"
-        value: 127.0.0.1
+        value: "{{ host.registry.host_ip }}"
         type: A
         state: present
 
@@ -252,13 +257,13 @@
         name: "{{ host.postgresql.name }}"
         image: "{{ host.postgresql.image }}"
         ports:
-        - "127.0.0.1:{{ host.postgresql.port | int }}:5432"
+        - "{{ host.postgresql.host_ip }}:{{ host.postgresql.host_port | int }}:{{ host.postgresql.port | int }}/tcp"
         mounts:
         - source: "{{ host.postgresql.volume_name }}"
           target: /var/lib/postgresql/data
         networks:
         - name: kind
-          aliases: "{{ host.postgresql.name }}.{{ cluster.name }}.{{ host.dns.zone }}"
+          aliases: "{{ host.postgresql.name }}.{{ host.dns.zone }}"
         env:
           POSTGRES_PASSWORD: "{{ admin_password }}"
           PGDATA: /var/lib/postgresql/data
@@ -273,57 +278,167 @@
         server: "{{ host.dns.server }}"
         port: "{{ host.dns.port | int }}"
         protocol: "{{ host.dns.protocol }}"
-        record: "{{ host.postgresql.name }}.{{ cluster.name }}.{{ host.dns.zone }}."
+        record: "{{ host.postgresql.name }}.{{ host.dns.zone }}."
         ttl: "{{ host.dns.ttl | int }}"
-        value: 127.0.0.1
+        value: "{{ host.postgresql.host_ip }}"
         type: A
         state: present
 
-  - name: Create a local RustFS (S3) instance, if enabled
+  - name: Create a local IDP, if enabled
+    when: host.idp.enabled == true
+    block:
+    - name: Create a user for the IDP in PostgreSQL
+      community.postgresql.postgresql_user:
+        login_host: "{{ host.postgresql.host_ip }}"
+        login_port: "{{ host.postgresql.host_port | int }}"
+        login_user: postgres
+        login_password: "{{ admin_password }}"
+        login_db: postgres
+        name: "{{ host.idp.db_user }}"
+        password: "{{ admin_password }}"
+        comment: "IDP DB User"
+        state: present
+      environment:
+        PGOPTIONS: "-c password_encryption=scram-sha-256"
+    - name: Create a database for the IDP in PostgreSQL
+      community.postgresql.postgresql_db:
+        login_host: "{{ host.postgresql.host_ip }}"
+        login_port: "{{ host.postgresql.host_port | int }}"
+        login_user: postgres
+        login_password: "{{ admin_password }}"
+        name: "{{ host.idp.db_name }}"
+        owner: "{{ host.idp.db_user }}"
+        comment: "IDP Database"
+        encoding: UTF-8
+        state: present
+    - name: Configure the IDP config directory
+      ansible.builtin.file:
+        path: "{{ host.idp.config_path }}"
+        state: directory
+    - name: Create a private key for the IDP
+      community.crypto.openssl_privatekey:
+        path: "{{ host.idp.config_path }}/idp_key.pem"
+        type: "{{ host.pki.key_type }}"
+        curve: "{{ host.pki.key_curve }}"
+        size: "{{ host.pki.key_size }}"
+        state: present
+    - name: Generate a CSR for the IDP
+      community.crypto.openssl_csr:
+        path: "{{ host.idp.config_path }}/idp_cert.csr"
+        privatekey_path: "{{ host.idp.config_path }}/idp_key.pem"
+        common_name: "{{ host.idp.name }}.{{ host.dns.zone }}"
+        subject_alt_name:
+        - "DNS:{{ host.idp.name }}.{{ host.dns.zone }}"
+        - "DNS:{{ host.idp.name }}.kind"
+        - "DNS:{{ host.idp.name }}"
+        - "DNS:localhost"
+        basic_constraints_critical: true
+        basic_constraints:
+        - "CA:FALSE"
+    - name: Sign the certificate for the IDP
+      community.crypto.x509_certificate:
+        path: "{{ host.idp.config_path }}/idp_cert.pem"
+        csr_path: "{{ host.idp.config_path }}/idp_cert.csr"
+        ownca_path: "{{ host.pki.ca_path }}"
+        ownca_privatekey_path: "{{ host.pki.ca_key_path }}"
+        ownca_not_after: "{{ host.pki.crt_validity }}"
+        provider: ownca
+    - name: Deploy the local IDP
+      community.docker.docker_container:
+        name: "{{ host.idp.name }}"
+        image: "{{ host.idp.image }}"
+        ports:
+        - "{{ host.idp.host_ip }}:{{ host.idp.host_port | int }}:{{ host.idp.port | int }}/tcp"
+        mounts:
+        - source: "{{ host.idp.config_path }}"
+          target: /config
+          read_only: true
+          type: bind
+        networks:
+        - name: kind
+          aliases: "{{ host.idp.name }}"
+        env:
+          KC_BOOTSTRAP_ADMIN_USERNAME: admin
+          KC_BOOTSTRAP_ADMIN_PASSWORD: "{{ admin_password }}"
+          KC_HTTP_ENABLED: "false"
+          KC_HTTPS_CERTIFICATE_KEY_FILE: /config/idp_key.pem
+          KC_HTTPS_CERTIFICATE_FILE: /config/idp_cert.pem
+          KC_HTTPS_PORT: "{{ host.idp.port | quote }}"
+          KC_HTTPS_PROTOCOLS: "TLSv1.3"
+          KC_HTTPS_MANAGEMENT_CERTIFICATE_KEY_FILE: /config/idp_key.pem
+          KC_HTTPS_MANAGEMENT_CERTIFICATE_FILE: /config/idp_cert.pem
+          KC_DB: postgres
+          KC_DB_URL_HOST: "{{ host.postgresql.name }}.kind"
+          KC_DB_URL_PORT: "{{ host.postgresql.port | quote }}"
+          KC_DB_URL_DATABASE: "{{ host.idp.db_name }}"
+          KC_DB_USERNAME: "{{ host.idp.db_user }}"
+          KC_DB_PASSWORD: "{{ admin_password }}"
+          KC_HOSTNAME: "https://{{ host.idp.name }}.{{ host.dns.zone }}:{{ host.idp.port }}/"
+          KC_HOSTNAME_BACKCHANNEL_DYNAMIC: "true"
+        keep_volumes: false
+        command: "start-dev"
+        restart_policy: always
+        state: healthy
+    - name: Update DNS with a record for the IDP
+      community.general.nsupdate:
+        key_name: "{{ host.dns.key_name }}"
+        key_secret: "{{ host.dns.key_secret }}"
+        key_algorithm: "{{ host.dns.key_algorithm }}"
+        server: "{{ host.dns.server }}"
+        port: "{{ host.dns.port | int }}"
+        protocol: "{{ host.dns.protocol }}"
+        record: "{{ host.idp.name }}.{{ host.dns.zone }}."
+        ttl: "{{ host.dns.ttl | int }}"
+        value: "{{ host.idp.host_ip }}"
+        type: A
+        state: present
+
+  - name: Create a local S3 instance, if enabled
     when: host.s3.enabled == true
     block:
-    - name: Create a volume for RustFS (S3)
+    - name: Create a volume for S3
       community.docker.docker_volume:
         name: "{{ host.s3.volume_name }}"
         state: present
-    - name: Configure the RustFS (S3) config directory
+    - name: Configure the S3 config directory
       ansible.builtin.file:
         path: "{{ host.s3.config_path }}/config"
         state: directory
-    - name: Create a private key for RustFS (S3)
+    - name: Create a private key for S3
       community.crypto.openssl_privatekey:
         path: "{{ host.s3.config_path }}/rustfs_key.pem"
-        type: "{{ cluster.pki.key_type }}"
-        curve: "{{ cluster.pki.key_curve }}"
-        size: "{{ cluster.pki.key_size }}"
+        type: "{{ host.pki.key_type }}"
+        curve: "{{ host.pki.key_curve }}"
+        size: "{{ host.pki.key_size }}"
         state: present
-    - name: Generate a CSR for RustFS (S3)
+    - name: Generate a CSR for S3
       community.crypto.openssl_csr:
         path: "{{ host.s3.config_path }}/rustfs_cert.csr"
         privatekey_path: "{{ host.s3.config_path }}/rustfs_key.pem"
-        common_name: "{{ host.s3.name }}.{{ cluster.name }}.{{ host.dns.zone }}"
+        common_name: "{{ host.s3.name }}.{{ host.dns.zone }}"
         subject_alt_name:
-        - "DNS:{{ host.s3.name }}.{{ cluster.name }}.{{ host.dns.zone }}"
+        - "DNS:{{ host.s3.name }}.{{ host.dns.zone }}"
+        - "DNS:{{ host.s3.name }}.kind"
         - "DNS:{{ host.s3.name }}"
         - "DNS:localhost"
         basic_constraints_critical: true
         basic_constraints:
         - "CA:FALSE"
-    - name: Sign the certificate for RustFS (S3)
+    - name: Sign the certificate for S3
       community.crypto.x509_certificate:
         path: "{{ host.s3.config_path }}/rustfs_cert.pem"
         csr_path: "{{ host.s3.config_path }}/rustfs_cert.csr"
-        ownca_path: "{{ cluster.pki.config_path }}/ca.pem"
-        ownca_privatekey_path: "{{ cluster.pki.config_path }}/ca.key"
-        ownca_not_after: "{{ cluster.pki.crt_validity }}"
+        ownca_path: "{{ host.pki.ca_path }}"
+        ownca_privatekey_path: "{{ host.pki.ca_key_path }}"
+        ownca_not_after: "{{ host.pki.crt_validity }}"
         provider: ownca
-    - name: Start RustFS (S3)
+    - name: Start S3
       community.docker.docker_container:
         name: "{{ host.s3.name }}"
         image: "{{ host.s3.image }}"
         ports:
-        - "127.0.0.1:{{ host.s3.port | int }}:9000"
-        - "127.0.0.1:{{ host.s3.console_port | int }}:9001"
+        - "{{ host.s3.host_ip }}:{{ host.s3.host_port | int }}:{{ host.s3.port | int }}/tcp"
+        - "{{ host.s3.host_ip }}:{{ host.s3.host_console_port | int }}:{{ host.s3.console_port | int }}/tcp"
         mounts:
         - source: "{{ host.s3.volume_name }}"
           target: /data
@@ -343,7 +458,7 @@
         keep_volumes: false
         restart_policy: always
         state: healthy
-    - name: Update DNS with a record for RustFS (S3)
+    - name: Update DNS with a record for S3
       community.general.nsupdate:
         key_name: "{{ host.dns.key_name }}"
         key_secret: "{{ host.dns.key_secret }}"
@@ -351,9 +466,9 @@
         server: "{{ host.dns.server }}"
         port: "{{ host.dns.port | int }}"
         protocol: "{{ host.dns.protocol }}"
-        record: "{{ host.s3.name }}.{{ cluster.name }}.{{ host.dns.zone }}."
+        record: "{{ host.s3.name }}.{{ host.dns.zone }}."
         ttl: "{{ host.dns.ttl | int }}"
-        value: 127.0.0.1
+        value: "{{ host.s3.host_ip }}"
         type: A
         state: present
 
@@ -377,7 +492,7 @@
         name: "{{ host.kafka.name }}"
         image: "{{ host.kafka.image }}"
         ports:
-        - "127.0.0.1:{{ host.kafka.port | int }}:9092"
+        - "{{ host.kafka.host_ip }}:{{ host.kafka.host_port | int }}:{{ host.kafka.port | int }}/tcp"
         mounts:
         - source: "{{ host.kafka.volume_name }}"
           target: /var/lib/kafka/data
@@ -402,9 +517,9 @@
         server: "{{ host.dns.server }}"
         port: "{{ host.dns.port | int }}"
         protocol: "{{ host.dns.protocol }}"
-        record: "{{ host.kafka.name }}.{{ cluster.name }}.{{ host.dns.zone }}."
+        record: "{{ host.kafka.name }}.{{ host.dns.zone }}."
         ttl: "{{ host.dns.ttl | int }}"
-        value: 127.0.0.1
+        value: "{{ host.kafka.host_ip }}"
         type: A
         state: present
 
@@ -418,18 +533,15 @@
         {{ host.tool.helm.chart_path }}/{{ item }}
       creates: "{{ host.tool.helm.packaged_chart_path }}/{{ item }}-{{ host.tool.helm.chart_version }}.tgz"
     loop:
-    - kube-eng-alloy
-    - kube-eng-cert-manager
-    - kube-eng-edge
-    - kube-eng-grafana
-    - kube-eng-istio
-    - kube-eng-jaeger
-    - kube-eng-keycloak
-    - kube-eng-keycloak-operator
-    - kube-eng-kiali
-    - kube-eng-loki
-    - kube-eng-prometheus
     - kube-eng-cilium
+    - kube-eng-istio
+    - kube-eng-cert-manager
+    - kube-eng-prometheus
+    - kube-eng-edge
+    - kube-eng-loki
+    - kube-eng-alloy
+    - kube-eng-grafana
+    - kube-eng-kiali
 
 #
 # If you used a local DNS server, then you must now configure your host to point to 127.0.0.1:53

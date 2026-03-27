@@ -9,41 +9,118 @@
       cmd: |
         {{ host.tool.helm.path }} push 
         {{ host.tool.helm.packaged_chart_path }}/{{ item }}-{{ host.tool.helm.chart_version }}.tgz 
-        oci://{{ host.registry.name }}.{{ cluster.name }}.{{ host.dns.zone }}:{{ host.registry.port | int }}/kube-eng
+        oci://{{ host.registry.name }}.{{ host.dns.zone }}:{{ host.registry.host_port | int }}/kube-eng
     loop:
-    - kube-eng-alloy
-    - kube-eng-cert-manager
-    - kube-eng-edge
-    - kube-eng-grafana
-    - kube-eng-istio
-    - kube-eng-tempo
-    - kube-eng-keycloak
-    - kube-eng-keycloak-operator
-    - kube-eng-kiali
-    - kube-eng-loki
-    - kube-eng-prometheus
     - kube-eng-cilium
-
-  - name: Template the cluster configuration
-    ansible.builtin.import_role:
-      name: kind_configuration
-    vars:
-      control_plane_nodes: "{{ cluster.control_plane_nodes | int }}"
-      worker_nodes: "{{ cluster.worker_nodes | int }}"
-      cluster_name: "{{ cluster.name }}"
-      directory: "{{ host.tool.kind.config_path }}"
-      ca_file_path: "{{ cluster.pki.config_path }}/ca.pem"
-      airgap_registry_name: "{{ host.registry.name }}"
-      pod_subnet_cidr: "{{ cluster.pod_subnet_cidr }}"
-      service_subnet_cidr: "{{ cluster.service_subnet_cidr }}"
-      cni: "{{ cluster.cni.kind }}"
+    - kube-eng-istio
+    - kube-eng-cert-manager
+    - kube-eng-prometheus
+    - kube-eng-edge
+    - kube-eng-loki
+    - kube-eng-alloy
+    - kube-eng-grafana
+    - kube-eng-kiali
 
   - name: Create the cluster
-    kind_cluster:
-      cluster_name: "{{ cluster.name }}"
-      config_file: "{{ host.tool.kind.config_path }}/config.yaml"
-      tool_kind: "{{ host.tool.kind.path }}"
-      state: present
+    block:
+    - name: Create a client scope for sanitised role memberships
+      community.general.keycloak_clientscope:
+        auth_keycloak_url: "https://{{ host.idp.name }}.{{ host.dns.zone }}:{{ host.idp.host_port }}"
+        auth_realm: master
+        auth_username: admin
+        auth_password: "{{ admin_password }}"
+        name: kube-eng-kubernetes-roles
+        description: Adds Kubernetes roles to id tokens
+        protocol: openid-connect
+        protocol_mappers:
+        - config:
+            access.token.claim: true
+            claim.name: "roles"
+            id.token.claim: true
+            introspection.token.claim: true
+            lightweight.claim: false
+            userinfo.token.claim: true
+            jsonType.label: String
+            multivalued: true
+            usermodel.clientRoleMapping.clientId: "{{ cluster.oidc.client_id }}"
+          name: "client roles"
+          protocol: openid-connect
+          protocolMapper: oidc-usermodel-client-role-mapper
+        state: present
+        # TODO: Make Ansible trust the generated PKI CA certificate
+        validate_certs: false
+    - name: Register the cluster in the IDP
+      community.general.keycloak_client:
+        auth_keycloak_url: "https://{{ host.idp.name }}.{{ host.dns.zone }}:{{ host.idp.host_port }}"
+        auth_realm: master
+        auth_username: admin
+        auth_password: "{{ admin_password }}"
+        client_id: "{{ cluster.oidc.client_id }}"
+        name: "{{ cluster.oidc.client_id }}"
+        description: "Kube Eng :: Kubernetes Cluster"
+        enabled: true
+        protocol: openid-connect
+        public_client: false
+        client_authenticator_type: client-secret
+        secret: "{{ admin_password }}"
+        standard_flow_enabled: true
+        implicit_flow_enabled: false
+        direct_access_grants_enabled: true
+        default_client_scopes:
+        - email
+        - offline_access
+        - profile
+        - kube-eng-kubernetes-roles
+        # TODO: Make Ansible trust the generated PKI CA certificate
+        validate_certs: false
+    - name: Register the cluster viewer role in the IDP
+      community.general.keycloak_role:
+        auth_keycloak_url: "https://{{ host.idp.name }}.{{ host.dns.zone }}:{{ host.idp.host_port }}"
+        auth_realm: master
+        auth_username: admin
+        auth_password: "{{ admin_password }}"
+        name: kube-eng-viewer
+        description: "Kube Eng :: Kubernetes Viewers"
+        client_id: "{{ cluster.oidc.client_id }}"
+        state: present
+        # TODO: Make Ansible trust the generated PKI CA certificate
+        validate_certs: false
+    - name: Register the cluster admin role in the IDP
+      community.general.keycloak_role:
+        auth_keycloak_url: "https://{{ host.idp.name }}.{{ host.dns.zone }}:{{ host.idp.host_port }}"
+        auth_realm: master
+        auth_username: admin
+        auth_password: "{{ admin_password }}"
+        name: kube-eng-admin
+        description: "Kube Eng :: Kubernetes Administrators"
+        client_id: "{{ cluster.oidc.client_id }}"
+        state: present
+        # TODO: Make Ansible trust the generated PKI CA certificate
+        validate_certs: false
+    - name: Template the cluster configuration
+      ansible.builtin.import_role:
+        name: kind_configuration
+      vars:
+        control_plane_nodes: "{{ cluster.control_plane_nodes | int }}"
+        worker_nodes: "{{ cluster.worker_nodes | int }}"
+        cluster_name: "{{ cluster.name }}"
+        directory: "{{ host.tool.kind.config_path }}"
+        ca_file_path: "{{ host.pki.ca_path }}"
+        airgap_registry_name: "{{ host.registry.name }}"
+        pod_subnet_cidr: "{{ cluster.pod_subnet_cidr }}"
+        service_subnet_cidr: "{{ cluster.service_subnet_cidr }}"
+        cni: "{{ cluster.cni.kind }}"
+        oidc_discovery_url: "https://{{ host.idp.name }}.kind:{{ host.idp.port }}/realms/master/.well-known/openid-configuration"
+        oidc_issuer_url: "{{ cluster.oidc.issuer_url }}"
+        oidc_client_id: "{{ cluster.oidc.client_id }}"
+        oidc_username_claim: "{{ cluster.oidc.username_claim }}"
+        oidc_groups_claim: "{{ cluster.oidc.groups_claim }}"
+    - name: Deploy the cluster
+      kind_cluster:
+        cluster_name: "{{ cluster.name }}"
+        config_file: "{{ host.tool.kind.config_path }}/config.yaml"
+        tool_kind: "{{ host.tool.kind.path }}"
+        state: present
 
   - name: Apply the ServiceMonitor CRD
     kubernetes.core.k8s:
@@ -82,7 +159,7 @@
         name: cilium
         create_namespace: true
         release_namespace: cilium
-        chart_ref: "oci://{{ host.registry.name }}.{{ cluster.name }}.{{ host.dns.zone }}:{{ host.registry.port | int }}/kube-eng/kube-eng-cilium"
+        chart_ref: "oci://{{ host.registry.name }}.{{ host.dns.zone }}:{{ host.registry.host_port | int }}/kube-eng/kube-eng-cilium"
         chart_version: "{{ host.tool.helm.chart_version }}"
         binary_path: "{{ host.tool.helm.path }}"
         wait: true
@@ -91,7 +168,7 @@
             name: "{{ cluster.name }}"
             edge:
               kind: "{{ cluster.edge.kind }}"
-              fqdn: "{{ cluster.cni.hostname }}.{{ cluster.name }}.{{ host.dns.zone }}"
+              fqdn: "{{ cluster.cni.hostname }}.{{ host.dns.zone }}"
               gateway:
                 name: "{{ cluster.edge.name }}"
                 ns: "{{ cluster.edge.ns }}"
@@ -110,7 +187,7 @@
         name: istio
         create_namespace: true
         release_namespace: "{{ cluster.mesh.ns }}"
-        chart_ref: "oci://{{ host.registry.name }}.{{ cluster.name }}.{{ host.dns.zone }}:{{ host.registry.port | int }}/kube-eng/kube-eng-istio"
+        chart_ref: "oci://{{ host.registry.name }}.{{ host.dns.zone }}:{{ host.registry.host_port | int }}/kube-eng/kube-eng-istio"
         chart_version: "{{ host.tool.helm.chart_version }}"
         binary_path: "{{ host.tool.helm.path }}"
         wait: true
@@ -164,6 +241,27 @@
             - name: postgres
               number: 5432
               protocol: TCP
+    - name: Create a service entry for the IDP service, if enabled
+      when: "host.idp.enabled | bool == true"
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: networking.istio.io/v1
+          kind: ServiceEntry
+          metadata:
+            name: service-idp
+            namespace: "{{ cluster.mesh.ns }}"
+            labels:
+              app.kubernetes.io/name: service-idp
+          spec:
+            location: MESH_EXTERNAL
+            resolution: DNS
+            hosts:
+            - "{{ host.idp.name }}.kind"
+            ports:
+            - name: idp-https
+              number: 8443
+              protocol: TLS
 
   - name: Deploy cluster PKI
     block:
@@ -192,8 +290,8 @@
             name: cluster-ca
             namespace: "{{ cluster.pki.ns }}"
           data:
-            tls.crt: "{{ lookup('ansible.builtin.file', '{{ cluster.pki.config_path }}/ca.pem') | b64encode }}"
-            tls.key: "{{ lookup('ansible.builtin.file', '{{ cluster.pki.config_path }}/ca.key') | b64encode }}"
+            tls.crt: "{{ lookup('ansible.builtin.file', host.pki.ca_path) | b64encode }}"
+            tls.key: "{{ lookup('ansible.builtin.file', host.pki.ca_key_path) | b64encode }}"
     - name: Declare the local CA as an issuer
       kubernetes.core.k8s:
         state: present
@@ -211,7 +309,7 @@
         name: cert-manager
         create_namespace: false
         release_namespace: "{{ cluster.pki.ns }}"
-        chart_ref: "oci://{{ host.registry.name }}.{{ cluster.name }}.{{ host.dns.zone }}:{{ host.registry.port | int }}/kube-eng/kube-eng-cert-manager"
+        chart_ref: "oci://{{ host.registry.name }}.{{ host.dns.zone }}:{{ host.registry.host_port | int }}/kube-eng/kube-eng-cert-manager"
         chart_version: "{{ host.tool.helm.chart_version }}"
         binary_path: "{{ host.tool.helm.path }}"
         wait: true
@@ -234,7 +332,7 @@
         name: edge
         create_namespace: false
         release_namespace: "{{ cluster.edge.ns }}"
-        chart_ref: "oci://{{ host.registry.name }}.{{ cluster.name }}.{{ host.dns.zone }}:{{ host.registry.port | int }}/kube-eng/kube-eng-edge"
+        chart_ref: "oci://{{ host.registry.name }}.{{ host.dns.zone }}:{{ host.registry.host_port | int }}/kube-eng/kube-eng-edge"
         chart_version: "{{ host.tool.helm.chart_version }}"
         binary_path: "{{ host.tool.helm.path }}"
         wait: true
@@ -245,34 +343,22 @@
               kind: "{{ cluster.edge.kind }}"
               name: "{{ cluster.edge.name }}"
           gateway:
-            classname: "{{ (cluster.edge.kind == 'traefik') | ternary('traefik', 'istio') }}"
-          traefik:
-            enabled: "{{ cluster.edge.kind == 'traefik' }}"
+            classname: "{{ cluster.edge.gateway_class }}"
           stack:
-            cni:
-              enabled: "{{ cluster.cni.ui }}"
-              fqdn: "{{ cluster.cni.hostname }}.{{ cluster.name }}.{{ host.dns.zone }}"
             prometheus:
               enabled: "{{ stack.prometheus.enabled }}"
-              fqdn: "{{ stack.prometheus.hostname }}.{{ cluster.name }}.{{ host.dns.zone }}"
+              fqdn: "{{ stack.prometheus.hostname }}.{{ host.dns.zone }}"
             alloy:
               enabled: "{{ stack.alloy.enabled }}"
-              fqdn: "{{ stack.alloy.hostname }}.{{ cluster.name }}.{{ host.dns.zone }}"
-            keycloak:
-              enabled: "{{ stack.keycloak.enabled }}"
-              fqdn: "{{ stack.keycloak.hostname }}.{{ cluster.name }}.{{ host.dns.zone }}"
+              fqdn: "{{ stack.alloy.hostname }}.{{ host.dns.zone }}"
             grafana:
               enabled: "{{ stack.grafana.enabled }}"
-              fqdn: "{{ stack.grafana.hostname }}.{{ cluster.name }}.{{ host.dns.zone }}"
-            tempo:
-              enabled: "{{ stack.tempo.enabled }}"
-              fqdn: "{{ stack.tempo.hostname }}.{{ cluster.name }}.{{ host.dns.zone }}"
+              fqdn: "{{ stack.grafana.hostname }}.{{ host.dns.zone }}"
             kiali:
               enabled: "{{ stack.kiali.enabled }}"
-              fqdn: "{{ stack.kiali.hostname }}.{{ cluster.name }}.{{ host.dns.zone }}"
+              fqdn: "{{ stack.kiali.hostname }}.{{ host.dns.zone }}"
             loki:
               enabled: "{{ stack.loki.enabled }}"
-              fqdn: "{{ stack.loki.hostname }}.{{ cluster.name }}.{{ host.dns.zone }}"
-
+              fqdn: "{{ stack.loki.hostname }}.{{ host.dns.zone }}"
 
 # You now need to start cloud-provider-kind as root

@@ -13,34 +13,29 @@
         {{ host.tool.helm.chart_path }}/{{ item }}
       creates: "{{ host.tool.helm.packaged_chart_path }}/{{ item }}-{{ host.tool.helm.chart_version }}.tgz"
     loop:
-    - kube-eng-alloy
-    - kube-eng-cert-manager
-    - kube-eng-edge
-    - kube-eng-grafana
-    - kube-eng-istio
-    - kube-eng-tempo
-    - kube-eng-keycloak
-    - kube-eng-keycloak-operator
-    - kube-eng-kiali
-    - kube-eng-loki
-    - kube-eng-prometheus
     - kube-eng-cilium
+    - kube-eng-istio
+    - kube-eng-cert-manager
+    - kube-eng-prometheus
+    - kube-eng-edge
+    - kube-eng-loki
+    - kube-eng-alloy
+    - kube-eng-grafana
+    - kube-eng-kiali
 
   - name: Upload the Helm charts to the local registry
     ansible.builtin.command:
       cmd: |
         {{ host.tool.helm.path }} push 
         {{ host.tool.helm.packaged_chart_path }}/{{ item }}-{{ host.tool.helm.chart_version }}.tgz 
-        oci://{{ host.registry.name }}.{{ cluster.name }}.{{ host.dns.zone }}:{{ host.registry.port | int }}/kube-eng
+        oci://{{ host.registry.name }}.{{ host.dns.zone }}:{{ host.registry.host_port | int }}/kube-eng
     loop:
-    - kube-eng-alloy
-    - kube-eng-cert-manager
-    - kube-eng-edge
-    - kube-eng-grafana
-    - kube-eng-istio
-    - kube-eng-keycloak
-    - kube-eng-keycloak-operator
-    - kube-eng-kiali
-    - kube-eng-loki
-    - kube-eng-prometheus
     - kube-eng-cilium
+    - kube-eng-istio
+    - kube-eng-cert-manager
+    - kube-eng-prometheus
+    - kube-eng-edge
+    - kube-eng-loki
+    - kube-eng-alloy
+    - kube-eng-grafana
+    - kube-eng-kiali

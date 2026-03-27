@@ -12,6 +12,14 @@ nodes:
   kubeadmConfigPatches:
   - |
     kind: ClusterConfiguration
+    apiServer:
+      extraVolumes:
+      - name: extra-config
+        hostPath: /opt/extra-config
+        mountPath: /opt/extra-config
+        readOnly: true
+      extraArgs:
+        authentication-config: /opt/extra-config/kube-eng-auth.yaml
     controllerManager:
       extraArgs:
         allocate-node-cidrs: "true"
@@ -31,6 +39,8 @@ nodes:
     hostPath: "{{ directory }}/certs.d"
   - containerPath: /usr/local/share/ca-certificates/kube-eng/ca.crt
     hostPath: "{{ ca_file_path }}"
+  - containerPath: /opt/extra-config/kube-eng-auth.yaml
+    hostPath: "{{ directory }}/kube-eng-auth.yaml"
 {% endfor %}
 {% for worker in range(0, worker_nodes | int) %}
 - role: worker
