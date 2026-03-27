@@ -101,7 +101,7 @@
         line: "{{ lookup('ansible.builtin.file', host.pki.ca_path) }}"
         insertafter: EOF
 
-  - name: Create a local DNS server, if enabled to run locally
+  - name: Create a local DNS server, if enabled
     when: host.dns.kind == 'local'
     block:
     - name: Create a directory for DNS
@@ -135,7 +135,7 @@
           target: /var/lib/bind
           type: volume
         - source: "{{ host.pki.ca_truststore_path }}"
-          target: /etc/bind/trust.pem
+          target: /etc/bind/truststore.pem
           read_only: true
           type: bind
         - source: "{{ host.dns.config_path }}/named.conf"
