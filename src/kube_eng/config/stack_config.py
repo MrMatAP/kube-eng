@@ -26,7 +26,6 @@ class StackKeycloakConfig(RootConfigAware):
     hostname: str = Field(default="keycloak")
     operator_version: str = Field(default="26.4.7")
 
-
 class StackGrafanaConfig(RootConfigAware):
     enabled: bool = Field(default=True)
     ns: str = Field(default="grafana")
@@ -38,11 +37,6 @@ class StackTempoConfig(RootConfigAware):
     enabled: bool = Field(default=True)
     ns: str = Field(default="tempo")
     hostname: str = Field(default="tempo")
-
-class StackJaegerConfig(RootConfigAware):
-    enabled: bool = Field(default=True)
-    ns: str = Field(default="jaeger")
-    hostname: str = Field(default="jaeger")
 
 class StackKialiConfig(RootConfigAware):
     enabled: bool = Field(default=True)
@@ -58,5 +52,4 @@ class StackConfig(RootConfigAware):
     keycloak: StackKeycloakConfig = Field(default_factory=StackKeycloakConfig)
     grafana: StackGrafanaConfig = Field(default_factory=StackGrafanaConfig)
     tempo: StackTempoConfig = Field(default_factory=StackTempoConfig)
-    jaeger: StackJaegerConfig = Field(default_factory=StackJaegerConfig)
     kiali: StackKialiConfig = Field(default_factory=StackKialiConfig)
