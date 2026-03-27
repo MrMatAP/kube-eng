@@ -49,12 +49,12 @@ options {
 
 tls cloudflare-tls {
     remote-hostname "one.one.one.one";
-    ca-file "/etc/bind/trust.pem";
+    ca-file "/etc/bind/truststore.pem";
 };
 
 tls google-tls {
     remote-hostname "dns.google";
-    ca-file "/etc/bind/trust.pem";
+    ca-file "/etc/bind/truststore.pem";
 };
 
 include "/etc/bind/update.key";
