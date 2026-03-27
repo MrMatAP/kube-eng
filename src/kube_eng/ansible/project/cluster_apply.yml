@@ -47,8 +47,7 @@
           protocol: openid-connect
           protocolMapper: oidc-usermodel-client-role-mapper
         state: present
-        # TODO: Make Ansible trust the generated PKI CA certificate
-        validate_certs: false
+        validate_certs: true
     - name: Register the cluster in the IDP
       community.general.keycloak_client:
         auth_keycloak_url: "https://{{ host.idp.name }}.{{ host.dns.zone }}:{{ host.idp.host_port }}"
@@ -71,8 +70,7 @@
         - offline_access
         - profile
         - kube-eng-kubernetes-roles
-        # TODO: Make Ansible trust the generated PKI CA certificate
-        validate_certs: false
+        validate_certs: true
     - name: Register the cluster viewer role in the IDP
       community.general.keycloak_role:
         auth_keycloak_url: "https://{{ host.idp.name }}.{{ host.dns.zone }}:{{ host.idp.host_port }}"
@@ -83,8 +81,7 @@
         description: "Kube Eng :: Kubernetes Viewers"
         client_id: "{{ cluster.oidc.client_id }}"
         state: present
-        # TODO: Make Ansible trust the generated PKI CA certificate
-        validate_certs: false
+        validate_certs: true
     - name: Register the cluster admin role in the IDP
       community.general.keycloak_role:
         auth_keycloak_url: "https://{{ host.idp.name }}.{{ host.dns.zone }}:{{ host.idp.host_port }}"
@@ -95,8 +92,7 @@
         description: "Kube Eng :: Kubernetes Administrators"
         client_id: "{{ cluster.oidc.client_id }}"
         state: present
-        # TODO: Make Ansible trust the generated PKI CA certificate
-        validate_certs: false
+        validate_certs: true
     - name: Template the cluster configuration
       ansible.builtin.import_role:
         name: kind_configuration
@@ -177,7 +173,6 @@
               exclusive: "{{ cluster.cni.exclusive }}"
             ui:
               enabled: "{{ cluster.cni.ui }}"
-
 
   - name: Deploy Istio, if enabled
     when: "cluster.mesh.enabled | bool == true"

@@ -1,3 +1,4 @@
+import sys
 import asyncio
 import dataclasses
 import enum
@@ -70,6 +71,10 @@ class AnsibleExecution:
                 ident=f'{playbook}-{uuid.uuid4()}',
                 private_data_dir=__ansible_path__,
                 playbook=playbook,
+                envvars={
+                    'ANSIBLE_PYTHON_INTERPRETER': sys.executable,
+                    'SSL_CERT_FILE': self._config.host.pki.ca_truststore_path
+                },
                 extravars=self._config.model_dump(mode="json"),
                 suppress_env_files=True,
                 artifact_dir=self._config.ansible_artifacts_path,
