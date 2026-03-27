@@ -4,107 +4,56 @@ A local Kubernetes cluster suitable for local engineering.
 
 ## Usage
 
-kube-eng provides both a command-line interface (CLI) and a text-based user interface (TUI) for managing your local Kubernetes cluster.
+kube-eng provides both a command-line interface (CLI) and a text-based user interface (TUI) for managing your local Kubernetes cluster. There are three major stages involved:
+
+* `host-apply` - will configure the host infrastructure, such as DNS and a local PKI
+* `cluster-apply` - will configure the cluster itself
+* `stack-apply` - will deploy the remaining stack
+
+Since `host-apply` creates a local PKI, you will have to tell your OS to trust it the first time it was created. After `cluster-apply`, you must start `cloud-provider-kind` in a separate terminal window and keep it running.
+
+### How to install this
+
+At this stage of development, you are bound to operate within the sources, clone the repository, then
+
+```shell
+$ uv sync
+$ . .venv/bin/activate
+```
 
 ### Command-Line Interface (CLI)
 
-The CLI provides direct access to all kube-eng commands:
+The CLI provides direct access to all kube-eng commands.
 
 ```shell
-# Show help and available commands
-$ kube-eng --help
+(kube-eng) $ uv run kube-eng --help
+usage: Kube-Eng 0.0.0.dev0 [-h] [--config CONFIG_PATH] [--verbose]
+                           {config,host-apply,cluster-apply,cluster-destroy,stack-apply,helm-repackage,dns-update} ...
 
-# Specify a custom configuration path
-$ kube-eng --config /path/to/config/dir <command>
+positional arguments:
+  {config,host-apply,cluster-apply,cluster-destroy,stack-apply,helm-repackage,dns-update}
+                        Sub-commands
+    config              Configuration commands
+    host-apply          Apply the host configuration
+    cluster-apply       Apply the cluster configuration
+    cluster-destroy     Destroy the cluster
+    stack-apply         Apply the stack configuration
+    helm-repackage      Repackage Helm charts
+    dns-update          Update DNS records
+
+options:
+  -h, --help            show this help message and exit
+  --config CONFIG_PATH  Path to the config file, defaults to /Users/imfeldma/.kube-eng
+  --verbose, -v         Enable verbose output
 ```
-
-Common CLI commands are typically invoked through the Makefile targets (see below).
 
 ### Text-Based User Interface (TUI)
 
-The TUI provides an interactive, visual interface for managing your cluster configuration:
+The TUI provides an interactive, visual interface for managing your cluster configuration and deploy it. Use tab to move between fields, use 'Enter' to toggle checkboxes and activate buttons, use 'q' to quit.
 
 ```shell
-# Launch the TUI with default configuration
-$ kube-eng-tui
-
-# Launch with a custom configuration path
-$ kube-eng-tui --config /path/to/config/dir
+(kube-eng) $ uv run kube-eng-tui
 ```
-
-The TUI features:
-- **Configuration Tab**: Interactive forms to edit all configuration settings
-  - Host Configuration: Tools, DNS, Registry, PostgreSQL, MinIO, Kafka
-  - Cluster Configuration: Basic settings, CNI, Service Mesh, PKI, Edge
-  - Stack Configuration: Prometheus, Alloy, Loki, Keycloak, Grafana, Jaeger, Kiali
-- **Collapsible Sections**: Organize settings into logical groups
-- **Smart Field Validation**: Path and port validators with real-time feedback
-- **Dynamic Fields**: Fields enable/disable based on related checkbox states
-- **Apply Button**: Save all configuration changes at once
-
-Navigation:
-- Use `Tab` to move between fields
-- Use `Enter` to toggle checkboxes and activate buttons
-- Use `q` to quit the application
-
-## Quick Start
-
-Start docker. Consider making customisations in `cluster.yaml` or use the TUI to configure your cluster. All services
-are preconfigured with an admin password stored in `.admin-password`. If not
-pre-specified then that admin password will be generated. The pre-heat target will cache all
-required images locally so you don't have to download them again on the road.
-
-```shell
-$ make host-infra
-$ make cluster
-```
-
-At this stage, you will find `var/pki/ca.pem`, which you should import into your login keystore and trust. Continue with the commands below. The host-infra-start target will ask you for your password
-so it can start some services on the host. The stack target will run unprivileged again.
-
-```shell
-$ make host-infra-start
-$ make stack
-```
-
-You can stop the host infra services if you mind keeping them running permanently in the background by running `make host-infra-stop`.
-
-## Features
-
-### PKI
-
-A local CA certificate is created when host.pki.enabled is set to true in `cluster.yaml`. The CA and its private key
-are stored in `var/pki` rather than in `.dist` to avoid accidentally deleting it. Add the local CA to the trust configuration
-of your host before you deploy the stack.
-
-The CA and its private key are registered in the clusters cert-manager configuration for issuing certificates.
-
-### Air gapped registry
-
-An air gapped OCI registry is created when host.registry.enabled is set to true in `cluster.yaml`. The cluster uses this
-registry as a pass-through mirror for any image it attempts to pull, with the benefit of avoiding rate limits in the 
-upstream registries as you hack on your cluster. 
-
-Your hosts knows the registry as localhost on port 5001. The Kubernetes cluster knows it as 'registry' on the default 
-port 443 because the registry container is attached to the same 'kind' docker network the cluster itself is connected to. 
-Docker ensures that container names are known within that network.
-A web UI is available at [https://localhost:5001](https://localhost:5001). The TLS certificate for this site is created using the same PKI that
-`make host-infra` establishes so once you trust the CA generated there you're good to go for the registry as well.
-
-```shell
-# Pushing an image locally
-$ docker push localhost:5001/some/path/awesome-app:v1.0.0
-
-# Pulling an image from the Kubernetes cluster
-... some deployment.yaml
-image: registry/some/path/awesome-app:v1.0.0
-
-# Pass-through pulling of an image through the mirror registry
-$ docker pull localhost:5001/postgres:15
-```
-
-> There is no need to adjust the image configuration of the included or any extra deployments. The cluster's containerd
-> configuration is preconfigured to mirror them through the air gapped registry.
 
 ## Debugging
 
@@ -132,15 +81,3 @@ To target a specific namespace, pass `-n <namespace>` to each command. For examp
 $ kubectl apply -n prometheus -f var/debug/debug-pod.yaml
 $ kubectl exec -n prometheus -it debug -- sh
 ```
-
-## Limitations
-
-* Ansible doesn't immediately trust the CA certificate we generate. The playbook currently ignores TLS validation when communicating with newly-spawned services
-* Kiali isn't integrated into Keycloak
-* Kiali can't authenticate to Grafana
-* Kiali is unable to pull traces from Jaeger
-* We currently have no way to synchronise stack.kiali.version with the AppVersion in the Kiali Helm chart
-* cloud-provider-mdns still requires to be restarted too frequently when the cluster gets recreated. It is best to `make host-infra-stop` and `make host-infra-start`
-* make stack should wait for keycloak to fully start up before continuing
-* Istio Ambient mode (mesh.kind=istio-ambient, edge.kind=istio-gateway-api) does not play well with Keycloak
-* `make stack` often needs to be run twice, as keycloak takes a bit longer to come up. We don't wait properly
