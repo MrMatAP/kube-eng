@@ -187,7 +187,7 @@ class HostRegistryConfig(RootConfigAware):
     enabled: bool = Field(default=True)
     name: str = Field(default="registry")
     port: int = Field(default=5000)
-    image: str = Field(default="ghcr.io/project-zot/zot-linux-arm64:v2.1.11")
+    image: str = Field(default="ghcr.io/project-zot/zot-linux-arm64:v2.1.15")
     volume_name: str = Field(default="registry-volume")
     host_ip: str = Field(default="127.0.0.1", description="IP address to expose the registry on the host")
     host_port: int = Field(default=5001, description="Port to expose the registry on the host")
