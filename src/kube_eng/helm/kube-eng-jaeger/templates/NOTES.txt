@@ -1,3 +1,0 @@
-# Kube Eng :: Jaeger installed
-
-FQDN:   {{ .Values.cluster.edge.fqdn }}
