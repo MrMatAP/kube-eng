@@ -106,8 +106,7 @@
         - offline_access
         - profile
         - roles
-        # TODO: Make Ansible trust the generated PKI CA certificate
-        validate_certs: false
+        validate_certs: true
     - name: Register Grafana Viewer role
       community.general.keycloak_role:
         auth_keycloak_url: "https://{{ host.idp.name }}.{{ host.dns.zone }}:{{ host.idp.host_port }}"
@@ -118,8 +117,7 @@
         description: Grafana Viewers
         client_id: "{{ stack.grafana.client_id }}"
         state: present
-        # TODO: Make Ansible trust the generated PKI CA certificate
-        validate_certs: false
+        validate_certs: true
     - name: Register Grafana Editor role
       community.general.keycloak_role:
         auth_keycloak_url: "https://{{ host.idp.name }}.{{ host.dns.zone }}:{{ host.idp.host_port }}"
@@ -130,8 +128,7 @@
         description: Grafana Editors
         client_id: "{{ stack.grafana.client_id }}"
         state: present
-        # TODO: Make Ansible trust the generated PKI CA certificate
-        validate_certs: false
+        validate_certs: true
     - name: Register Grafana Admin role
       community.general.keycloak_role:
         auth_keycloak_url: "https://{{ host.idp.name }}.{{ host.dns.zone }}:{{ host.idp.host_port }}"
@@ -142,8 +139,7 @@
         description: Grafana Admins
         client_id: "{{ stack.grafana.client_id }}"
         state: present
-        # TODO: Make Ansible trust the generated PKI CA certificate
-        validate_certs: false
+        validate_certs: true
     - name: Install Grafana
       kubernetes.core.helm:
         name: grafana
@@ -377,8 +373,7 @@
         - offline_access
         - profile
         - groups
-        # TODO: Make Ansible trust the generated PKI CA certificate
-        validate_certs: false
+        validate_certs: true
     - name: Collect information about the Kiali Service Account
       kubernetes.core.k8s_info:
         api_version: grafana.integreatly.org/v1beta1
