@@ -13,7 +13,7 @@ spec:
         principals:
         - cluster.local/ns/grafana/sa/grafana-sa
         - cluster.local/ns/kiali/sa/kiali-service-account
-        - cluster.local/ns/edge/sa/edge-istio
+        - cluster.local/ns/edge/sa/gw-edge-istio
     to:
     - operation:
         ports:

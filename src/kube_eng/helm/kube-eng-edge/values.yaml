@@ -17,6 +17,9 @@ stack:
   alloy:
     enabled: false
     fqdn: alloy.cluster.k8s
+  tempo:
+    enabled: false
+    fqdn: tempo.cluster.k8s
   grafana:
     enabled: false
     fqdn: grafana.cluster.k8s
