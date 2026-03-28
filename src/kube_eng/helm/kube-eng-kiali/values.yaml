@@ -26,15 +26,16 @@ integration:
     hostname: prometheus
     url: http://prometheus.cluster.k8s:9090
   grafana:
-    ns: grafana
-    fqdn: grafana.cluster.k8s
+    external_url: https://grafana.cluster.k8s
+    internal_url: http://grafana-service.grafana.svc.cluster.local:3000
     auth:
       type: bearer
       username: null
       token: null
-  jaeger:
-    ns: jaeger
-    fqdn: jaeger.cluster.k8s
+  tempo:
+    external_url: https://tempo.cluster.k8s
+    internal_url: http://tempo.tempo.svc.cluster.local:3200
+    collector_url: tempo.tempo.svc.cluster.local:4317
 
 # To authenticate to Grafana, create a service account, set type to 'bearer' and specify the token.
 # alternatively, set token to 'basic' and specify username and password
