@@ -18,6 +18,7 @@
     - kube-eng-edge
     - kube-eng-loki
     - kube-eng-alloy
+    - kube-eng-tempo
     - kube-eng-grafana
     - kube-eng-kiali
 
@@ -250,13 +251,16 @@
               app.kubernetes.io/name: service-idp
           spec:
             location: MESH_EXTERNAL
-            resolution: DNS
+            resolution: STATIC
             hosts:
-            - "{{ host.idp.name }}.kind"
+            - idp.covenant.k8s
             ports:
             - name: idp-https
               number: 8443
-              protocol: TLS
+              protocol: HTTPS
+            endpoints:
+            # TODO: Replace with actual IP
+            - address: 172.18.0.4
 
   - name: Deploy cluster PKI
     block:
@@ -339,6 +343,8 @@
               name: "{{ cluster.edge.name }}"
           gateway:
             classname: "{{ cluster.edge.gateway_class }}"
+          traefik:
+            enabled: "{{ cluster.edge.kind == 'traefik' | bool }}"
           stack:
             prometheus:
               enabled: "{{ stack.prometheus.enabled }}"
@@ -352,8 +358,5 @@
             kiali:
               enabled: "{{ stack.kiali.enabled }}"
               fqdn: "{{ stack.kiali.hostname }}.{{ host.dns.zone }}"
-            loki:
-              enabled: "{{ stack.loki.enabled }}"
-              fqdn: "{{ stack.loki.hostname }}.{{ host.dns.zone }}"
 
 # You now need to start cloud-provider-kind as root
