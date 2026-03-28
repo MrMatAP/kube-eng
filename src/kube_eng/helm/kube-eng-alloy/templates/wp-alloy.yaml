@@ -3,8 +3,7 @@ kind: Gateway
 metadata:
   labels:
     {{ include "common.labels" . | nindent 4 }}
-    app.kubernetes.io/name: waypoint
-  name: waypoint
+  name: wp-alloy
 spec:
   gatewayClassName: istio-waypoint
   listeners:

@@ -3,7 +3,7 @@
 cluster:
   name: cluster
   edge:
-    kind: traefik
+    kind: istio-gateway-api
     fqdn: alloy.cluster.k8s
     gateway:
       name: edge
@@ -22,9 +22,12 @@ alloy:
   controller:
     type: 'deployment'
     replicas: 1
+    podLabels:
+      app: alloy
   ingress:
     enabled: false
   serviceAccount:
+    create: true
     name: sa-alloy
   networkPolicy:
     enabled: false

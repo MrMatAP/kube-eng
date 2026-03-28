@@ -12,8 +12,8 @@ maintainers:
 - name: MrMatAP
   email: imfeldma@gmail.com
   url: https://github.com/MrMatAP
-appVersion: "v1.12.1"
+appVersion: "v1.14.0"
 dependencies:
 - name: alloy
   repository: https://grafana.github.io/helm-charts
-  version: 1.6.1
+  version: 1.6.2
