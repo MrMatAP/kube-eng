@@ -3,7 +3,6 @@ kind: AuthorizationPolicy
 metadata:
   labels:
     {{ include "common.labels" . | nindent 4 }}
-    app.kubernetes.io/name: ap-loki-allow
   name: ap-loki-allow
 spec:
   action: ALLOW

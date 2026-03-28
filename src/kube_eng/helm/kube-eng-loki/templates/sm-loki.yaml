@@ -3,7 +3,6 @@ kind: ServiceMonitor
 metadata:
   labels:
     {{ include "common.labels" . | nindent 4 }}
-    app.kubernetes.io/name: sm-loki
     app.kubernetes.io/monitored-by: prometheus
   name: sm-loki
 spec:

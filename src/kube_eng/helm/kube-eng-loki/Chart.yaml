@@ -12,9 +12,9 @@ maintainers:
 - name: MrMatAP
   email: imfeldma@gmail.com
   url: https://github.com/MrMatAP
-appVersion: "3.6.3"
+appVersion: "3.6.7"
 dependencies:
 - name: loki
   repository: https://grafana.github.io/helm-charts
-  version: 6.53.0
+  version: 6.55.0
   alias: loki

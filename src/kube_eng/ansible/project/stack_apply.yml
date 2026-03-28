@@ -260,6 +260,13 @@
         ns: "{{ stack.loki.ns }}"
         mesh: "{{ cluster.mesh.kind }}"
         waypoint: wp-loki
+    - name: Look up the current version of the Loki Helm Chart
+      ansible.builtin.command:
+        cmd: |
+          {{ host.tool.helm.path }} show chart
+          --version {{ host.tool.helm.chart_version }}
+          "oci://{{ host.registry.name }}.{{ host.dns.zone }}:{{ host.registry.host_port | int }}/kube-eng/kube-eng-loki"
+      register: loki_chart_info
     - name: Deploy the Loki Helm chart
       kubernetes.core.helm:
         name: loki
@@ -274,11 +281,18 @@
             name: "{{ cluster.name }}"
           loki:
             loki:
+              podLabels:
+                app: loki
+                version: "{{ (loki_chart_info.stdout | from_yaml).appVersion }}"
               storage:
                 s3:
-                  endpoint: "https://{{ host.s3.name }}.kind:{{ host.s3.port }}"
+                  endpoint: "https://{{ host.s3.name }}.{{ host.dns.zone }}:{{ host.s3.port }}"
                   accessKeyId: admin
                   secretAccessKey: "{{ admin_password }}"
+          lokiCanary:
+            podLabels:
+              app: loki
+              version: "{{ (loki_chart_info.stdout | from_yaml).appVersion }}"
     - name: Update DNS with a record for Loki
       community.general.nsupdate:
         key_name: "{{ host.dns.key_name }}"
