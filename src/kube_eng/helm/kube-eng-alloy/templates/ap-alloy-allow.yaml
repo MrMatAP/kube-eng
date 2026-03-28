@@ -3,7 +3,6 @@ kind: AuthorizationPolicy
 metadata:
   labels:
     {{ include "common.labels" . | nindent 4 }}
-    app.kubernetes.io/name: ap-alloy-allow
   name: ap-alloy-allow
 spec:
   action: ALLOW
@@ -11,7 +10,7 @@ spec:
   - from:
     - source:
         principals:
-        - cluster.local/ns/edge/sa/edge-istio
+        - cluster.local/ns/edge/sa/gw-edge-istio
         - cluster.local/ns/prometheus/sa/prometheus-prometheus
     to:
     - operation:

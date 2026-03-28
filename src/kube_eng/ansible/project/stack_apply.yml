@@ -31,7 +31,7 @@
       vars:
         ns: "{{ stack.prometheus.ns }}"
         mesh: "{{ cluster.mesh.kind }}"
-        waypoint: "{{ cluster.mesh.kind == 'istio-ambient' }}"
+        waypoint: wp-prometheus
     - name: Deploy the Prometheus Helm Chart
       kubernetes.core.helm:
         name: prometheus
@@ -78,7 +78,7 @@
       vars:
         ns: "{{ stack.grafana.ns }}"
         mesh: "{{ cluster.mesh.kind }}"
-        waypoint: "{{ cluster.mesh.kind == 'istio-ambient' }}"
+        waypoint: wp-grafana
     - name: Register Grafana in Keycloak
       community.general.keycloak_client:
         auth_keycloak_url: "https://{{ host.idp.name }}.{{ host.dns.zone }}:{{ host.idp.host_port }}"
@@ -166,8 +166,8 @@
               clientId: "{{ stack.grafana.client_id }}"
               clientSecret: "{{ admin_password }}"
               authUrl: "https://{{ host.idp.name }}.{{ host.dns.zone }}:{{ host.idp.host_port }}/realms/master/protocol/openid-connect/auth"
-              tokenUrl: "https://{{ host.idp.name }}.kind:8443/realms/master/protocol/openid-connect/token"
-              apiUrl: "https://{{ host.idp.name }}.kind:8443/realms/master/protocol/openid-connect/userinfo"
+              tokenUrl: "https://{{ host.idp.name }}.{{ host.dns.zone }}:{{ host.idp.host_port }}/realms/master/protocol/openid-connect/token"
+              apiUrl: "https://{{ host.idp.name }}.{{ host.dns.zone }}:{{ host.idp.host_port }}/realms/master/protocol/openid-connect/userinfo"
             prometheus:
               url: "http://prometheus-operated.{{ stack.prometheus.ns }}.svc.cluster.local:9090/"
     - name: Update DNS with a record for Grafana
@@ -193,7 +193,14 @@
       vars:
         ns: "{{ stack.alloy.ns }}"
         mesh: "{{ cluster.mesh.kind }}"
-        waypoint: "{{ cluster.mesh.kind == 'istio-ambient' }}"
+        waypoint: wp-alloy
+    - name: Look up the current version of the Alloy Helm Chart
+      ansible.builtin.command:
+        cmd: |
+          {{ host.tool.helm.path }} show chart
+          --version {{ host.tool.helm.chart_version }}
+          "oci://{{ host.registry.name }}.{{ host.dns.zone }}:{{ host.registry.host_port | int }}/kube-eng/kube-eng-alloy"
+      register: alloy_chart_info
     - name: Deploy the Alloy Helm Chart
       kubernetes.core.helm:
         name: alloy
@@ -212,6 +219,11 @@
               gateway:
                 name: "{{ cluster.edge.name }}"
                 ns: "{{ cluster.edge.ns }}"
+          alloy:
+            controller:
+              podLabels:
+                app: alloy
+                version: "{{ (alloy_chart_info.stdout | from_yaml).appVersion }}"
     - name: Update DNS with a record for Alloy
       community.general.nsupdate:
         key_name: "{{ host.dns.key_name }}"
@@ -247,7 +259,7 @@
       vars:
         ns: "{{ stack.loki.ns }}"
         mesh: "{{ cluster.mesh.kind }}"
-        waypoint: "{{ cluster.mesh.kind == 'istio-ambient' }}"
+        waypoint: wp-loki
     - name: Deploy the Loki Helm chart
       kubernetes.core.helm:
         name: loki
@@ -298,7 +310,17 @@
       vars:
         ns: "{{ stack.tempo.ns }}"
         mesh: "{{ cluster.mesh.kind }}"
-        waypoint: "{{ cluster.mesh.kind == 'istio-ambient' }}"
+    - name: Create a CA trust store ConfigMap for Tempo
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: v1
+          kind: ConfigMap
+          metadata:
+            name: tempo-truststore
+            namespace: "{{ stack.tempo.ns }}"
+          data:
+            truststore.pem: "{{ lookup('ansible.builtin.file', host.pki.ca_path) }}"
     - name: Deploy the Tempo Helm chart
       kubernetes.core.helm:
         name: tempo
@@ -323,7 +345,7 @@
                 trace:
                   backend: s3
                   s3:
-                    endpoint: "{{ host.s3.name }}.kind:{{ host.s3.port }}"
+                    endpoint: "{{ host.s3.name }}.{{ host.dns.zone }}:{{ host.s3.host_port }}"
                     access_key: admin
                     secret_key: "{{ admin_password }}"
                     region: us-east-1
@@ -394,7 +416,7 @@
       vars:
         ns: "{{ stack.kiali.ns }}"
         mesh: "{{ cluster.mesh.kind }}"
-        waypoint: "{{ cluster.mesh.kind == 'istio-ambient' }}"
+        waypoint: wp-kiali
     - name: Create a secret for the Kiali OIDC client secret
       kubernetes.core.k8s:
         definition:
@@ -445,13 +467,15 @@
               ns: "{{ stack.prometheus.ns }}"
               url: "http://prometheus-operated.{{ stack.prometheus.ns }}.svc.cluster.local:9090/"
             grafana:
-              fqdn: "{{ stack.grafana.hostname }}.{{ host.dns.zone }}"
-              ns: "{{ stack.grafana.ns }}"
               internal_url: "http://grafana-service.{{ stack.grafana.ns }}.svc.cluster.local:3000/"
               external_url: "https://{{ stack.grafana.hostname }}.{{ host.dns.zone }}/"
               auth:
                 username: "{{ kiali_grafana_sa.resources[0].status.account.login }}"
                 token: "{{ kiali_grafana_sa_token.resources[0].data.token | b64decode }}"
+            tempo:
+              internal_url: "http://tempo.{{ stack.tempo.ns }}.svc.cluster.local:3200/"
+              external_url: "https://{{ stack.tempo.hostname }}.{{ host.dns.zone }}/"
+              collector_url: "tempo.{{ stack.tempo.ns }}.svc.cluster.local:4317"
     - name: Update DNS with a record for Kiali
       community.general.nsupdate:
         key_name: "{{ host.dns.key_name }}"

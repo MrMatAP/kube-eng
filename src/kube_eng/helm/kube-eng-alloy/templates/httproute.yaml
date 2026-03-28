@@ -6,7 +6,6 @@ metadata:
   name: alloy
   labels:
       {{ include "common.labels" . | nindent 4 }}
-    app.kubernetes.io/name: alloy
 spec:
   parentRefs:
   - name: {{ .Values.cluster.edge.gateway.name }}

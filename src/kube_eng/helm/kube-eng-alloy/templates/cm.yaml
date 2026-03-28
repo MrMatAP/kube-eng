@@ -5,7 +5,6 @@ metadata:
   name: {{ .Values.alloy.alloy.configMap.name }}
   labels:
     {{ include "common.labels" . | nindent 4 }}
-    app.kubernetes.io/name: {{ .Values.alloy.alloy.configMap.name }}
 data:
   {{ .Values.alloy.alloy.configMap.key }}: |-
     logging {
