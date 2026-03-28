@@ -1,7 +1,7 @@
 apiVersion: grafana.integreatly.org/v1beta1
 kind: GrafanaDatasource
 metadata:
-  name: datasource-loki
+  name: datasource-tempo
   labels:
     {{ include "common.labels" . | nindent 4 }}
     app.kubernetes.io/name: datasource-loki
@@ -10,8 +10,8 @@ spec:
     matchLabels:
       dashboards: "grafana"
   datasource:
-    name: loki
-    type: loki
+    name: tempo
+    type: tempo
     access: proxy
-    url: http://loki.loki.svc.cluster.local:3100
+    url: http://tempo.tempo.svc.cluster.local:3200
     isDefault: true
