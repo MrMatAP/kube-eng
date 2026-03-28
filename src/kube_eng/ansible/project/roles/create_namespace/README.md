@@ -15,7 +15,7 @@ Role Variables
 |----------|------|----------|---------|------------------------------------------------------------------------------|
 | name     | str  | true     | N/A     | Name of the namespace                                                        |
 | mesh     | str  | false    | istio   | The mesh currently in use. One of 'none', 'istio-sidecar' or 'istio-ambient' |
-| waypoint | bool | false    | false   | Enroll this namespace to use an Istio waypoint                               |
+| waypoint | str  | false    | ''      | Enroll this namespace to use the specified Istio waypoint                    |
 
 Dependencies
 ------------

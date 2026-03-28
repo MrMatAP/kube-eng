@@ -9,8 +9,8 @@ metadata:
 {% elif mesh == 'istio-sidecar' -%}
   {% set label_list = label_list + ['istio-injection: enabled'] -%}
 {% endif -%}
-{% if waypoint -%}
-  {% set label_list = label_list + ['istio.io/use-waypoint: waypoint'] -%}
+{% if mesh == 'istio-ambient' and waypoint != '' -%}
+  {% set label_list = label_list + ['istio.io/use-waypoint: ' + waypoint ] -%}
 {% endif -%}
 {% if label_list | length > 0 %}
   labels:
