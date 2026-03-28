@@ -3,6 +3,29 @@
   hosts: localhost
   tasks:
 
+  - name: Package the Helm charts
+    block:
+    - name: Package the Helm charts
+      ansible.builtin.command:
+        cmd: |
+          {{ host.tool.helm.path }} package 
+          --version {{ host.tool.helm.chart_version }}
+          --dependency-update 
+          --destination {{ host.tool.helm.packaged_chart_path }} 
+          {{ host.tool.helm.chart_path }}/{{ item }}
+        creates: "{{ host.tool.helm.packaged_chart_path }}/{{ item }}-{{ host.tool.helm.chart_version }}.tgz"
+      loop:
+      - kube-eng-cilium
+      - kube-eng-istio
+      - kube-eng-cert-manager
+      - kube-eng-prometheus
+      - kube-eng-edge
+      - kube-eng-loki
+      - kube-eng-alloy
+      - kube-eng-tempo
+      - kube-eng-grafana
+      - kube-eng-kiali
+
   # This will fail if we use a local DNS server and haven't pointed to it yet
   - name: Upload the Helm charts to the local registry
     ansible.builtin.command:
@@ -107,7 +130,7 @@
         pod_subnet_cidr: "{{ cluster.pod_subnet_cidr }}"
         service_subnet_cidr: "{{ cluster.service_subnet_cidr }}"
         cni: "{{ cluster.cni.kind }}"
-        oidc_discovery_url: "https://{{ host.idp.name }}.kind:{{ host.idp.port }}/realms/master/.well-known/openid-configuration"
+        oidc_discovery_url: "https://{{ host.idp.name }}.{{ host.dns.zone }}:{{ host.idp.port }}/realms/master/.well-known/openid-configuration"
         oidc_issuer_url: "{{ cluster.oidc.issuer_url }}"
         oidc_client_id: "{{ cluster.oidc.client_id }}"
         oidc_username_claim: "{{ cluster.oidc.username_claim }}"
@@ -195,72 +218,101 @@
             profile: "{{ (cluster.mesh.kind == 'istio-ambient') | ternary('ambient', 'default') }}"
           overrides_cni:
             profile: "{{ (cluster.mesh.kind == 'istio-ambient') | ternary('ambient', 'default') }}"
-    - name: Create a service entry for the S3 service, if enabled
-      when: "host.s3.enabled | bool == true"
-      kubernetes.core.k8s:
-        state: present
-        definition:
-          apiVersion: networking.istio.io/v1
-          kind: ServiceEntry
-          metadata:
-            name: service-s3
-            namespace: "{{ cluster.mesh.ns }}"
-            labels:
-              app.kubernetes.io/name: service-s3
-          spec:
-            location: MESH_EXTERNAL
-            resolution: DNS
-            hosts:
-            - "{{ host.s3.name }}.kind"
-            ports:
-            - name: s3-https
-              number: 9000
-              protocol: TLS
-    - name: Create a service entry for the PG service, if enabled
+
+  - name: Re-direct the resolution of external services from within the cluster
+    block:
+    - name: Re-direct PG resolution, if enabled
       when: "host.postgresql.enabled | bool == true"
-      kubernetes.core.k8s:
-        state: present
-        definition:
-          apiVersion: networking.istio.io/v1
-          kind: ServiceEntry
-          metadata:
-            name: service-pg
-            namespace: "{{ cluster.mesh.ns }}"
-            labels:
-              app.kubernetes.io/name: service-pg
-          spec:
-            location: MESH_EXTERNAL
-            resolution: DNS
-            hosts:
-            - "{{ host.postgresql.name }}.kind"
-            ports:
-            - name: postgres
-              number: 5432
-              protocol: TCP
-    - name: Create a service entry for the IDP service, if enabled
+      block:
+      - name: Create a service entry for the PG service, if enabled
+        kubernetes.core.k8s:
+          state: present
+          definition:
+            apiVersion: networking.istio.io/v1
+            kind: ServiceEntry
+            metadata:
+              name: service-pg
+              namespace: "{{ cluster.mesh.ns }}"
+              labels:
+                app.kubernetes.io/name: service-pg
+            spec:
+              location: MESH_EXTERNAL
+              resolution: DNS
+              hosts:
+              - "{{ host.postgresql.name }}.{{ host.dns.zone }}"
+              ports:
+              - name: postgres
+                number: 5432
+                protocol: TCP
+    - name: Re-direct IDP resolution, if enabled
       when: "host.idp.enabled | bool == true"
-      kubernetes.core.k8s:
-        state: present
-        definition:
-          apiVersion: networking.istio.io/v1
-          kind: ServiceEntry
-          metadata:
-            name: service-idp
-            namespace: "{{ cluster.mesh.ns }}"
-            labels:
-              app.kubernetes.io/name: service-idp
-          spec:
-            location: MESH_EXTERNAL
-            resolution: STATIC
-            hosts:
-            - idp.covenant.k8s
-            ports:
-            - name: idp-https
-              number: 8443
-              protocol: HTTPS
-            endpoints:
-            # TODO: Replace with actual IP
-            - address: 172.18.0.4
+      block:
+      - name: Create a service entry for the IDP service, if enabled
+        kubernetes.core.k8s:
+          state: present
+          definition:
+            apiVersion: networking.istio.io/v1
+            kind: ServiceEntry
+            metadata:
+              name: service-idp
+              namespace: "{{ cluster.mesh.ns }}"
+              labels:
+                app.kubernetes.io/name: service-idp
+            spec:
+              location: MESH_EXTERNAL
+              resolution: DNS
+              hosts:
+              - "{{ host.idp.name }}.{{ host.dns.zone }}"
+              ports:
+              - name: idp-https
+                number: 8443
+                protocol: HTTPS
+    - name: Re-direct S3 resolution, if enabled
+      when: "host.s3.enabled | bool == true"
+      block:
+      - name: Create a service entry for the S3 service, if enabled
+        kubernetes.core.k8s:
+          state: present
+          definition:
+            apiVersion: networking.istio.io/v1
+            kind: ServiceEntry
+            metadata:
+              name: service-s3
+              namespace: "{{ cluster.mesh.ns }}"
+              labels:
+                app.kubernetes.io/name: service-s3
+            spec:
+              location: MESH_EXTERNAL
+              resolution: DNS
+              hosts:
+              - "{{ host.s3.name }}.{{ host.dns.zone }}"
+              ports:
+              - name: s3-https
+                number: 9000
+                protocol: HTTPS
+    - name: Re-direct Kafka resolution, if enabled
+      when: "host.kafka.enabled | bool == true"
+      block:
+      - name: Create a service entry for the Kafka service
+        kubernetes.core.k8s:
+          state: present
+          definition:
+            apiVersion: networking.istio.io/v1
+            kind: ServiceEntry
+            metadata:
+              name: service-kafka
+              namespace: "{{ cluster.mesh.ns }}"
+              labels:
+                app.kubernetes.io/name: service-kafka
+            spec:
+              location: MESH_EXTERNAL
+              resolution: DNS
+              hosts:
+              - "{{ host.kafka.name }}.{{ host.dns.zone }}"
+              ports:
+              - name: kafka-https
+                number: 9092
+                protocol: TCP
 
   - name: Deploy cluster PKI
     block:
@@ -352,6 +404,9 @@
             alloy:
               enabled: "{{ stack.alloy.enabled }}"
               fqdn: "{{ stack.alloy.hostname }}.{{ host.dns.zone }}"
+            tempo:
+              enabled: "{{ stack.tempo.enabled }}"
+              fqdn: "{{ stack.tempo.hostname }}.{{ host.dns.zone }}"
             grafana:
               enabled: "{{ stack.grafana.enabled }}"
               fqdn: "{{ stack.grafana.hostname }}.{{ host.dns.zone }}"
