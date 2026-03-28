@@ -2,6 +2,8 @@
 
 A local Kubernetes cluster suitable for local engineering.
 
+> **Note:** This project is perpetually under construction, but you can expect that the sources in the main branch more or less work.
+
 ## Usage
 
 kube-eng provides both a command-line interface (CLI) and a text-based user interface (TUI) for managing your local Kubernetes cluster. There are three major stages involved:
