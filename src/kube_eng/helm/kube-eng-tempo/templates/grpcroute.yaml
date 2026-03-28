@@ -1,24 +1,20 @@
 {{- if eq .Values.cluster.edge.kind "istio-gateway-api" }}
 ---
 apiVersion: gateway.networking.k8s.io/v1
-kind: HTTPRoute
+kind: GRPCRoute
 metadata:
-  name: tempo-https
+  name: tempo-grpc
   labels:
     {{ include "common.labels" . | nindent 4 }}
 spec:
   parentRefs:
   - name: {{ .Values.cluster.edge.gateway.name }}
     namespace: {{ .Values.cluster.edge.gateway.ns }}
-    sectionName: tempo-https  # The HTTP OTLP listener
+    sectionName: tempo-grpc  # The GRPC OTLP listener
   hostnames:
   - {{ .Values.cluster.edge.fqdn }}
   rules:
-  - matches:
-    - path:
-        type: PathPrefix
-        value: /
-    backendRefs:
+  - backendRefs:
     - name: tempo
-      port: 4318
+      port: 4317
 {{- end }}

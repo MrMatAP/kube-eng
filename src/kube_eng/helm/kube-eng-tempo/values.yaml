@@ -12,10 +12,19 @@ cluster:
       section: tempo
 
 tempo:
+  extraVolumes:
+  - name: truststore
+    configMap:
+      name: tempo-truststore
   tempo:
     reportingEnabled: false
     metricsGenerator:
-      enabled: false
+      enabled: true
+      remoteWriteUrl: "http://prometheus.prometheus.svc.cluster.local:9090/api/v1/write"
+    extraVolumeMounts:
+    - name: truststore
+      mountPath: /opt/truststore
+      readonly: true
     storage:
       trace:
         backend: s3
@@ -26,12 +35,21 @@ tempo:
           secret_key: null
           region: us-east-1
           insecure: false
-          # TODO: Inject the CA
-          tls_insecure_skip_verify: true
-
+          tls_insecure_skip_verify: false
+          tls_ca_path: /opt/truststore/truststore.pem
   serviceMonitor:
     enabled: true
     additionalLabels:
       app.kubernetes.io/monitored-by: prometheus
   networkPolicy:
     enabled: false
+  serviceAccount:
+    create: true
+    name: sa-tempo
+  receivers:
+    otlp:
+      protocols:
+        grpc:
+          endpoint: "0.0.0.0:4317"
+        http:
+          endpoint: "0.0.0.0:4318"
