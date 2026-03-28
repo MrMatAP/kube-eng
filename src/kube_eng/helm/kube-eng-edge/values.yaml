@@ -4,7 +4,7 @@
 cluster:
   name: cluster
   edge:
-    kind: istio-ambient
+    kind: istio-gateway-api
     name: edge
 
 gateway:
@@ -17,15 +17,12 @@ stack:
   alloy:
     enabled: false
     fqdn: alloy.cluster.k8s
-  tempo:
-    enabled: false
-    fqdn: tempo.cluster.k8s
   grafana:
     enabled: false
     fqdn: grafana.cluster.k8s
-  keycloak:
-    enabled: false
-    fqdn: keycloak.cluster.k8s
   kiali:
     enabled: false
     fqdn: kiali.cluster.k8s
+
+traefik:
+  enabled: false

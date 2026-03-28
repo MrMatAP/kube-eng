@@ -1,5 +1,5 @@
 # Edge Gateway
-{{- if ne .Values.cluster.edge.kind "istio" }}
+{{- if eq .Values.cluster.edge.kind "istio-gateway-api" }}
 ---
 apiVersion: gateway.networking.k8s.io/v1
 kind: Gateway
@@ -8,7 +8,6 @@ metadata:
     cert-manager.io/cluster-issuer: ca-issuer
   labels:
     {{ include "common.labels" . | nindent 4 }}
-    app.kubernetes.io/name: {{ .Values.cluster.edge.name }}
   name: {{ .Values.cluster.edge.name }}
 spec:
   gatewayClassName: {{ .Values.gateway.classname }}
@@ -41,20 +40,6 @@ spec:
       namespaces:
         from: All
   {{ end }}
-  {{ if .Values.stack.tempo.enabled }}
-  - name: tempo
-    hostname: {{ .Values.stack.tempo.fqdn }}
-    port: 443
-    protocol: HTTPS
-    tls:
-      mode: Terminate
-      certificateRefs:
-      - kind: Secret
-        name: tempo-cert
-    allowedRoutes:
-      namespaces:
-        from: All
-  {{ end }}
   {{ if .Values.stack.grafana.enabled }}
   - name: grafana
     hostname: {{ .Values.stack.grafana.fqdn }}
@@ -65,20 +50,6 @@ spec:
       certificateRefs:
       - kind: Secret
         name: grafana-cert
-    allowedRoutes:
-      namespaces:
-        from: All
-  {{ end }}
-  {{ if .Values.stack.keycloak.enabled }}
-  - name: keycloak
-    hostname: {{ .Values.stack.keycloak.fqdn }}
-    port: 443
-    protocol: HTTPS
-    tls:
-      mode: Terminate
-      certificateRefs:
-      - kind: Secret
-        name: keycloak-cert
     allowedRoutes:
       namespaces:
         from: All
