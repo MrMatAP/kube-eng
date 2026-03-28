@@ -2,7 +2,6 @@
 - name: (Re-)package the Helm charts
   hosts: localhost
   tasks:
-
   - name: Package the Helm charts
     ansible.builtin.command:
       cmd: |
@@ -20,6 +19,7 @@
     - kube-eng-edge
     - kube-eng-loki
     - kube-eng-alloy
+    - kube-eng-tempo
     - kube-eng-grafana
     - kube-eng-kiali
 
@@ -37,5 +37,6 @@
     - kube-eng-edge
     - kube-eng-loki
     - kube-eng-alloy
+    - kube-eng-tempo
     - kube-eng-grafana
     - kube-eng-kiali
