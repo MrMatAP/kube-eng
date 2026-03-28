@@ -26,6 +26,14 @@ spec:
     web_schema: "https"
     web_fqdn: "{{ .Values.cluster.edge.fqdn }}"
     web_port: "443"
+    observability:
+      tracing:
+        enabled: true
+        collector_url: "{{ .Values.integration.tempo.collector_url }}"
+        otel:
+          protocol: "grpc"
+          tls_enabled: false
+
   external_services:
     istio:
       istio_api_enabled: true
@@ -39,3 +47,8 @@ spec:
         type: bearer
         username: {{ .Values.integration.grafana.auth.username }}
         token: {{ .Values.integration.grafana.auth.token }}
+    tracing:
+      enabled: true
+      internal_url: "{{ .Values.integration.tempo.internal_url }}"
+      use_grpc: false
+      provider: "tempo"
