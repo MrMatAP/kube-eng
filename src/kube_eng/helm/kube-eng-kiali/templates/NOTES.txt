@@ -1,3 +1,3 @@
-# Kube Eng :: Kiali installed
+# Kube Eng :: Kiali
 
 FQDN:   {{ .Values.cluster.edge.fqdn }}
