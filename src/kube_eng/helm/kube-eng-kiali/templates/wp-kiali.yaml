@@ -4,7 +4,7 @@ metadata:
   labels:
     {{ include "common.labels" . | nindent 4 }}
     app.kubernetes.io/name: waypoint
-  name: waypoint
+  name: wp-kiali
 spec:
   gatewayClassName: istio-waypoint
   listeners:

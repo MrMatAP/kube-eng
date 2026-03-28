@@ -62,6 +62,8 @@ loki:
         index:
           prefix: index_
           period: 24h
+  lokiCanary:
+    podLabels: {}
   memberlist:
     service:
       publishNotReadyAddresses: true
