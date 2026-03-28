@@ -51,6 +51,11 @@
   - name: Create a dedicated docker network
     community.docker.docker_network:
       name: kind
+      driver: bridge
+      enable_ipv4: true
+      enable_ipv6: true
+      scope: local
+      state: present
 
   - name: Establish the local PKI
     block:
@@ -160,91 +165,6 @@
         restart_policy: always
         state: healthy
 
-  - name: Create a local registry, if enabled
-    when: host.registry.enabled == true
-    block:
-    - name: Create a directory for the registry
-      ansible.builtin.file:
-        path: "{{ host.registry.config_path }}"
-        state: directory
-    - name: Create a private key for the registry
-      community.crypto.openssl_privatekey:
-        path: "{{ host.registry.config_path }}/registry.key"
-        type: "{{ host.pki.key_type }}"
-        curve: "{{ host.pki.key_curve }}"
-        size: "{{ host.pki.key_size }}"
-        state: present
-    - name: Generate a CSR for the registry
-      community.crypto.openssl_csr:
-        path: "{{ host.registry.config_path }}/registry.csr"
-        privatekey_path: "{{ host.registry.config_path }}/registry.key"
-        common_name: "{{ host.registry.name }}.{{ host.dns.zone }}"
-        subject_alt_name:
-        - "DNS:{{ host.registry.name }}.{{ host.dns.zone }}"
-        - "DNS:{{ host.registry.name }}.kind"
-        - "DNS:{{ host.registry.name }}"
-        - "DNS:localhost"
-        basic_constraints_critical: true
-        basic_constraints:
-        - "CA:FALSE"
-    - name: Sign the certificate for the registry
-      community.crypto.x509_certificate:
-        path: "{{ host.registry.config_path }}/registry.pem"
-        csr_path: "{{ host.registry.config_path }}/registry.csr"
-        ownca_path: "{{ host.pki.ca_path }}"
-        ownca_privatekey_path: "{{ host.pki.ca_key_path }}"
-        ownca_not_after: "{{ host.pki.crt_validity }}"
-        provider: ownca
-    - name: Configure the registry
-      ansible.builtin.import_role:
-        name: registry_configuration
-      vars:
-        directory: "{{ host.registry.config_path }}"
-    - name: Create a volume for the registry
-      community.docker.docker_volume:
-        name: "{{ host.registry.volume_name }}"
-        state: present
-    - name: Start the registry
-      community.docker.docker_container:
-        name: "{{ host.registry.name }}"
-        image: "{{ host.registry.image }}"
-        mounts:
-        - source: "{{ host.registry.volume_name }}"
-          target: /data
-        - source: "{{ host.registry.config_path }}/config.json"
-          target: /etc/zot/config.json
-          read_only: true
-          type: bind
-        - source: "{{ host.registry.config_path }}/registry.key"
-          target: /etc/zot/registry.key
-          read_only: true
-          type: bind
-        - source: "{{ host.registry.config_path }}/registry.pem"
-          target: /etc/zot/registry.pem
-          read_only: true
-          type: bind
-        ports:
-        - "{{ host.registry.host_ip }}:{{ host.registry.host_port | int }}:{{ host.registry.port | int }}/tcp"
-        networks:
-        - name: kind
-          aliases: "{{ host.registry.name }}"
-        keep_volumes: false
-        restart_policy: always
-        state: healthy
-    - name: Update DNS with a record for the registry
-      community.general.nsupdate:
-        key_name: "{{ host.dns.key_name }}"
-        key_secret: "{{ host.dns.key_secret }}"
-        key_algorithm: "{{ host.dns.key_algorithm }}"
-        server: "{{ host.dns.server }}"
-        port: "{{ host.dns.port | int }}"
-        protocol: "{{ host.dns.protocol }}"
-        record: "{{ host.registry.name }}.{{ host.dns.zone }}."
-        ttl: "{{ host.dns.ttl | int }}"
-        value: "{{ host.registry.host_ip }}"
-        type: A
-        state: present
-
   - name: Create a local PostgreSQL instance, if enabled
     when: host.postgresql.enabled == true
     block:
@@ -343,6 +263,11 @@
         ownca_privatekey_path: "{{ host.pki.ca_key_path }}"
         ownca_not_after: "{{ host.pki.crt_validity }}"
         provider: ownca
+    - name: Copy the truststore to the IDP config directory
+      ansible.builtin.copy:
+        src: "{{ host.pki.ca_truststore_path }}"
+        dest: "{{ host.idp.config_path }}/truststore.pem"
+        remote_src: true
     - name: Deploy the local IDP
       community.docker.docker_container:
         name: "{{ host.idp.name }}"
@@ -356,13 +281,16 @@
           type: bind
         networks:
         - name: kind
-          aliases: "{{ host.idp.name }}"
+          aliases:
+          - "{{ host.idp.name }}"
+          - "{{ host.idp.name }}.{{ host.dns.zone }}"
         env:
           KC_BOOTSTRAP_ADMIN_USERNAME: admin
           KC_BOOTSTRAP_ADMIN_PASSWORD: "{{ admin_password }}"
           KC_HTTP_ENABLED: "false"
           KC_HTTPS_CERTIFICATE_KEY_FILE: /config/idp_key.pem
           KC_HTTPS_CERTIFICATE_FILE: /config/idp_cert.pem
+          KC_TRUSTSTORE_PATHS: /config/truststore.pem
           KC_HTTPS_PORT: "{{ host.idp.port | quote }}"
           KC_HTTPS_PROTOCOLS: "TLSv1.3"
           KC_HTTPS_MANAGEMENT_CERTIFICATE_KEY_FILE: /config/idp_key.pem
@@ -375,6 +303,24 @@
           KC_DB_PASSWORD: "{{ admin_password }}"
           KC_HOSTNAME: "https://{{ host.idp.name }}.{{ host.dns.zone }}:{{ host.idp.port }}/"
           KC_HOSTNAME_BACKCHANNEL_DYNAMIC: "true"
+          KC_TRACING_ENABLED: "true"
+          KC_TRACING_ENDPOINT: "https://{{ stack.tempo.hostname }}.{{ host.dns.zone }}:4317"
+          KC_TRACING_PROTOCOL: "grpc"
+          KC_TELEMETRY_ENDPOINT: "https://{{ stack.tempo.hostname }}.{{ host.dns.zone }}:4317"
+          KC_TELEMETRY_PROTOCOL: "grpc"
+          KC_TELEMETRY_SERVICE_NAME: "idp"
+          KC_TELEMETRY_LOGS_ENABLED: "true"
+          KC_TELEMETRY_LOGS_ENDPOINT: "https://{{ stack.tempo.hostname }}.{{ host.dns.zone }}:4317"
+          KC_TELEMETRY_LOGS_PROTOCOL: "grpc"
+          KC_METRICS_ENABLED: "true"
+          KC_TELEMETRY_METRICS_ENABLED: "true"
+          KC_TELEMETRY_METRICS_ENDPOINT: "https://{{ stack.tempo.hostname }}.{{ host.dns.zone }}:4317"
+          KC_TELEMETRY_METRICS_PROTOCOL: "grpc"
+          KC_FEATURE_OPENTELEMETRY: "enabled"
+          KC_FEATURE_OPENTELEMETRY_LOGS: "enabled"
+          KC_FEATURE_OPENTELEMETRY_METRICS: "enabled"
+          KC_FEATURE_SPIFFE: "enabled"
+          KC_FEATURE_KUBERNETES_SERVICE_ACCOUNTS: "enabled"
         keep_volumes: false
         command: "start-dev"
         restart_policy: always
@@ -448,7 +394,9 @@
           type: bind
         networks:
         - name: kind
-          aliases: "{{ host.s3.name }}"
+          aliases:
+          - "{{ host.s3.name }}"
+          - "{{ host.s3.name }}.{{ host.dns.zone }}"
         env:
           RUSTFS_ACCESS_KEY: admin
           RUSTFS_SECRET_KEY: "{{ admin_password }}"
@@ -505,7 +453,9 @@
           type: bind
         networks:
         - name: kind
-          aliases: "{{ host.kafka.name }}"
+          aliases:
+          - "{{ host.kafka.name }}"
+          - "{{ host.kafka.name }}.{{ host.dns.zone }}"
         keep_volumes: false
         restart_policy: always
         state: healthy
@@ -523,25 +473,92 @@
         type: A
         state: present
 
-  - name: Package the Helm charts
-    ansible.builtin.command:
-      cmd: |
-        {{ host.tool.helm.path }} package 
-        --version {{ host.tool.helm.chart_version }} 
-        --dependency-update 
-        --destination {{ host.tool.helm.packaged_chart_path }} 
-        {{ host.tool.helm.chart_path }}/{{ item }}
-      creates: "{{ host.tool.helm.packaged_chart_path }}/{{ item }}-{{ host.tool.helm.chart_version }}.tgz"
-    loop:
-    - kube-eng-cilium
-    - kube-eng-istio
-    - kube-eng-cert-manager
-    - kube-eng-prometheus
-    - kube-eng-edge
-    - kube-eng-loki
-    - kube-eng-alloy
-    - kube-eng-grafana
-    - kube-eng-kiali
+  - name: Create a local registry, if enabled
+    when: host.registry.enabled == true
+    block:
+    - name: Create a directory for the registry
+      ansible.builtin.file:
+        path: "{{ host.registry.config_path }}"
+        state: directory
+    - name: Create a private key for the registry
+      community.crypto.openssl_privatekey:
+        path: "{{ host.registry.config_path }}/registry.key"
+        type: "{{ host.pki.key_type }}"
+        curve: "{{ host.pki.key_curve }}"
+        size: "{{ host.pki.key_size }}"
+        state: present
+    - name: Generate a CSR for the registry
+      community.crypto.openssl_csr:
+        path: "{{ host.registry.config_path }}/registry.csr"
+        privatekey_path: "{{ host.registry.config_path }}/registry.key"
+        common_name: "{{ host.registry.name }}.{{ host.dns.zone }}"
+        subject_alt_name:
+        - "DNS:{{ host.registry.name }}.{{ host.dns.zone }}"
+        - "DNS:{{ host.registry.name }}.kind"
+        - "DNS:{{ host.registry.name }}"
+        - "DNS:localhost"
+        basic_constraints_critical: true
+        basic_constraints:
+        - "CA:FALSE"
+    - name: Sign the certificate for the registry
+      community.crypto.x509_certificate:
+        path: "{{ host.registry.config_path }}/registry.pem"
+        csr_path: "{{ host.registry.config_path }}/registry.csr"
+        ownca_path: "{{ host.pki.ca_path }}"
+        ownca_privatekey_path: "{{ host.pki.ca_key_path }}"
+        ownca_not_after: "{{ host.pki.crt_validity }}"
+        provider: ownca
+    - name: Configure the registry
+      ansible.builtin.import_role:
+        name: registry_configuration
+      vars:
+        directory: "{{ host.registry.config_path }}"
+    - name: Create a volume for the registry
+      community.docker.docker_volume:
+        name: "{{ host.registry.volume_name }}"
+        state: present
+    - name: Start the registry
+      community.docker.docker_container:
+        name: "{{ host.registry.name }}"
+        image: "{{ host.registry.image }}"
+        mounts:
+        - source: "{{ host.registry.volume_name }}"
+          target: /data
+        - source: "{{ host.registry.config_path }}/config.json"
+          target: /etc/zot/config.json
+          read_only: true
+          type: bind
+        - source: "{{ host.registry.config_path }}/registry.key"
+          target: /etc/zot/registry.key
+          read_only: true
+          type: bind
+        - source: "{{ host.registry.config_path }}/registry.pem"
+          target: /etc/zot/registry.pem
+          read_only: true
+          type: bind
+        ports:
+        - "{{ host.registry.host_ip }}:{{ host.registry.host_port | int }}:{{ host.registry.port | int }}/tcp"
+        networks:
+        - name: kind
+          aliases:
+          - "{{ host.registry.name }}"
+          - "{{ host.registry.name }}.{{ host.dns.zone }}"
+        keep_volumes: false
+        restart_policy: always
+        state: healthy
+    - name: Update DNS with a record for the registry
+      community.general.nsupdate:
+        key_name: "{{ host.dns.key_name }}"
+        key_secret: "{{ host.dns.key_secret }}"
+        key_algorithm: "{{ host.dns.key_algorithm }}"
+        server: "{{ host.dns.server }}"
+        port: "{{ host.dns.port | int }}"
+        protocol: "{{ host.dns.protocol }}"
+        record: "{{ host.registry.name }}.{{ host.dns.zone }}."
+        ttl: "{{ host.dns.ttl | int }}"
+        value: "{{ host.registry.host_ip }}"
+        type: A
+        state: present
 
 #
 # If you used a local DNS server, then you must now configure your host to point to 127.0.0.1:53
