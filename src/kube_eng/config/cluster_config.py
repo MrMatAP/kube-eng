@@ -1,5 +1,4 @@
 import enum
-import pathlib
 import socket
 from typing import Any
 
