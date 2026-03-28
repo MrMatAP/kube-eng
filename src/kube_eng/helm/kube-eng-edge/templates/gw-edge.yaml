@@ -12,6 +12,32 @@ metadata:
 spec:
   gatewayClassName: {{ .Values.gateway.classname }}
   listeners:
+  {{ if .Values.stack.tempo.enabled }}
+  - name: tempo-grpc
+    protocol: HTTPS
+    hostname: {{ .Values.stack.tempo.fqdn }}
+    port: 4317
+    tls:
+      mode: Terminate
+      certificateRefs:
+      - kind: Secret
+        name: tempo-grpc-cert
+    allowedRoutes:
+      namespaces:
+        from: All
+  - name: tempo-https
+    protocol: HTTPS
+    hostname: {{ .Values.stack.tempo.fqdn }}
+    port: 4318
+    tls:
+      mode: Terminate
+      certificateRefs:
+      - kind: Secret
+        name: tempo-https-cert
+    allowedRoutes:
+      namespaces:
+        from: All
+  {{ end }}
   {{ if .Values.stack.prometheus.enabled }}
   - name: prometheus
     hostname: {{ .Values.stack.prometheus.fqdn }}
