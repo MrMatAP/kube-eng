@@ -24,8 +24,8 @@ class ClusterMeshKind(str, enum.Enum):
     istio_ambient = "istio-ambient"
 
 class ClusterMeshConfig(RootConfigAware):
-    enabled: bool = Field(default=False)
-    kind: ClusterMeshKind = Field(default=ClusterMeshKind.istio_sidecar)
+    enabled: bool = Field(default=True)
+    kind: ClusterMeshKind = Field(default=ClusterMeshKind.istio_ambient)
     ns: str = Field(default="istio-system")
 
 class ClusterPKIConfig(RootConfigAware):
@@ -43,7 +43,7 @@ class ClusterEdgeKindEnum(str, enum.Enum):
 
 class ClusterEdgeConfig(RootConfigAware):
     kind: ClusterEdgeKindEnum = Field(default=ClusterEdgeKindEnum.istio_gateway_api)
-    name: str = Field(default="edge")
+    name: str = Field(default="gw-edge")
     ns: str = Field(default="edge")
     gateway_api_crds: str = Field(
         default="https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.4.1/experimental-install.yaml"
