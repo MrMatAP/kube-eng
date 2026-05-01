@@ -1,3 +1,0 @@
-# Kube-Eng :: Prometheus installed
-
-URL:   https://{{ .Values.fqdn }}/
