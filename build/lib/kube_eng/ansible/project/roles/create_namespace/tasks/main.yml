@@ -1,6 +1,0 @@
-#SPDX-License-Identifier: MIT-0
----
-- name: Create namespace
-  kubernetes.core.k8s:
-    state: present
-    template: templates/ns.yaml.j2

@@ -1,3 +1,0 @@
-# Kube Eng :: Kiali installed
-
-URL:           https://{{ .Values.fqdn }}

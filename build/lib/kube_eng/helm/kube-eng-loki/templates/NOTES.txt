@@ -1,3 +1,0 @@
-# Kube-Eng :: Alloy installed
-
-Hostname:   {{ .Values.route.hostname }}.{{ .Values.cluster.name }}.{{ .Values.cluster.domain }}
