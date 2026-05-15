@@ -11,7 +11,4 @@
   <component name="PyreflyConfiguration">
     <option name="enabled" value="true" />
   </component>
-  <component name="RuffConfiguration">
-    <option name="enabled" value="true" />
-  </component>
 </project>
