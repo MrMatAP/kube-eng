@@ -20,7 +20,7 @@ jwt:
       prefix: ""
     groups:
       claim: "roles"
-      prefix: ""
+      prefix: "oidc:"
     uid:
       claim: 'sub'
   userValidationRules:
@@ -30,4 +30,4 @@ jwt:
     # Message customizes the error message seen in the API server logs when the validation fails.
     message: 'username cannot used reserved system: prefix'
   - expression: "user.groups.all(group, !group.startsWith('system:'))"
-    message: 'groups cannot used reserved system: prefix'
+    message: 'groups cannot use reserved system: prefix'
