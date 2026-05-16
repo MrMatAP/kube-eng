@@ -57,7 +57,33 @@ The TUI provides an interactive, visual interface for managing your cluster conf
 (kube-eng) $ uv run kube-eng-tui
 ```
 
+## Kubernetes Auth/z/n
+
+kube-eng will integrate the Kubernetes API server with the local IdP and create three roles:
+
+* kube-eng-admin - has the `cluster-admin` cluster-role
+* kube-eng-viewer - has the `view` cluster-role
+* kube-eng-user - has the `edit` cluster-role
+
+These roles are assigned to users within the IdP and prefixed with `oidc:` for the Kubernetes API server (see `src/kube_eng/ansible/project/roles/kind_configuration/templates/kube-eng-auth.yaml.j2`). The cluster-role-bindings are deployed as part of cluster-apply.
+
+kind switches the kubectl context to its admin context by default. `cluster-apply` will create two new 'users' and contexts in your kubeconfig, one called `kube-eng-CLUSTERNAME-console` and another `kube-eng-CLUSTERNAME-idp`. The console variant is for when no local browser is available. Switch to these to perform IdP authenticated logins. It is a prerequisite to have krew and oidc-login installed for these.
+
+```shell
+$ brew install krew
+$ kubectl krew install oidc-login
+$ kubectl oidc-login setup 
+```
+
 ## Debugging
+
+### Debugging OIDC
+
+You can use the `oidc-login` CLI to debug OIDC issues:
+
+```shell
+k oidc-login setup --oidc-issuer-url=https://idp.nostromo.k8s:8443/realms/master --oidc-client-id=kube-eng-nostromo --grant-type=authcode --oidc-redirect-url=http://localhost:8000 --grant-type=authcode
+```
 
 ### Debug pod
 

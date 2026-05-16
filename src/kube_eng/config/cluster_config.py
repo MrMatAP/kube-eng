@@ -62,7 +62,6 @@ class ClusterEdgeConfig(RootConfigAware):
                 raise ValueError(f"Unknown edge kind: {self.kind}")
 
 class ClusterOIDCConfig(RootConfigAware):
-    client_id: str = Field(default="kubernetes")
     username_claim: str = Field(default="preferred_username")
     groups_claim: str = Field(default="groups")
 

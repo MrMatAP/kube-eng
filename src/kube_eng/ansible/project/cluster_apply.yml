@@ -66,36 +66,40 @@
             userinfo.token.claim: true
             jsonType.label: String
             multivalued: true
-            usermodel.clientRoleMapping.clientId: "{{ cluster.oidc.client_id }}"
+            usermodel.clientRoleMapping.clientId: "kube-eng-{{ cluster.name }}"
           name: "client roles"
           protocol: openid-connect
           protocolMapper: oidc-usermodel-client-role-mapper
         state: present
         validate_certs: true
-    - name: Register the cluster in the IDP
+    - name: Register the cluster in the IdP
       community.general.keycloak_client:
         auth_keycloak_url: "https://{{ host.idp.name }}.{{ host.dns.zone }}:{{ host.idp.host_port }}"
         auth_realm: master
         auth_username: admin
         auth_password: "{{ admin_password }}"
-        client_id: "{{ cluster.oidc.client_id }}"
-        name: "{{ cluster.oidc.client_id }}"
-        description: "Kube Eng :: Kubernetes Cluster"
+        client_id: "kube-eng-{{ cluster.name }}"
+        name: "Kube Eng :: Cluster {{ cluster.name }}"
+        description: "OIDC Authentication for the Kube Eng Cluster"
         enabled: true
         protocol: openid-connect
-        public_client: false
-        client_authenticator_type: client-secret
-        secret: "{{ admin_password }}"
+        public_client: true
         standard_flow_enabled: true
         implicit_flow_enabled: false
-        direct_access_grants_enabled: true
+        direct_access_grants_enabled: false
         default_client_scopes:
         - email
         - offline_access
         - profile
         - kube-eng-kubernetes-roles
+        redirect_uris:
+        - http://localhost:8000
+        - http://localhost:18000
+        attributes:
+          oauth2.device.authorization.grant.enabled: true
+          pkce.code.challenge.method: "S256"
         validate_certs: true
-    - name: Register the cluster viewer role in the IDP
+    - name: Register the kube-eng-viewer role in the IdP
       community.general.keycloak_role:
         auth_keycloak_url: "https://{{ host.idp.name }}.{{ host.dns.zone }}:{{ host.idp.host_port }}"
         auth_realm: master
@@ -103,10 +107,21 @@
         auth_password: "{{ admin_password }}"
         name: kube-eng-viewer
         description: "Kube Eng :: Kubernetes Viewers"
-        client_id: "{{ cluster.oidc.client_id }}"
+        client_id: "kube-eng-{{ cluster.name }}"
         state: present
         validate_certs: true
-    - name: Register the cluster admin role in the IDP
+    - name: Register the kube-eng-user role in the IdP
+      community.general.keycloak_role:
+        auth_keycloak_url: "https://{{ host.idp.name }}.{{ host.dns.zone }}:{{ host.idp.host_port }}"
+        auth_realm: master
+        auth_username: admin
+        auth_password: "{{ admin_password }}"
+        name: kube-eng-user
+        description: "Kube Eng :: Kubernetes Users"
+        client_id: "kube-eng-{{ cluster.name }}"
+        state: present
+        validate_certs: true
+    - name: Register the kube-eng-admin role in the IdP
       community.general.keycloak_role:
         auth_keycloak_url: "https://{{ host.idp.name }}.{{ host.dns.zone }}:{{ host.idp.host_port }}"
         auth_realm: master
@@ -114,9 +129,39 @@
         auth_password: "{{ admin_password }}"
         name: kube-eng-admin
         description: "Kube Eng :: Kubernetes Administrators"
-        client_id: "{{ cluster.oidc.client_id }}"
+        client_id: "kube-eng-{{ cluster.name }}"
         state: present
         validate_certs: true
+    - name: Create the kube-eng user
+      community.general.keycloak_user:
+        auth_keycloak_url: "https://{{ host.idp.name }}.{{ host.dns.zone }}:{{ host.idp.host_port }}"
+        auth_realm: master
+        auth_username: admin
+        auth_password: "{{ admin_password }}"
+        realm: master
+        username: "kube-eng"
+        firstName: Kube-Eng
+        lastName: Service Account
+        email: "kube-eng-{{ cluster.name }}@{{ host.dns.zone }}"
+        enabled: true
+        emailVerified: true
+        credentials:
+        - type: password
+          value: "{{ admin_password }}"
+          temporary: false
+        state: present
+    - name: Grant the kube-eng-admin role to the kube-eng user
+      community.general.keycloak_user_rolemapping:
+        auth_keycloak_url: "https://{{ host.idp.name }}.{{ host.dns.zone }}:{{ host.idp.host_port }}"
+        auth_realm: master
+        auth_username: admin
+        auth_password: "{{ admin_password }}"
+        realm: master
+        target_username:  "kube-eng"
+        client_id: "kube-eng-{{ cluster.name }}"
+        state: present
+        roles:
+        - name: kube-eng-admin
     - name: Template the cluster configuration
       ansible.builtin.import_role:
         name: kind_configuration
@@ -132,7 +177,7 @@
         cni: "{{ cluster.cni.kind }}"
         oidc_discovery_url: "https://{{ host.idp.name }}.{{ host.dns.zone }}:{{ host.idp.port }}/realms/master/.well-known/openid-configuration"
         oidc_issuer_url: "{{ cluster.oidc.issuer_url }}"
-        oidc_client_id: "{{ cluster.oidc.client_id }}"
+        oidc_client_id: "kube-eng-{{ cluster.name }}"
         oidc_username_claim: "{{ cluster.oidc.username_claim }}"
         oidc_groups_claim: "{{ cluster.oidc.groups_claim }}"
     - name: Deploy the cluster
@@ -141,35 +186,131 @@
         config_file: "{{ host.tool.kind.config_path }}/config.yaml"
         tool_kind: "{{ host.tool.kind.path }}"
         state: present
+    - name: Apply the kube-eng-viewer cluster role binding
+      kubernetes.core.k8s:
+        state: present
+        apply: true
+        server_side_apply:
+          field_manager: ansible
+        wait: true
+        definition:
+          apiVersion: rbac.authorization.k8s.io/v1
+          kind: ClusterRoleBinding
+          metadata:
+            name: oidc:kube-eng-viewer
+          roleRef:
+            apiGroup: rbac.authorization.k8s.io
+            kind: ClusterRole
+            name: view
+          subjects:
+          - apiGroup: rbac.authorization.k8s.io
+            kind: Group
+            name: oidc:kube-eng-viewer
+    - name: Apply the kube-eng-user cluster role binding
+      kubernetes.core.k8s:
+        state: present
+        apply: true
+        server_side_apply:
+          field_manager: ansible
+        wait: true
+        definition:
+          apiVersion: rbac.authorization.k8s.io/v1
+          kind: ClusterRoleBinding
+          metadata:
+            name: oidc:kube-eng-user
+          roleRef:
+            apiGroup: rbac.authorization.k8s.io
+            kind: ClusterRole
+            name: edit
+          subjects:
+          - apiGroup: rbac.authorization.k8s.io
+            kind: Group
+            name: oidc:kube-eng-user
+    - name: Apply the kube-eng-admin cluster role binding
+      kubernetes.core.k8s:
+        state: present
+        apply: true
+        server_side_apply:
+          field_manager: ansible
+        wait: true
+        definition:
+          apiVersion: rbac.authorization.k8s.io/v1
+          kind: ClusterRoleBinding
+          metadata:
+            name: oidc:kube-eng-admin
+          roleRef:
+            apiGroup: rbac.authorization.k8s.io
+            kind: ClusterRole
+            name: cluster-admin
+          subjects:
+          - apiGroup: rbac.authorization.k8s.io
+            kind: Group
+            name: oidc:kube-eng-admin
+    - name: Set up IdP authentication in kubectl for when a browser is available
+      ansible.builtin.command:
+        cmd: >
+          {{ host.tool.kubectl.path }} config set-credentials kube-eng-{{ cluster.name }}-idp
+          --exec-api-version=client.authentication.k8s.io/v1
+          --exec-interactive-mode=Never
+          --exec-command=kubectl
+          --exec-arg=oidc-login
+          --exec-arg=get-token
+          --exec-arg="--oidc-issuer-url={{ cluster.oidc.issuer_url }}"
+          --exec-arg="--oidc-client-id=kube-eng-{{ cluster.name }}"
+          --exec-arg="--oidc-redirect-url=http://localhost:8000" 
+          --exec-arg="--grant-type=authcode"
+    - name: Set up IdP authentication in kubectl for when no browser is available
+      ansible.builtin.command:
+        cmd: >
+          {{ host.tool.kubectl.path }} config set-credentials kube-eng-{{ cluster.name }}-console
+          --exec-api-version=client.authentication.k8s.io/v1
+          --exec-interactive-mode=Never
+          --exec-command=kubectl
+          --exec-arg=oidc-login
+          --exec-arg=get-token
+          --exec-arg="--oidc-issuer-url={{ cluster.oidc.issuer_url }}"
+          --exec-arg="--oidc-client-id=kube-eng-{{ cluster.name }}"
+          --exec-arg="--oidc-redirect-url=http://localhost:8000" 
+          --exec-arg="--grant-type=authcode-keyboard"
+    - name: Declare a kubectl context for the cluster that uses IdP browser-based authentication
+      ansible.builtin.command:
+        cmd: >
+          {{ host.tool.kubectl.path }} config set-context kube-eng-{{ cluster.name }}-idp
+          --cluster=kind-{{ cluster.name }}
+          --user=kube-eng-{{ cluster.name }}-idp
+    - name: Declare a kubectl context for the cluster that uses IdP console-based authentication
+      ansible.builtin.command:
+        cmd: >
+          {{ host.tool.kubectl.path }} config set-context kube-eng-{{ cluster.name }}-console
+          --cluster=kind-{{ cluster.name }}
+          --user=kube-eng-{{ cluster.name }}-console
 
-  - name: Apply the ServiceMonitor CRD
-    kubernetes.core.k8s:
-      state: present
-      apply: true
-      src: "{{ preheat_path }}/servicemonitor-crd.yaml"
-      server_side_apply:
-        field_manager: ansible
-      wait: true
-
-  - name: Apply the PodMonitor CRD
-    kubernetes.core.k8s:
-      state: present
-      apply: true
-      src: "{{ preheat_path }}/podmonitor-crd.yaml"
-      server_side_apply:
-        field_manager: ansible
-      wait: true
-
-    # Note: This should not run at the same time as cloud-provider-kind, as it will create
-    # a conflict for the field-manager.
-  - name: Apply the Gateway API CRDs
-    kubernetes.core.k8s:
-      state: present
-      apply: true
-      src: "{{ preheat_path }}/gateway-api-crds.yaml"
-      server_side_apply:
-        field_manager: ansible
-      wait: true
+  - name: Apply CRDs
+    block:
+    - name: Apply the ServiceMonitor CRD
+      kubernetes.core.k8s:
+        state: present
+        apply: true
+        src: "{{ preheat_path }}/servicemonitor-crd.yaml"
+        server_side_apply:
+          field_manager: ansible
+        wait: true
+    - name: Apply the PodMonitor CRD
+      kubernetes.core.k8s:
+        state: present
+        apply: true
+        src: "{{ preheat_path }}/podmonitor-crd.yaml"
+        server_side_apply:
+          field_manager: ansible
+        wait: true
+    - name: Apply the Gateway API CRDs
+      kubernetes.core.k8s:
+        state: present
+        apply: true
+        src: "{{ preheat_path }}/gateway-api-crds.yaml"
+        server_side_apply:
+          field_manager: ansible
+        wait: true
 
   - name: Deploy Cilium CNI, if enabled
     when: "cluster.cni.kind == 'cilium'"
@@ -218,9 +359,6 @@
             profile: "{{ (cluster.mesh.kind == 'istio-ambient') | ternary('ambient', 'default') }}"
           overrides_cni:
             profile: "{{ (cluster.mesh.kind == 'istio-ambient') | ternary('ambient', 'default') }}"
-
-  - name: Re-direct the resolution of external services from within the cluster
-    block:
     - name: Re-direct PG resolution, if enabled
       when: "host.postgresql.enabled | bool == true"
       block:
