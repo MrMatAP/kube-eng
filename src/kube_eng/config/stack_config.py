@@ -30,7 +30,7 @@ class StackGrafanaConfig(RootConfigAware):
     enabled: bool = Field(default=True)
     ns: str = Field(default="grafana")
     hostname: str = Field(default="grafana")
-    client_id: str = Field(default="grafana")
+    client_id: str = Field(default="kube-eng-grafana")
     admin_user: str = Field(default="admin")
 
 class StackTempoConfig(RootConfigAware):
@@ -43,7 +43,7 @@ class StackKialiConfig(RootConfigAware):
     ns: str = Field(default="kiali")
     hostname: str = Field(default="kiali")
     version: str = Field(default="v2.18.0")
-    client_id: str = Field(default="kiali")
+    client_id: str = Field(default="kube-eng-kiali")
 
 class StackConfig(RootConfigAware):
     prometheus: StackPrometheusConfig = Field(default_factory=StackPrometheusConfig)

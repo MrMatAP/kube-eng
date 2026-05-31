@@ -14,6 +14,13 @@ maintainers:
   email: imfeldma@gmail.com
   url: https://github.com/MrMatAP
 appVersion: "v2.20.0"
+annotations:
+  artifacthub.io/license: MIT
+  artifacthub.io/prerelease: "false"
+  artifacthub.io/containsSecurityUpdates: "false"
+  artifacthub.io/changes: |
+    - kind: added
+      description: "Added metadata"
 dependencies:
 - name: kiali-operator
   version: 2.23.0

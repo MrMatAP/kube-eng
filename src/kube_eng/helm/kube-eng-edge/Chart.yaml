@@ -13,6 +13,13 @@ maintainers:
   email: imfeldma@gmail.com
   url: https://github.com/MrMatAP
 appVersion: "0.0.0"
+annotations:
+  artifacthub.io/license: MIT
+  artifacthub.io/prerelease: "false"
+  artifacthub.io/containsSecurityUpdates: "false"
+  artifacthub.io/changes: |
+    - kind: added
+      description: "Added metadata"
 dependencies:
 - name: traefik
   version: 39.0.6

@@ -47,14 +47,14 @@
 
   - name: Create the cluster
     block:
-    - name: Create a client scope for sanitised role memberships
+    - name: Create a client scope for sanitised role memberships for the cluster
       community.general.keycloak_clientscope:
         auth_keycloak_url: "https://{{ host.idp.name }}.{{ host.dns.zone }}:{{ host.idp.host_port }}"
         auth_realm: master
         auth_username: admin
         auth_password: "{{ admin_password }}"
-        name: kube-eng-kubernetes-roles
-        description: Adds Kubernetes roles to id tokens
+        name: "kube-eng-{{ cluster.name }}-roles"
+        description: Adds top-level roles to a token
         protocol: openid-connect
         protocol_mappers:
         - config:
@@ -91,7 +91,7 @@
         - email
         - offline_access
         - profile
-        - kube-eng-kubernetes-roles
+        - "kube-eng-{{ cluster.name }}-roles"
         redirect_uris:
         - http://localhost:8000
         - http://localhost:18000

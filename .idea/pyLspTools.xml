@@ -2,7 +2,6 @@
 <project version="4">
   <component name="PyreflyConfiguration2">
     <option name="documentation" value="true" />
-    <option name="enabled" value="true" />
     <option name="inlayHints" value="true" />
   </component>
   <component name="RuffConfiguration">
