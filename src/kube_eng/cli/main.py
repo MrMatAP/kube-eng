@@ -21,30 +21,33 @@ class CLIAnsibleEventLog:
 
     _status_display: typing.Dict[AnsibleStatusEnum, str] = {
         AnsibleStatusEnum.ok: 'green',
-        AnsibleStatusEnum.empty: 'dim green',
-        AnsibleStatusEnum.running: 'orange',
+        AnsibleStatusEnum.unchanged: 'dim green',
+        AnsibleStatusEnum.empty: 'dim blue',
+        AnsibleStatusEnum.running: 'orange1',
         AnsibleStatusEnum.failed: 'red',
+        AnsibleStatusEnum.unknown: 'yellow',
     }
 
     def __init__(self, ev: AnsibleEvent) -> None:
         self._ev = ev
 
-    def __rich_console__(self, con: rich.console.Console, options: rich.console.ConsoleOptions):
-        yield f'* [white]{self._ev.task}[/white]'
-        yield Padding(f'{self._ev.msg}', pad=(0, 2, 0, 2), style=self._status_display[self._ev.status], expand=True)
+    def __rich_console__(self, _con: rich.console.Console, _options: rich.console.ConsoleOptions):
+        color = self._status_display.get(self._ev.status, 'white')
+        yield f'{self._ev.status.value} [{color}]{self._ev.task}[/{color}]'
+        if self._ev.msg:
+            yield Padding(self._ev.msg, pad=(0, 2, 0, 4), style=f'dim {color}', expand=True)
         if self._ev.verbose:
-            yield Padding(f'{self._ev.uuid} - {self._ev.event}', pad=(0,2,0,2), style='blue', expand=True)
+            yield Padding(f'{self._ev.uuid} - {self._ev.event}', pad=(0, 2, 0, 4), style='blue', expand=True)
         if self._ev.stdout:
-            yield Padding('Stdout:', pad=(0,2,0,2), style='dim white', expand=True)
-            yield Padding(self._ev.stdout, pad=(0,2,0,4), style='dim white', expand=True)
+            yield Padding('Stdout:', pad=(0, 2, 0, 4), style='dim white', expand=True)
+            yield Padding(self._ev.stdout, pad=(0, 2, 0, 6), style='dim white', expand=True)
         if self._ev.stderr:
-            yield Padding('Stderr:', pad=(0,2,0,2), style='dim yellow', expand=True)
-            yield Padding(self._ev.stderr, pad=(0,2,0,4), style='dim yellow', expand=True)
-        if len(self._ev.warnings) > 0:
-            yield Padding('Warnings:', pad=(0,2,0,2), style='yellow', expand=True)
+            yield Padding('Stderr:', pad=(0, 2, 0, 4), style='dim yellow', expand=True)
+            yield Padding(self._ev.stderr, pad=(0, 2, 0, 6), style='dim yellow', expand=True)
+        if self._ev.warnings:
+            yield Padding('Warnings:', pad=(0, 2, 0, 4), style='yellow', expand=True)
             for warning in self._ev.warnings:
-                yield Padding(warning, pad=(0,2,0,4), style='yellow', expand=True)
-        con.print()
+                yield Padding(warning, pad=(0, 2, 0, 6), style='yellow', expand=True)
 
 def _log_ansible_event(ev: AnsibleEvent) -> None:
     """
