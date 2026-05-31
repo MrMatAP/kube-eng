@@ -79,6 +79,31 @@
         ns: "{{ stack.grafana.ns }}"
         mesh: "{{ cluster.mesh.kind }}"
         waypoint: wp-grafana
+    - name: Create a client scope for sanitised role memberships for Grafana
+      community.general.keycloak_clientscope:
+        auth_keycloak_url: "https://{{ host.idp.name }}.{{ host.dns.zone }}:{{ host.idp.host_port }}"
+        auth_realm: master
+        auth_username: admin
+        auth_password: "{{ admin_password }}"
+        name: "kube-eng-{{ cluster.name }}-grafana-roles"
+        description: Adds top-level roles to a token
+        protocol: openid-connect
+        protocol_mappers:
+        - config:
+            access.token.claim: true
+            claim.name: "roles"
+            id.token.claim: true
+            introspection.token.claim: true
+            lightweight.claim: false
+            userinfo.token.claim: true
+            jsonType.label: String
+            multivalued: true
+            usermodel.clientRoleMapping.clientId: "{{ stack.grafana.client_id }}"
+          name: "client roles"
+          protocol: openid-connect
+          protocolMapper: oidc-usermodel-client-role-mapper
+        state: present
+        validate_certs: true
     - name: Register Grafana in Keycloak
       community.general.keycloak_client:
         auth_keycloak_url: "https://{{ host.idp.name }}.{{ host.dns.zone }}:{{ host.idp.host_port }}"
@@ -86,8 +111,8 @@
         auth_username: admin
         auth_password: "{{ admin_password }}"
         client_id: "{{ stack.grafana.client_id }}"
-        name: "{{ stack.grafana.client_id }}"
-        description: "Kube Eng :: Grafana"
+        name: "Kube Eng :: Grafana"
+        description: "Grafana metrics visualisation for the Kube Eng cluster"
         enabled: true
         protocol: openid-connect
         public_client: false
@@ -105,7 +130,7 @@
         - email
         - offline_access
         - profile
-        - roles
+        - "kube-eng-{{ cluster.name }}-grafana-roles"
         validate_certs: true
     - name: Register Grafana Viewer role
       community.general.keycloak_role:
@@ -113,8 +138,8 @@
         auth_realm: master
         auth_username: admin
         auth_password: "{{ admin_password }}"
-        name: Viewer
-        description: Grafana Viewers
+        name: grafana-viewer
+        description: "Kube-Eng :: Grafana :: Viewers"
         client_id: "{{ stack.grafana.client_id }}"
         state: present
         validate_certs: true
@@ -124,8 +149,8 @@
         auth_realm: master
         auth_username: admin
         auth_password: "{{ admin_password }}"
-        name: Editor
-        description: Grafana Editors
+        name: grafana-editor
+        description: "Kube-Eng :: Grafana :: Editors"
         client_id: "{{ stack.grafana.client_id }}"
         state: present
         validate_certs: true
@@ -135,11 +160,22 @@
         auth_realm: master
         auth_username: admin
         auth_password: "{{ admin_password }}"
-        name: Admin
-        description: Grafana Admins
+        name: grafana-admin
+        description: "Kube-Eng :: Grafana :: Admins"
         client_id: "{{ stack.grafana.client_id }}"
         state: present
         validate_certs: true
+    - name: Create a CA trust store ConfigMap for Grafana
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: v1
+          kind: ConfigMap
+          metadata:
+            name: grafana-cabundle
+            namespace: "{{ stack.grafana.ns }}"
+          data:
+            additional-ca-bundle.pem: "{{ lookup('ansible.builtin.file', host.pki.ca_path) }}"
     - name: Install Grafana
       kubernetes.core.helm:
         name: grafana
@@ -232,7 +268,7 @@
         server: "{{ host.dns.server }}"
         port: "{{ host.dns.port | int }}"
         protocol: "{{ host.dns.protocol }}"
-        record: "{{ stack.alloy.hostname }}.{{ host.dns.zone }}."
+        record: "{{ stack.alloy.hostname }}.{{ cluster.name }}.{{ host.dns.zone }}."
         ttl: "{{ host.dns.ttl | int }}"
         value: "{{ edge_gateway.resources[0].status.addresses[0].value }}"
         type: A
@@ -382,6 +418,31 @@
   - name: Deploy Kiali
     when: "stack.kiali.enabled | bool == true"
     block:
+    - name: Create a client scope for sanitised role memberships for kiali
+      community.general.keycloak_clientscope:
+        auth_keycloak_url: "https://{{ host.idp.name }}.{{ host.dns.zone }}:{{ host.idp.host_port }}"
+        auth_realm: master
+        auth_username: admin
+        auth_password: "{{ admin_password }}"
+        name: "kube-eng-{{ cluster.name }}-kiali-roles"
+        description: Adds top-level roles to a token
+        protocol: openid-connect
+        protocol_mappers:
+        - config:
+            access.token.claim: true
+            claim.name: "roles"
+            id.token.claim: true
+            introspection.token.claim: true
+            lightweight.claim: false
+            userinfo.token.claim: true
+            jsonType.label: String
+            multivalued: true
+            usermodel.clientRoleMapping.clientId: "{{ stack.kiali.client_id }}"
+          name: "client roles"
+          protocol: openid-connect
+          protocolMapper: oidc-usermodel-client-role-mapper
+        state: present
+        validate_certs: true
     - name: Register Kiali in Keycloak
       community.general.keycloak_client:
         auth_keycloak_url: "https://{{ host.idp.name }}.{{ host.dns.zone }}:{{ host.idp.host_port }}"
@@ -389,8 +450,8 @@
         auth_username: admin
         auth_password: "{{ admin_password }}"
         client_id: "{{ stack.kiali.client_id }}"
-        name: "{{ stack.kiali.client_id }}"
-        description: "Kube Eng :: Kiali"
+        name: "Kube Eng :: Kiali"
+        description: "Istio traffic management and observability for the Kube-Eng cluster"
         enabled: true
         protocol: openid-connect
         public_client: false
@@ -408,7 +469,7 @@
         - email
         - offline_access
         - profile
-        - groups
+        - "kube-eng-{{ cluster.name }}-kiali-roles"
         validate_certs: true
     - name: Collect information about the Kiali Service Account
       kubernetes.core.k8s_info:
@@ -482,7 +543,7 @@
               url: "http://prometheus-operated.{{ stack.prometheus.ns }}.svc.cluster.local:9090/"
             grafana:
               internal_url: "http://grafana-service.{{ stack.grafana.ns }}.svc.cluster.local:3000/"
-              external_url: "https://{{ stack.grafana.hostname }}.{{ host.dns.zone }}/"
+              external_url: "https://{{ stack.grafana.hostname }}.{{ cluster.name }}.{{ host.dns.zone }}/"
               auth:
                 username: "{{ kiali_grafana_sa.resources[0].status.account.login }}"
                 token: "{{ kiali_grafana_sa_token.resources[0].data.token | b64decode }}"

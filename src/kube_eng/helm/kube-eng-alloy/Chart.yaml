@@ -13,6 +13,16 @@ maintainers:
   email: imfeldma@gmail.com
   url: https://github.com/MrMatAP
 appVersion: "v1.14.0"
+annotations:
+  artifacthub.io/license: MIT
+  artifacthub.io/prerelease: "false"
+  artifacthub.io/containsSecurityUpdates: "false"
+  artifacthub.io/images: |
+    - name: myapp
+      image: ghcr.io/org/myapp:4.5.6
+  artifacthub.io/changes: |
+    - kind: added
+      description: "Added metadata"
 dependencies:
 - name: alloy
   repository: https://grafana.github.io/helm-charts

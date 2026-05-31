@@ -25,7 +25,6 @@ integration:
     url: http://prometheus.prometheus.svc.cluster.local
     isDefault: true
 
-
 operator:
   replicas: 1
   clusterDomain: cluster.local

@@ -31,7 +31,7 @@
         server: "{{ host.dns.server }}"
         port: "{{ host.dns.port | int }}"
         protocol: "{{ host.dns.protocol }}"
-        record: "{{ cluster.cni.hostname }}.{{ cluster.name }}.{{ host.dns.zone }}."
+        record: "{{ cluster.cni.hostname }}.{{ host.dns.zone }}."
         ttl: "{{ host.dns.ttl | int }}"
         value: "{{ edge_gateway.resources[0].status.addresses[0].value }}"
         type: A
@@ -48,7 +48,7 @@
         server: "{{ host.dns.server }}"
         port: "{{ host.dns.port | int }}"
         protocol: "{{ host.dns.protocol }}"
-        record: "{{ stack.prometheus.hostname }}.{{ cluster.name }}.{{ host.dns.zone }}."
+        record: "{{ stack.prometheus.hostname }}.{{ host.dns.zone }}."
         ttl: "{{ host.dns.ttl | int }}"
         value: "{{ edge_gateway.resources[0].status.addresses[0].value }}"
         type: A
@@ -65,7 +65,7 @@
         server: "{{ host.dns.server }}"
         port: "{{ host.dns.port | int }}"
         protocol: "{{ host.dns.protocol }}"
-        record: "{{ stack.alloy.hostname }}.{{ cluster.name }}.{{ host.dns.zone }}."
+        record: "{{ stack.alloy.hostname }}.{{ host.dns.zone }}."
         ttl: "{{ host.dns.ttl | int }}"
         value: "{{ edge_gateway.resources[0].status.addresses[0].value }}"
         type: A
@@ -82,7 +82,7 @@
         server: "{{ host.dns.server }}"
         port: "{{ host.dns.port | int }}"
         protocol: "{{ host.dns.protocol }}"
-        record: "{{ stack.loki.hostname }}.{{ cluster.name }}.{{ host.dns.zone }}."
+        record: "{{ stack.loki.hostname }}.{{ host.dns.zone }}."
         ttl: "{{ host.dns.ttl | int }}"
         value: "{{ edge_gateway.resources[0].status.addresses[0].value }}"
         type: A
@@ -99,7 +99,7 @@
         server: "{{ host.dns.server }}"
         port: "{{ host.dns.port | int }}"
         protocol: "{{ host.dns.protocol }}"
-        record: "{{ stack.keycloak.hostname }}.{{ cluster.name }}.{{ host.dns.zone }}."
+        record: "{{ stack.keycloak.hostname }}.{{ host.dns.zone }}."
         ttl: "{{ host.dns.ttl | int }}"
         value: "{{ edge_gateway.resources[0].status.addresses[0].value }}"
         type: A
@@ -116,7 +116,7 @@
         server: "{{ host.dns.server }}"
         port: "{{ host.dns.port | int }}"
         protocol: "{{ host.dns.protocol }}"
-        record: "{{ stack.grafana.hostname }}.{{ cluster.name }}.{{ host.dns.zone }}."
+        record: "{{ stack.grafana.hostname }}.{{ host.dns.zone }}."
         ttl: "{{ host.dns.ttl | int }}"
         value: "{{ edge_gateway.resources[0].status.addresses[0].value }}"
         type: A
@@ -133,7 +133,7 @@
         server: "{{ host.dns.server }}"
         port: "{{ host.dns.port | int }}"
         protocol: "{{ host.dns.protocol }}"
-        record: "{{ stack.tempo.hostname }}.{{ cluster.name }}.{{ host.dns.zone }}."
+        record: "{{ stack.tempo.hostname }}.{{ host.dns.zone }}."
         ttl: "{{ host.dns.ttl | int }}"
         value: "{{ edge_gateway.resources[0].status.addresses[0].value }}"
         type: A
@@ -150,7 +150,7 @@
         server: "{{ host.dns.server }}"
         port: "{{ host.dns.port | int }}"
         protocol: "{{ host.dns.protocol }}"
-        record: "{{ stack.kiali.hostname }}.{{ cluster.name }}.{{ host.dns.zone }}."
+        record: "{{ stack.kiali.hostname }}.{{ host.dns.zone }}."
         ttl: "{{ host.dns.ttl | int }}"
         value: "{{ edge_gateway.resources[0].status.addresses[0].value }}"
         type: A
