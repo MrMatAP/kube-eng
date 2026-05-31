@@ -119,16 +119,11 @@ class AnsibleExecution:
             case 'runner_on_failed':
                 ev.uuid = event_data.get('task_uuid', ev.uuid)
                 ev.task = event_data.get('task', 'Unknown')
-                ev.msg = event_data.get('res', {}).get('msg', 'Unknown')
+                ev.msg = event_data.get('res', {}).get('msg', '')
                 ev.status = AnsibleStatusEnum.failed
-                ev.changed = status.get('event_data', {}).get('changed', False)
-                self._ui_event_callback(ev)
-
-                # Now create a separate event for the failed task
-                ev.uuid = status.get('uuid', 'Unknown')
-                ev.task = event_data.get("res", {}).get("msg", "Unknown")
-                ev.status = AnsibleStatusEnum.failed
-                ev.changed = status.get('event_data', {}).get('changed', False)
+                ev.changed = event_data.get('changed', False)
+                ev.stdout = event_data.get('res', {}).get('stdout', '')
+                ev.stderr = event_data.get('res', {}).get('stderr', '')
                 self._ui_event_callback(ev)
                 return True
             case 'runner_on_ok':
@@ -136,10 +131,10 @@ class AnsibleExecution:
                 # uuid to the task uuid
                 ev.uuid = event_data.get('task_uuid', ev.uuid)
                 ev.task = event_data.get('task', 'Unknown')
-                ev.status = AnsibleStatusEnum.ok
                 ev.changed = event_data.get('changed', False)
+                ev.status = AnsibleStatusEnum.ok if ev.changed else AnsibleStatusEnum.unchanged
                 ev.warnings = event_data.get('res', {}).get('warnings', [])
-                ev.msg = event_data.get('res', {}).get('msg', 'Task completed successfully')
+                ev.msg = event_data.get('res', {}).get('msg', '')
                 ev.stdout = event_data.get('res', {}).get('stdout', '')
                 ev.stderr = event_data.get('res', {}).get('stderr', '')
             case 'error':
@@ -177,6 +172,8 @@ class AnsibleExecution:
             ev = AnsibleEvent(uuid='0',
                               counter=0,
                               event='playbook_failed',
+                              task='Playbook failed',
+                              status=AnsibleStatusEnum.failed,
                               verbose=self._verbose)
             ev.stdout = runner.stdout.read()
             ev.stderr = runner.stderr.read()
