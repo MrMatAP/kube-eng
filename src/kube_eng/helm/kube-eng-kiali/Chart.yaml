@@ -15,13 +15,13 @@ maintainers:
   url: https://github.com/MrMatAP
 appVersion: "v2.20.0"
 annotations:
-  artifacthub.io/license: MIT
-  artifacthub.io/prerelease: "false"
-  artifacthub.io/containsSecurityUpdates: "false"
-  artifacthub.io/changes: |
-    - kind: added
-      description: "Added metadata"
+  org.opencontainers.image.title: kube-eng-kiali
+  org.opencontainers.image.description: A customised Helm chart wrapping Kiali in Kube-Eng clusters
+  org.opencontainers.image.source: https://github.com/MrMatAP/kube-eng
+  org.opencontainers.image.licenses: "MIT, Apache-2.0"
+  org.opencontainers.image.authors: "MrMat <imfeldma@gmail.com>"
+  org.opencontainers.image.vendor: "The MrMat Organisation"
 dependencies:
 - name: kiali-operator
-  version: 2.23.0
+  version: 2.27.0
   repository: https://kiali.org/helm-charts

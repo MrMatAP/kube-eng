@@ -14,33 +14,33 @@ maintainers:
   url: https://github.com/MrMatAP
 appVersion: "1.28.2"
 annotations:
-  artifacthub.io/license: MIT
-  artifacthub.io/prerelease: "false"
-  artifacthub.io/containsSecurityUpdates: "false"
-  artifacthub.io/changes: |
-    - kind: added
-      description: "Added metadata"
+  org.opencontainers.image.title: kube-eng-istio
+  org.opencontainers.image.description: A customised Helm chart wrapping Istio in Kube-Eng clusters
+  org.opencontainers.image.source: https://github.com/MrMatAP/kube-eng
+  org.opencontainers.image.licenses: "MIT, Apache-2.0"
+  org.opencontainers.image.authors: "MrMat <imfeldma@gmail.com>"
+  org.opencontainers.image.vendor: "The MrMat Organisation"
 dependencies:
 - name: base
   repository: https://istio-release.storage.googleapis.com/charts
-  version: 1.28.2
+  version: 1.30.1
   alias: overrides_base
 - name: istiod
   repository: https://istio-release.storage.googleapis.com/charts
-  version: 1.28.2
+  version: 1.30.1
   alias: overrides_istiod
 - name: cni
   repository: https://istio-release.storage.googleapis.com/charts
-  version: 1.28.2
+  version: 1.30.1
   alias: overrides_cni
   condition: ambient
 - name: ztunnel
   repository: https://istio-release.storage.googleapis.com/charts
-  version: 1.28.2
+  version: 1.30.1
   alias: overrides_ztunnel
   condition: ambient
 - name: gateway
   repository: https://istio-release.storage.googleapis.com/charts
-  version: 1.28.2
+  version: 1.30.1
   alias: overrides_gateway
   condition: classic_gateway

@@ -14,14 +14,14 @@ maintainers:
   url: https://github.com/MrMatAP
 appVersion: "v1.19.2"
 annotations:
-  artifacthub.io/license: MIT
-  artifacthub.io/prerelease: "false"
-  artifacthub.io/containsSecurityUpdates: "false"
-  artifacthub.io/changes: |
-    - kind: added
-      description: "Added metadata"
+  org.opencontainers.image.title: kube-eng-cert-manager
+  org.opencontainers.image.description: A customised Helm chart wrapping Grafana Alloy in Kube-Eng clusters
+  org.opencontainers.image.source: https://github.com/MrMatAP/kube-eng
+  org.opencontainers.image.licenses: "MIT, Apache-2.0"
+  org.opencontainers.image.authors: "MrMat <imfeldma@gmail.com>"
+  org.opencontainers.image.vendor: "The MrMat Organisation"
 dependencies:
 - name: cert-manager
-  version: v1.19.2
+  version: v1.20.2
   repository: https://charts.jetstack.io
   alias: overrides
