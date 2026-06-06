@@ -14,16 +14,13 @@ maintainers:
   url: https://github.com/MrMatAP
 appVersion: "v1.14.0"
 annotations:
-  artifacthub.io/license: MIT
-  artifacthub.io/prerelease: "false"
-  artifacthub.io/containsSecurityUpdates: "false"
-  artifacthub.io/images: |
-    - name: myapp
-      image: ghcr.io/org/myapp:4.5.6
-  artifacthub.io/changes: |
-    - kind: added
-      description: "Added metadata"
+  org.opencontainers.image.title: kube-eng-alloy
+  org.opencontainers.image.description: A customised Helm chart wrapping Grafana Alloy in Kube-Eng clusters
+  org.opencontainers.image.source: https://github.com/MrMatAP/kube-eng
+  org.opencontainers.image.licenses: "MIT, Apache-2.0"
+  org.opencontainers.image.authors: "MrMat <imfeldma@gmail.com>"
+  org.opencontainers.image.vendor: "The MrMat Organisation"
 dependencies:
 - name: alloy
   repository: https://grafana.github.io/helm-charts
-  version: 1.6.2
+  version: 1.8.2

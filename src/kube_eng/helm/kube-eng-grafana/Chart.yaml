@@ -14,14 +14,14 @@ maintainers:
   url: https://github.com/MrMatAP
 appVersion: "12.3.0"
 annotations:
-  artifacthub.io/license: MIT
-  artifacthub.io/prerelease: "false"
-  artifacthub.io/containsSecurityUpdates: "false"
-  artifacthub.io/changes: |
-    - kind: added
-      description: "Added metadata"
+  org.opencontainers.image.title: kube-eng-grafana
+  org.opencontainers.image.description: A customised Helm chart wrapping Grafana in Kube-Eng clusters
+  org.opencontainers.image.source: https://github.com/MrMatAP/kube-eng
+  org.opencontainers.image.licenses: "MIT, Apache-2.0"
+  org.opencontainers.image.authors: "MrMat <imfeldma@gmail.com>"
+  org.opencontainers.image.vendor: "The MrMat Organisation"
 dependencies:
 - name: grafana-operator
-  version: 5.21.4
+  version: 5.23.0
   repository: https://grafana.github.io/helm-charts
   alias: operator
