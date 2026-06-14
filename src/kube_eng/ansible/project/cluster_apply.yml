@@ -3,36 +3,19 @@
   hosts: localhost
   tasks:
 
+- name: (Re-)package the Helm charts
+  hosts: localhost
+  tasks:
   - name: Package the Helm charts
-    block:
-    - name: Package the Helm charts
-      ansible.builtin.command:
-        cmd: |
-          {{ host.tool.helm.path }} package 
-          --version {{ host.tool.helm.chart_version }}
-          --dependency-update 
-          --destination {{ host.tool.helm.packaged_chart_path }} 
-          {{ host.tool.helm.chart_path }}/{{ item }}
-        creates: "{{ host.tool.helm.packaged_chart_path }}/{{ item }}-{{ host.tool.helm.chart_version }}.tgz"
-      loop:
-      - kube-eng-cilium
-      - kube-eng-istio
-      - kube-eng-cert-manager
-      - kube-eng-prometheus
-      - kube-eng-edge
-      - kube-eng-loki
-      - kube-eng-alloy
-      - kube-eng-tempo
-      - kube-eng-grafana
-      - kube-eng-kiali
-
-  # This will fail if we use a local DNS server and haven't pointed to it yet
-  - name: Upload the Helm charts to the local registry
-    ansible.builtin.command:
-      cmd: |
-        {{ host.tool.helm.path }} push 
-        {{ host.tool.helm.packaged_chart_path }}/{{ item }}-{{ host.tool.helm.chart_version }}.tgz 
-        oci://{{ host.registry.name }}.{{ host.dns.zone }}:{{ host.registry.host_port | int }}/kube-eng
+    ansible.builtin.include_role:
+      name: helm_publish
+    vars:
+      helm_tool_path: "{{ host.tool.helm.path }}"
+      chart_version: "{{ host.tool.helm.chart_version }}"
+      chart_name: "{{ item }}"
+      chart_src_path: "{{ host.tool.helm.chart_path }}/{{ item }}"
+      chart_pkg_path: "{{ host.tool.helm.packaged_chart_path }}"
+      chart_registry_url: "{{ cluster.helm_registry_url }}"
     loop:
     - kube-eng-cilium
     - kube-eng-istio
@@ -320,7 +303,7 @@
         name: cilium
         create_namespace: true
         release_namespace: cilium
-        chart_ref: "oci://{{ host.registry.name }}.{{ host.dns.zone }}:{{ host.registry.host_port | int }}/kube-eng/kube-eng-cilium"
+        chart_ref: ""{{ cluster.helm_registry_url }}/kube-eng-cilium"
         chart_version: "{{ host.tool.helm.chart_version }}"
         binary_path: "{{ host.tool.helm.path }}"
         wait: true
@@ -347,7 +330,7 @@
         name: istio
         create_namespace: true
         release_namespace: "{{ cluster.mesh.ns }}"
-        chart_ref: "oci://{{ host.registry.name }}.{{ host.dns.zone }}:{{ host.registry.host_port | int }}/kube-eng/kube-eng-istio"
+        chart_ref: ""{{ cluster.helm_registry_url }}/kube-eng-istio"
         chart_version: "{{ host.tool.helm.chart_version }}"
         binary_path: "{{ host.tool.helm.path }}"
         wait: true
@@ -498,7 +481,7 @@
         name: cert-manager
         create_namespace: false
         release_namespace: "{{ cluster.pki.ns }}"
-        chart_ref: "oci://{{ host.registry.name }}.{{ host.dns.zone }}:{{ host.registry.host_port | int }}/kube-eng/kube-eng-cert-manager"
+        chart_ref: "{{ cluster.helm_registry_url }}/kube-eng-cert-manager"
         chart_version: "{{ host.tool.helm.chart_version }}"
         binary_path: "{{ host.tool.helm.path }}"
         wait: true
@@ -521,7 +504,7 @@
         name: edge
         create_namespace: false
         release_namespace: "{{ cluster.edge.ns }}"
-        chart_ref: "oci://{{ host.registry.name }}.{{ host.dns.zone }}:{{ host.registry.host_port | int }}/kube-eng/kube-eng-edge"
+        chart_ref: "{{ cluster.helm_registry_url }}/kube-eng-edge"
         chart_version: "{{ host.tool.helm.chart_version }}"
         binary_path: "{{ host.tool.helm.path }}"
         wait: true

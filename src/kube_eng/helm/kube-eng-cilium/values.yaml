@@ -68,7 +68,7 @@ cilium:
     metricsService: true
     enabled: true
     serviceMonitor:
-      enabled: true
+      enabled: false
       labels:
         app.kubernetes.io/monitored-by: prometheus
       jobLabel: app.kubernetes.io/name
@@ -82,7 +82,7 @@ cilium:
     prometheus:
       enabled: true
       serviceMonitor:
-        enabled: true
+        enabled: false
         labels:
           app.kubernetes.io/monitored-by: prometheus
         jobLabel: app.kubernetes.io/name
@@ -95,7 +95,7 @@ cilium:
       metricsService: true
       enabled: true
       serviceMonitor:
-        enabled: true
+        enabled: false
         labels:
           app.kubernetes.io/monitored-by: prometheus
         jobLabel: app.kubernetes.io/name

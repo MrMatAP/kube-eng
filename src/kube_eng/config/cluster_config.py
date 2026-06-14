@@ -88,6 +88,16 @@ class ClusterConfig(RootConfigAware):
     oidc: ClusterOIDCConfig = Field(default_factory=ClusterOIDCConfig)
     edge: ClusterEdgeConfig = Field(default_factory=ClusterEdgeConfig)
 
+    @computed_field
+    @property
+    def helm_registry_url(self) -> str:
+        """
+        Computed helm registry URL for the cluster
+        Returns:
+            Computed Helm registry URL for the cluster
+        """
+        return f"oci://{ self._root_config.host.registry.name }.{ self._root_config.host.dns.zone }:{ self._root_config.host.registry.port }/kube-eng"
+
     def model_post_init(self, context: Any, /) -> None:
         super().model_post_init(context)
         # We want to have an unqualified hostname

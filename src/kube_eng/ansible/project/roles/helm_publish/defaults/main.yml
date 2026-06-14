@@ -1,0 +1,4 @@
+#SPDX-License-Identifier: MIT-0
+---
+helm_tool_path: /opt/homebrew/bin/helm
+chart_version: 0.0.0-dev0
