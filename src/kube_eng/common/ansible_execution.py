@@ -64,8 +64,12 @@ class AnsibleExecution:
         """
         self._cancelled = True
 
-    async def execute(self, playbook: str):
+    async def execute(self, playbook: str, overrides: dict | None = None):
         try:
+            extravars = self._config.model_dump(mode='json')
+            if overrides is not None:
+                extravars.update(overrides)
+            
             self._config.ansible_artifacts_path.mkdir(parents=True, exist_ok=True)
             t, r = ansible_runner.run_async(
                 ident=f'{playbook}-{uuid.uuid4()}',
@@ -75,7 +79,7 @@ class AnsibleExecution:
                     'ANSIBLE_PYTHON_INTERPRETER': sys.executable,
                     'SSL_CERT_FILE': self._config.host.pki.ca_truststore_path
                 },
-                extravars=self._config.model_dump(mode="json"),
+                extravars=extravars,
                 suppress_env_files=True,
                 artifact_dir=self._config.ansible_artifacts_path,
                 rotate_artifacts=5,

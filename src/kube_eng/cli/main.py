@@ -126,6 +126,28 @@ async def config_set(config: RootConfig, args: argparse.Namespace) -> int:
     config.save()
     return 0
 
+def _set_nested_value(target: dict, path: list[str], value: typing.Any) -> None:
+    current = target
+    for part in path[:-1]:
+        current = current.setdefault(part, {})
+    current[path[-1]] = value
+
+
+def _collect_overrides(args: argparse.Namespace) -> dict:
+    overrides = {}
+    for key, value in vars(args).items():
+        if not key.startswith('override_') or value is None:
+            continue
+
+        _set_nested_value(
+            overrides,
+            key.removeprefix('override_').split('__'),
+            value,
+        )
+
+    return overrides
+
+
 async def ansible_execute(config: RootConfig, args: argparse.Namespace) -> int:
     """
     Execute the Ansible playbook corresponding to the command.
@@ -136,8 +158,9 @@ async def ansible_execute(config: RootConfig, args: argparse.Namespace) -> int:
     Returns:
         An integer exit code
     """
+    overrides = _collect_overrides(args)
     ex = AnsibleExecution(config, _log_ansible_event, verbose=args.verbose)
-    await ex.execute(playbook=cmd_to_playbook[args.playbook])
+    await ex.execute(playbook=cmd_to_playbook[args.playbook], overrides=overrides)
     return 0
 
 async def main() -> int:
@@ -157,8 +180,7 @@ async def main() -> int:
                             required=False,
                             dest='verbose',
                             help='Enable verbose output')
-        subparsers = parser.add_subparsers(required=True, help='Sub-commands'
-        )
+        subparsers = parser.add_subparsers(required=True, help='Sub-commands')
         config_parser = subparsers.add_parser('config', help='Configuration commands')
         config_subparser = config_parser.add_subparsers(required=True)
         config_list_parser = config_subparser.add_parser('list', help='List current configuration')
@@ -193,6 +215,11 @@ async def main() -> int:
 
         helm_repackage_parser = subparsers.add_parser('helm-repackage', help='Repackage Helm charts')
         helm_repackage_parser.set_defaults(func=ansible_execute, playbook='helm-repackage')
+        helm_repackage_parser.add_argument('--registry',
+                                           type=str,
+                                           required=False,
+                                           dest='override_cluster__helm_registry_url',
+                                           help='Helm registry URL')
 
         dns_update_parser = subparsers.add_parser('dns-update', help='Update DNS records')
         dns_update_parser.set_defaults(func=ansible_execute, playbook='dns-update')

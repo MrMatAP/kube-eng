@@ -1,0 +1,32 @@
+# Argument requirements. See https://docs.ansible.com/ansible/latest/dev_guide/developing_program_flow_modules.html#argument-spec
+---
+argument_specs:
+  main:
+    short_description: Package a Helm chart
+    options:
+      helm_tool_path:
+        description: Path to the Helm binary
+        type: str
+        required: false
+        default: /opt/homebrew/bin/helm
+      chart_version:
+        description: Version of the Helm chart
+        type: str
+        required: false
+        default: 0.0.0-dev0
+      chart_name:
+        description: Name of the Helm chart
+        type: str
+        required: true
+      chart_src_path:
+        description: Path to the chart source directory
+        type: str
+        required: true
+      chart_pkg_path:
+        description: Path to the chart package directory
+        type: str
+        required: true
+      chart_registry_url:
+        description: URL of the Helm chart registry
+        type: str
+        required: true

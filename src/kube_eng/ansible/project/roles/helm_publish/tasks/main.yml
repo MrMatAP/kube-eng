@@ -1,0 +1,17 @@
+#SPDX-License-Identifier: MIT-0
+---
+- name: Package the Helm chart
+  ansible.builtin.command:
+    cmd: |
+      {{ helm_tool_path }} package 
+      --version {{ chart_version }} 
+      --dependency-update 
+      --destination {{ chart_pkg_path }} 
+      {{ chart_src_path }}
+
+- name: Upload the Helm chart to the local registry
+  ansible.builtin.command:
+    cmd: |
+      {{ helm_tool_path }} push 
+      {{ chart_pkg_path }}/{{ chart_name }}-{{ chart_version }}.tgz 
+      {{ chart_registry_url }}

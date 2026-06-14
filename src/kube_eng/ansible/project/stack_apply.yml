@@ -37,7 +37,7 @@
         name: prometheus
         create_namespace: false
         release_namespace: "{{ stack.prometheus.ns }}"
-        chart_ref: "oci://{{ host.registry.name }}.{{ host.dns.zone }}:{{ host.registry.host_port | int }}/kube-eng/kube-eng-prometheus"
+        chart_ref: "{{ cluster.helm_registry_url }}/kube-eng-prometheus"
         chart_version: "{{ host.tool.helm.chart_version }}"
         binary_path: "{{ host.tool.helm.path }}"
         wait: true
@@ -181,7 +181,7 @@
         name: grafana
         create_namespace: false
         release_namespace: "{{ stack.grafana.ns }}"
-        chart_ref: "oci://{{ host.registry.name }}.{{ host.dns.zone }}:{{ host.registry.host_port | int }}/kube-eng/kube-eng-grafana"
+        chart_ref: "{{ cluster.helm_registry_url }}/kube-eng-grafana"
         chart_version: "{{ host.tool.helm.chart_version }}"
         binary_path: "{{ host.tool.helm.path }}"
         wait: true
@@ -235,14 +235,14 @@
         cmd: |
           {{ host.tool.helm.path }} show chart
           --version {{ host.tool.helm.chart_version }}
-          "oci://{{ host.registry.name }}.{{ host.dns.zone }}:{{ host.registry.host_port | int }}/kube-eng/kube-eng-alloy"
+          "{{ cluster.helm_registry_url }}/kube-eng-alloy"
       register: alloy_chart_info
     - name: Deploy the Alloy Helm Chart
       kubernetes.core.helm:
         name: alloy
         create_namespace: false
         release_namespace: "{{ stack.alloy.ns }}"
-        chart_ref: "oci://{{ host.registry.name }}.{{ host.dns.zone }}:{{ host.registry.host_port | int }}/kube-eng/kube-eng-alloy"
+        chart_ref: "{{ cluster.helm_registry_url }}/kube-eng-alloy"
         chart_version: "{{ host.tool.helm.chart_version }}"
         binary_path: "{{ host.tool.helm.path }}"
         wait: true
@@ -301,14 +301,14 @@
         cmd: |
           {{ host.tool.helm.path }} show chart
           --version {{ host.tool.helm.chart_version }}
-          "oci://{{ host.registry.name }}.{{ host.dns.zone }}:{{ host.registry.host_port | int }}/kube-eng/kube-eng-loki"
+          "{{ cluster.helm_registry_url }}/kube-eng-loki"
       register: loki_chart_info
     - name: Deploy the Loki Helm chart
       kubernetes.core.helm:
         name: loki
         create_namespace: false
         release_namespace: "{{ stack.loki.ns }}"
-        chart_ref: "oci://{{ host.registry.name }}.{{ host.dns.zone }}:{{ host.registry.host_port | int }}/kube-eng/kube-eng-loki"
+        chart_ref: "{{ cluster.helm_registry_url }}/kube-eng-loki"
         chart_version: "{{ host.tool.helm.chart_version }}"
         binary_path: "{{ host.tool.helm.path }}"
         wait: true
@@ -376,7 +376,7 @@
         name: tempo
         create_namespace: false
         release_namespace: "{{ stack.tempo.ns }}"
-        chart_ref: "oci://{{ host.registry.name }}.{{ host.dns.zone }}:{{ host.registry.host_port | int }}/kube-eng/kube-eng-tempo"
+        chart_ref: "{{ cluster.helm_registry_url }}/kube-eng-tempo"
         chart_version: "{{ host.tool.helm.chart_version }}"
         binary_path: "{{ host.tool.helm.path }}"
         wait: true
@@ -520,7 +520,7 @@
         name: kiali
         create_namespace: false
         release_namespace: "{{ stack.kiali.ns }}"
-        chart_ref: "oci://{{ host.registry.name }}.{{ host.dns.zone }}:{{ host.registry.host_port | int }}/kube-eng/kube-eng-kiali"
+        chart_ref: "{{ cluster.helm_registry_url }}/kube-eng-kiali"
         chart_version: "{{ host.tool.helm.chart_version }}"
         binary_path: "{{ host.tool.helm.path }}"
         wait: true

@@ -3,32 +3,15 @@
   hosts: localhost
   tasks:
   - name: Package the Helm charts
-    ansible.builtin.command:
-      cmd: |
-        {{ host.tool.helm.path }} package 
-        --version {{ host.tool.helm.chart_version }} 
-        --dependency-update 
-        --destination {{ host.tool.helm.packaged_chart_path }} 
-        {{ host.tool.helm.chart_path }}/{{ item }}
-      creates: "{{ host.tool.helm.packaged_chart_path }}/{{ item }}-{{ host.tool.helm.chart_version }}.tgz"
-    loop:
-    - kube-eng-cilium
-    - kube-eng-istio
-    - kube-eng-cert-manager
-    - kube-eng-prometheus
-    - kube-eng-edge
-    - kube-eng-loki
-    - kube-eng-alloy
-    - kube-eng-tempo
-    - kube-eng-grafana
-    - kube-eng-kiali
-
-  - name: Upload the Helm charts to the local registry
-    ansible.builtin.command:
-      cmd: |
-        {{ host.tool.helm.path }} push 
-        {{ host.tool.helm.packaged_chart_path }}/{{ item }}-{{ host.tool.helm.chart_version }}.tgz 
-        oci://{{ host.registry.name }}.{{ host.dns.zone }}:{{ host.registry.host_port | int }}/kube-eng
+    ansible.builtin.include_role:
+      name: helm_publish
+    vars:
+      helm_tool_path: "{{ host.tool.helm.path }}"
+      chart_version: "{{ host.tool.helm.chart_version }}"
+      chart_name: "{{ item }}"
+      chart_src_path: "{{ host.tool.helm.chart_path }}/{{ item }}"
+      chart_pkg_path: "{{ host.tool.helm.packaged_chart_path }}"
+      chart_registry_url: "{{ cluster.helm_registry_url }}"
     loop:
     - kube-eng-cilium
     - kube-eng-istio
