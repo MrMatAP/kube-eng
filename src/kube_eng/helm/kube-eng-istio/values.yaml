@@ -3,6 +3,9 @@
 ambient: true
 classic_gateway: false
 
+monitoring:
+  enabled: false
+
 overrides_istiod:
   defaultRevision: default
   profile: ambient

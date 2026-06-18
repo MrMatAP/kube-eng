@@ -300,7 +300,7 @@
     block:
     - name: Deploy Cilium
       kubernetes.core.helm:
-        name: cilium
+        name: cilium-system
         create_namespace: true
         release_namespace: cilium
         chart_ref: ""{{ cluster.helm_registry_url }}/kube-eng-cilium"
