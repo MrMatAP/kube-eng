@@ -3,7 +3,7 @@
   hosts: localhost
   tasks:
 
-- name: (Re-)package the Helm charts
+- name: (Re-)package and publish the Helm charts
   hosts: localhost
   tasks:
   - name: Package the Helm charts
