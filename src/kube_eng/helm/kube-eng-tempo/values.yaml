@@ -24,7 +24,7 @@ tempo:
     extraVolumeMounts:
     - name: truststore
       mountPath: /opt/truststore
-      readonly: true
+      readOnly: true
     storage:
       trace:
         backend: s3
