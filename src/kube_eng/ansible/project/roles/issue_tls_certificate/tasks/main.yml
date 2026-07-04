@@ -1,0 +1,28 @@
+#SPDX-License-Identifier: MIT-0
+---
+- name: Create private key
+  community.crypto.openssl_privatekey:
+    path: "{{ pki_config_path }}/{{ pki_key_filename }}"
+    type: "{{ pki_key_type }}"
+    curve: "{{ pki_key_curve }}"
+    size: "{{ pki_key_size }}"
+    state: present
+
+- name: Generate CSR
+  community.crypto.openssl_csr:
+    path: "{{ pki_config_path }}/{{ pki_csr_filename }}"
+    privatekey_path: "{{ pki_config_path }}/{{ pki_key_filename }}"
+    common_name: "{{ pki_common_name }}"
+    subject_alt_name: "{{ pki_subject_alt_names }}"
+    basic_constraints_critical: true
+    basic_constraints:
+    - "CA:FALSE"
+
+- name: Sign certificate with local CA
+  community.crypto.x509_certificate:
+    path: "{{ pki_config_path }}/{{ pki_cert_filename }}"
+    csr_path: "{{ pki_config_path }}/{{ pki_csr_filename }}"
+    ownca_path: "{{ pki_ca_path }}"
+    ownca_privatekey_path: "{{ pki_ca_key_path }}"
+    ownca_not_after: "{{ pki_cert_validity }}"
+    provider: ownca

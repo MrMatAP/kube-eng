@@ -1,0 +1,43 @@
+# Argument requirements. See https://docs.ansible.com/ansible/latest/dev_guide/developing_program_flow_modules.html#argument-spec
+---
+argument_specs:
+  main:
+    short_description: Update a DNS A record via DDNS (nsupdate)
+    options:
+      dns_key_name:
+        description: TSIG key name used to authenticate the DDNS update
+        type: str
+        required: true
+      dns_key_secret:
+        description: TSIG key secret used to authenticate the DDNS update
+        type: str
+        required: true
+      dns_key_algorithm:
+        description: TSIG key algorithm (e.g. hmac-sha256)
+        type: str
+        required: true
+      dns_server:
+        description: Address of the authoritative DNS server to send the update to
+        type: str
+        required: true
+      dns_port:
+        description: UDP/TCP port on the DNS server
+        type: int
+        required: false
+        default: 53
+      dns_protocol:
+        description: Transport protocol to use (tcp or udp)
+        type: str
+        required: true
+      dns_record:
+        description: Fully-qualified domain name to update, including the trailing dot
+        type: str
+        required: true
+      dns_ttl:
+        description: Time-to-live for the DNS record in seconds
+        type: int
+        required: true
+      dns_value:
+        description: IP address to set for the A record
+        type: str
+        required: true

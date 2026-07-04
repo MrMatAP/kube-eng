@@ -1,0 +1,54 @@
+# Argument requirements. See https://docs.ansible.com/ansible/latest/dev_guide/developing_program_flow_modules.html#argument-spec
+---
+argument_specs:
+  main:
+    short_description: Create a private key, generate a CSR, and sign it with the local CA
+    options:
+      pki_config_path:
+        description: Directory in which the key, CSR and certificate files will be written
+        type: str
+        required: true
+      pki_key_filename:
+        description: Filename (not path) of the generated private key
+        type: str
+        required: true
+      pki_csr_filename:
+        description: Filename (not path) of the intermediate CSR
+        type: str
+        required: true
+      pki_cert_filename:
+        description: Filename (not path) of the signed certificate
+        type: str
+        required: true
+      pki_common_name:
+        description: Common name (CN) for the certificate subject
+        type: str
+        required: true
+      pki_subject_alt_names:
+        description: List of Subject Alternative Names for the certificate (e.g. ["DNS:host.example.com", "DNS:localhost"])
+        type: list
+        required: true
+      pki_key_type:
+        description: Key algorithm to use (RSA, ECC, etc.)
+        type: str
+        required: true
+      pki_key_curve:
+        description: Elliptic curve to use when pki_key_type is ECC (e.g. secp256r1)
+        type: str
+        required: true
+      pki_key_size:
+        description: Key size in bits when pki_key_type is RSA
+        type: int
+        required: true
+      pki_ca_path:
+        description: Path to the CA certificate used to sign the new certificate
+        type: str
+        required: true
+      pki_ca_key_path:
+        description: Path to the CA private key used to sign the new certificate
+        type: str
+        required: true
+      pki_cert_validity:
+        description: Expiry date for the signed certificate in the format accepted by openssl_certificate (e.g. +3650d)
+        type: str
+        required: true
