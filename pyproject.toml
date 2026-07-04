@@ -26,10 +26,10 @@ classifiers = [
 requires-python = ">=3.14"
 dynamic = ["version"]
 dependencies = [
-    "ansible==13.5.0",
+    "ansible>=13.5.0",
     "ansible-runner>=2.4.3",
-    "boto3==1.42.77",
-    "boto3-stubs==1.42.77",
+    "boto3>=1.42.77",
+    "boto3-stubs>=1.42.77",
     "dnspython>=2.8.0",
     "kubernetes>=34.1.0",
     "psycopg2-binary>=2.9.11",
