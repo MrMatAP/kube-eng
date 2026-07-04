@@ -1,78 +1,120 @@
 # kube-eng
 
-A local Kubernetes cluster suitable for local engineering.
+Tooling for a local Kubernetes cluster, suitable for local engineering. Also airgapped, on a plane.
 
-> **Note:** This project is perpetually under construction, but you can expect that the sources in the main branch more or less work.
+> **Note:** This project is perpetually under construction.
 
-## Usage
+## How to use this
 
-kube-eng provides both a command-line interface (CLI) and a text-based user interface (TUI) for managing your local Kubernetes cluster. There are three major stages involved:
+kube-eng provides both a command-line interface (CLI) and a text-based user interface (TUI) for managing your local Kubernetes cluster. 
 
-* `host-apply` - will configure the host infrastructure, such as DNS and a local PKI
-* `cluster-apply` - will configure the cluster itself
+```shell
+$ uv run kube-eng <cmd> <parameters>
+```
+
+There are four major stages to create your cluster:
+
+* `config` - Review configuration of the cluster. The defaults will set up local infrastructure.
+* `host-apply` - will configure any host infrastructure you may need, such as DNS and a local PKI
+* `cluster-apply` - will deploy the cluster and core supporting services 
 * `stack-apply` - will deploy the remaining stack
 
-Since `host-apply` creates a local PKI, you will have to tell your OS to trust it the first time it was created. After `cluster-apply`, you must start `cloud-provider-kind` in a separate terminal window and keep it running.
+## config
 
-### How to install this
+Use `uv run kube-eng config get` and `uv run kube-eng config set` commands to review and configure the kube-eng 
+cluster.
+
+```shell
+# See all configuration
+$ uv run kube-eng config list 
+
+# Get the host, cluster and stack configuration roots
+$ uv run kube-eng config get host
+$ uv run kube-eng config get host
+$ uv run kube-eng config get stack
+
+# Get just the host DNS configuration
+$ uv run kube-eng config get host.dns
+
+# Disable the local DNS server
+$ uv run kube-eng config set host.dns.enabled false
+```
+
+## host-apply
+
+`uv run kube-eng host-apply` will create the local host infrastructure you configured.
+
+> **IMPORTANT (DNS):**<br/>
+> kube-eng cluster expect DNS and creating them will register tooling in the configured DNS server. Enabling the 
+> local DNS server will configure it accordingly so kube-eng can make these updates. If you disable the local DNS 
+> server then you must configure the cluster to point to a DNS server that supports updates and provide a key with 
+> the necessary permissions to make that update. 
+> If you configure a local DNS server then you must point your host towards it. 
+
+> **IMPORTANT (PKI):**<br/>
+> kube-eng will create a local PKI for you and protect all endpoints using certificates created with it. You must 
+> configure your host and any clients of these endpoints to trust CA kube-eng creates. The CA is re-used if it 
+> remains present, so you only need to re-establish trust on the host when you re-create it.
+> Doubleclick `~/.kube-eng/pki/ca.pem` to import it or run `security add-certificates ~/.kube-eng/pki/ca.pem`, 
+> followed by marking the imported CA certificate as 'Always Trust' in the Keychain Utility.
+
+## cluster-apply
+
+`uv run kube-eng cluster-apply` will create the cluster. You can monitor this via `kubectl get po -Aw`. This will 
+register the PKI and also deploy it's 'edge'. By default, that edge is using the Kubernetes Gateway API via Istio.
+
+> **IMPORTANT:**<br/>
+> Once cluster-apply successfully concludes, you must start `sudo cloud-provider-kind` in a separate terminal window 
+> and keep it running. cloud-provider-kind will discover the edge gateway and inject a local IP address to your 
+> localhost interface. All communication with endpoints exposed by the cluster occur via that local IP address.
+
+Note that kind will update your kubectl configuration with an mTLS context for administrative use. kube-eng 
+registers the cluster in the configured IdP as well. The IdP responds by default on `https://<host.idp.name>.<cluster.
+name>.<host.dns.zone>:<host.idp.port>`. On a host called 'covenant', this will be 'https://idp.covenant.k8s:8443' by 
+default. The default username for the IdP is 'admin'. It's password can be obtained via `uv run kube-eng config.get 
+admin_password`. You can declare a user in the IdP and grant it one of the three preconfigured client roles:
+
+* kube-eng-admin - has the `cluster-admin` cluster-role
+* kube-eng-viewer - has the `view` cluster-role
+* kube-eng-user - has the `edit` cluster-role
+
+These roles are assigned to users within the IdP and prefixed with `oidc:` for the Kubernetes API server (see 
+`src/kube_eng/ansible/project/roles/kind_configuration/templates/kube-eng-auth.yaml.j2`).
+
+kind switches the kubectl context to the admin context it generates by default. `cluster-apply` will create two new 
+'users' and contexts in your kubeconfig, one called `kube-eng-<cluster.name>-console` and another 
+`kube-eng-<cluster.name>-idp`. The console variant is for when no local browser is available. Switch to these to perform 
+IdP authenticated logins. It is a prerequisite to have krew and oidc-login installed for these.
+
+```shell
+# Pre-requisites
+$ brew install krew
+$ kubectl krew install oidc-login
+
+# Switch context
+$ k config use-context kube-eng-<cluster.name>-idp
+
+# This will open a browser to authenticate
+$ k get po -A
+```
+
+> **Note:**<br/
+> Caches are re-used when logging via browser. Be sure to log out of the IdP when you just came in as admin to 
+> define your user. It is useful to clear caches with `kubectl oidc-login clean`.
+
+## stack-apply
+
+`uv run kube-eng stack-apply` will deploy the chosen infrastructural stack onto your cluster. This will fail early when 
+`cloud-provider-kind` has not yet injected the local IP address. You can verify whether it has via `kubectl get svc 
+-n edge`. If the 'EXTERNAL-IP' is set then `cloud-provider-kind` has done what is needed.
+
+### How to build this
 
 At this stage of development, you are bound to operate within the sources, clone the repository, then
 
 ```shell
 $ uv sync
 $ . .venv/bin/activate
-```
-
-### Command-Line Interface (CLI)
-
-The CLI provides direct access to all kube-eng commands.
-
-```shell
-(kube-eng) $ uv run kube-eng --help
-usage: Kube-Eng 0.0.0.dev0 [-h] [--config CONFIG_PATH] [--verbose]
-                           {config,host-apply,cluster-apply,cluster-destroy,stack-apply,helm-repackage,dns-update} ...
-
-positional arguments:
-  {config,host-apply,cluster-apply,cluster-destroy,stack-apply,helm-repackage,dns-update}
-                        Sub-commands
-    config              Configuration commands
-    host-apply          Apply the host configuration
-    cluster-apply       Apply the cluster configuration
-    cluster-destroy     Destroy the cluster
-    stack-apply         Apply the stack configuration
-    helm-repackage      Repackage Helm charts
-    dns-update          Update DNS records
-
-options:
-  -h, --help            show this help message and exit
-  --config CONFIG_PATH  Path to the config file, defaults to /Users/imfeldma/.kube-eng
-  --verbose, -v         Enable verbose output
-```
-
-### Text-Based User Interface (TUI)
-
-The TUI provides an interactive, visual interface for managing your cluster configuration and deploy it. Use tab to move between fields, use 'Enter' to toggle checkboxes and activate buttons, use 'q' to quit.
-
-```shell
-(kube-eng) $ uv run kube-eng-tui
-```
-
-## Kubernetes Auth/z/n
-
-kube-eng will integrate the Kubernetes API server with the local IdP and create three roles:
-
-* kube-eng-admin - has the `cluster-admin` cluster-role
-* kube-eng-viewer - has the `view` cluster-role
-* kube-eng-user - has the `edit` cluster-role
-
-These roles are assigned to users within the IdP and prefixed with `oidc:` for the Kubernetes API server (see `src/kube_eng/ansible/project/roles/kind_configuration/templates/kube-eng-auth.yaml.j2`). The cluster-role-bindings are deployed as part of cluster-apply.
-
-kind switches the kubectl context to its admin context by default. `cluster-apply` will create two new 'users' and contexts in your kubeconfig, one called `kube-eng-CLUSTERNAME-console` and another `kube-eng-CLUSTERNAME-idp`. The console variant is for when no local browser is available. Switch to these to perform IdP authenticated logins. It is a prerequisite to have krew and oidc-login installed for these.
-
-```shell
-$ brew install krew
-$ kubectl krew install oidc-login
-$ kubectl oidc-login setup 
 ```
 
 ## Debugging
@@ -82,7 +124,8 @@ $ kubectl oidc-login setup
 You can use the `oidc-login` CLI to debug OIDC issues:
 
 ```shell
-k oidc-login setup --oidc-issuer-url=https://idp.nostromo.k8s:8443/realms/master --oidc-client-id=kube-eng-nostromo --grant-type=authcode --oidc-redirect-url=http://localhost:8000 --grant-type=authcode
+$ kubectl oidc-login setup --oidc-issuer-url=https://idp.nostromo.k8s:8443/realms/master 
+--oidc-client-id=kube-eng-nostromo --grant-type=authcode --oidc-redirect-url=http://localhost:8000 --grant-type=authcode
 ```
 
 ### Debug pod
