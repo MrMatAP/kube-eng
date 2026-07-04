@@ -11,11 +11,12 @@ None
 Role Variables
 --------------
 
-| Variable              | Type | Required | Default                                                       | Description                                                      |
-|-----------------------|------|----------|---------------------------------------------------------------|------------------------------------------------------------------|
-| dns_local_config_path | str  | true     | N/A                                                           | Directory in which to generate the configuration                 |
-| dns_local_zone        | str  | true     | N/A                                                           | Name of the zone to authoritatively host                         |
-| dns_local_update_key  | str  | true     | N/A                                                           | TSIG key to use for DDNS updates                                 |
+| Variable              | Type | Required | Default | Description                                      |
+|-----------------------|------|----------|---------|--------------------------------------------------|
+| dns_local_config_path | str  | true     | N/A     | Directory in which to generate the configuration |
+| dns_local_zone        | str  | true     | N/A     | Name of the zone to authoritatively host         |
+| dns_local_key_name    | str  | true     | N/A     | Name of the local TSIG update key                |
+| dns_local_key_secret  | str  | true     | N/A     | Secret of the local TSIG update key              |
 
 Dependencies
 ------------
@@ -35,7 +36,6 @@ Example Playbook
       name: dns_local_configuration
     vars:
       dns_local_config_path: "{{ host.dns.config_path }}"
-      dns_local_forwarders: "{{ host.dns.forwarders }}"
       dns_local_zone: "{{ host.dns.zone }}"
       dns_local_update_key: "{{ admin_password }}"
 ```

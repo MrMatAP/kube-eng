@@ -13,7 +13,7 @@ Role Variables
 
 | Variable | Type | Required | Default | Description                                                                  |
 |----------|------|----------|---------|------------------------------------------------------------------------------|
-| name     | str  | true     | N/A     | Name of the namespace                                                        |
+| ns       | str  | true     | N/A     | Name of the namespace                                                        |
 | mesh     | str  | false    | istio   | The mesh currently in use. One of 'none', 'istio-sidecar' or 'istio-ambient' |
 | waypoint | str  | false    | ''      | Enroll this namespace to use the specified Istio waypoint                    |
 
@@ -34,9 +34,9 @@ Example Playbook
     ansible.builtin.import_role:
       name: create_namespace
     vars:
-      name: "{{ stack.cert_manager.ns }}
+      ns: "{{ stack.cert_manager.ns }}"
       mesh: "{{ cluster.mesh.kind }}"
-      waypoint: true
+      waypoint: ""
 ```
 
 License
