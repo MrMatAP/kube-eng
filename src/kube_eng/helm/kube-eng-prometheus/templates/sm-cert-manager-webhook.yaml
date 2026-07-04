@@ -3,22 +3,23 @@ kind: ServiceMonitor
 metadata:
   labels:
     {{ include "common.labels" . | nindent 4 }}
+    app.kubernetes.io/name: sm-cert-manager-webhook
     app.kubernetes.io/monitored-by: prometheus
-  name: sm-edge
+  name: sm-cert-manager-webhook
 spec:
-  jobLabel: gateway.networking.k8s.io/gateway-name
+  jobLabel: app.kubernetes.io/component
   namespaceSelector:
     matchNames:
-    - {{ .Release.Namespace }}
+    - cert-manager
   selector:
     matchLabels:
-      app.kubernetes.io/name: {{ .Values.cluster.edge.name }}
-      gateway.networking.k8s.io/gateway-class-name: istio
+      app.kubernetes.io/component: webhook
+      app.kubernetes.io/instance: cert-manager
   endpoints:
   - honorLabels: false
     interval: 10s
     scheme: http
-    port: http-monitoring
+    port: metrics
     path: /metrics
     relabelings:
     - action: replace

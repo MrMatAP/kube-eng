@@ -10,7 +10,7 @@ spec:
   jobLabel: app.kubernetes.io/component
   namespaceSelector:
     matchNames:
-    - {{ .Release.Namespace }}
+      - cert-manager
   selector:
     matchLabels:
       app.kubernetes.io/component: controller
