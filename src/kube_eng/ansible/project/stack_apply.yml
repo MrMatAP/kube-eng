@@ -37,7 +37,7 @@
         name: prometheus
         create_namespace: false
         release_namespace: "{{ stack.prometheus.ns }}"
-        chart_ref: "{{ cluster.helm_registry_url }}/kube-eng-prometheus"
+        chart_ref: "{{ cluster.registry.url }}/kube-eng-prometheus"
         chart_version: "{{ host.tool.helm.chart_version }}"
         binary_path: "{{ host.tool.helm.path }}"
         wait: true
@@ -56,18 +56,17 @@
                 externalLabels:
                   origin_prometheus: "{{ cluster.name }}"
     - name: Update DNS with a record for Prometheus
-      community.general.nsupdate:
-        key_name: "{{ host.dns.key_name }}"
-        key_secret: "{{ host.dns.key_secret }}"
-        key_algorithm: "{{ host.dns.key_algorithm }}"
-        server: "{{ host.dns.server }}"
-        port: "{{ host.dns.port | int }}"
-        protocol: "{{ host.dns.protocol }}"
-        record: "{{ stack.prometheus.hostname }}.{{ host.dns.zone }}."
-        ttl: "{{ host.dns.ttl | int }}"
-        value: "{{ edge_gateway.resources[0].status.addresses[0].value }}"
-        type: A
-        state: present
+      ansible.builtin.import_role:
+        name: update_dns_record
+      vars:
+        dns_key_name: "{{ cluster.dns.key_name }}"
+        dns_key_secret: "{{ cluster.dns.key_secret }}"
+        dns_key_algorithm: "{{ cluster.dns.key_algorithm }}"
+        dns_server: "{{ cluster.dns.server }}"
+        dns_protocol: "{{ cluster.dns.protocol }}"
+        dns_ttl: "{{ cluster.dns.ttl | int }}"
+        dns_record: "{{ stack.prometheus.hostname }}.{{ host.dns.zone }}."
+        dns_value: "{{ edge_gateway.resources[0].status.addresses[0].value }}"
 
   - name: Deploy Grafana
     when: "stack.grafana.enabled | bool == true"
@@ -181,7 +180,7 @@
         name: grafana
         create_namespace: false
         release_namespace: "{{ stack.grafana.ns }}"
-        chart_ref: "{{ cluster.helm_registry_url }}/kube-eng-grafana"
+        chart_ref: "{{ cluster.registry.url }}/kube-eng-grafana"
         chart_version: "{{ host.tool.helm.chart_version }}"
         binary_path: "{{ host.tool.helm.path }}"
         wait: true
@@ -207,18 +206,17 @@
             prometheus:
               url: "http://prometheus-operated.{{ stack.prometheus.ns }}.svc.cluster.local:9090/"
     - name: Update DNS with a record for Grafana
-      community.general.nsupdate:
-        key_name: "{{ host.dns.key_name }}"
-        key_secret: "{{ host.dns.key_secret }}"
-        key_algorithm: "{{ host.dns.key_algorithm }}"
-        server: "{{ host.dns.server }}"
-        port: "{{ host.dns.port | int }}"
-        protocol: "{{ host.dns.protocol }}"
-        record: "{{ stack.grafana.hostname }}.{{ host.dns.zone }}."
-        ttl: "{{ host.dns.ttl | int }}"
-        value: "{{ edge_gateway.resources[0].status.addresses[0].value }}"
-        type: A
-        state: present
+      ansible.builtin.import_role:
+        name: update_dns_record
+      vars:
+        dns_key_name: "{{ cluster.dns.key_name }}"
+        dns_key_secret: "{{ cluster.dns.key_secret }}"
+        dns_key_algorithm: "{{ cluster.dns.key_algorithm }}"
+        dns_server: "{{ cluster.dns.server }}"
+        dns_protocol: "{{ cluster.dns.protocol }}"
+        dns_ttl: "{{ cluster.dns.ttl | int }}"
+        dns_record: "{{ stack.grafana.hostname }}.{{ host.dns.zone }}."
+        dns_value: "{{ edge_gateway.resources[0].status.addresses[0].value }}"
 
   - name: Deploy Alloy
     when: "stack.alloy.enabled | bool == true"
@@ -235,14 +233,14 @@
         cmd: |
           {{ host.tool.helm.path }} show chart
           --version {{ host.tool.helm.chart_version }}
-          "{{ cluster.helm_registry_url }}/kube-eng-alloy"
+          "{{ cluster.registry.url }}/kube-eng-alloy"
       register: alloy_chart_info
     - name: Deploy the Alloy Helm Chart
       kubernetes.core.helm:
         name: alloy
         create_namespace: false
         release_namespace: "{{ stack.alloy.ns }}"
-        chart_ref: "{{ cluster.helm_registry_url }}/kube-eng-alloy"
+        chart_ref: "{{ cluster.registry.url }}/kube-eng-alloy"
         chart_version: "{{ host.tool.helm.chart_version }}"
         binary_path: "{{ host.tool.helm.path }}"
         wait: true
@@ -261,18 +259,17 @@
                 app: alloy
                 version: "{{ (alloy_chart_info.stdout | from_yaml).appVersion }}"
     - name: Update DNS with a record for Alloy
-      community.general.nsupdate:
-        key_name: "{{ host.dns.key_name }}"
-        key_secret: "{{ host.dns.key_secret }}"
-        key_algorithm: "{{ host.dns.key_algorithm }}"
-        server: "{{ host.dns.server }}"
-        port: "{{ host.dns.port | int }}"
-        protocol: "{{ host.dns.protocol }}"
-        record: "{{ stack.alloy.hostname }}.{{ cluster.name }}.{{ host.dns.zone }}."
-        ttl: "{{ host.dns.ttl | int }}"
-        value: "{{ edge_gateway.resources[0].status.addresses[0].value }}"
-        type: A
-        state: present
+      ansible.builtin.import_role:
+        name: update_dns_record
+      vars:
+        dns_key_name: "{{ cluster.dns.key_name }}"
+        dns_key_secret: "{{ cluster.dns.key_secret }}"
+        dns_key_algorithm: "{{ cluster.dns.key_algorithm }}"
+        dns_server: "{{ cluster.dns.server }}"
+        dns_protocol: "{{ cluster.dns.protocol }}"
+        dns_ttl: "{{ cluster.dns.ttl | int }}"
+        dns_record: "{{ stack.alloy.hostname }}.{{ cluster.name }}.{{ host.dns.zone }}."
+        dns_value: "{{ edge_gateway.resources[0].status.addresses[0].value }}"
 
   - name: Deploy Loki
     when: "stack.loki.enabled | bool == true"
@@ -301,14 +298,14 @@
         cmd: |
           {{ host.tool.helm.path }} show chart
           --version {{ host.tool.helm.chart_version }}
-          "{{ cluster.helm_registry_url }}/kube-eng-loki"
+          "{{ cluster.registry.url }}/kube-eng-loki"
       register: loki_chart_info
     - name: Deploy the Loki Helm chart
       kubernetes.core.helm:
         name: loki
         create_namespace: false
         release_namespace: "{{ stack.loki.ns }}"
-        chart_ref: "{{ cluster.helm_registry_url }}/kube-eng-loki"
+        chart_ref: "{{ cluster.registry.url }}/kube-eng-loki"
         chart_version: "{{ host.tool.helm.chart_version }}"
         binary_path: "{{ host.tool.helm.path }}"
         wait: true
@@ -330,18 +327,17 @@
               app: loki
               version: "{{ (loki_chart_info.stdout | from_yaml).appVersion }}"
     - name: Update DNS with a record for Loki
-      community.general.nsupdate:
-        key_name: "{{ host.dns.key_name }}"
-        key_secret: "{{ host.dns.key_secret }}"
-        key_algorithm: "{{ host.dns.key_algorithm }}"
-        server: "{{ host.dns.server }}"
-        port: "{{ host.dns.port | int }}"
-        protocol: "{{ host.dns.protocol }}"
-        record: "{{ stack.loki.hostname }}.{{ host.dns.zone }}."
-        ttl: "{{ host.dns.ttl | int }}"
-        value: "{{ edge_gateway.resources[0].status.addresses[0].value }}"
-        type: A
-        state: present
+      ansible.builtin.import_role:
+        name: update_dns_record
+      vars:
+        dns_key_name: "{{ cluster.dns.key_name }}"
+        dns_key_secret: "{{ cluster.dns.key_secret }}"
+        dns_key_algorithm: "{{ cluster.dns.key_algorithm }}"
+        dns_server: "{{ cluster.dns.server }}"
+        dns_protocol: "{{ cluster.dns.protocol }}"
+        dns_ttl: "{{ cluster.dns.ttl | int }}"
+        dns_record: "{{ stack.loki.hostname }}.{{ host.dns.zone }}."
+        dns_value: "{{ edge_gateway.resources[0].status.addresses[0].value }}"
 
   - name: Deploy Tempo
     when: "stack.tempo.enabled | bool == true"
@@ -376,7 +372,7 @@
         name: tempo
         create_namespace: false
         release_namespace: "{{ stack.tempo.ns }}"
-        chart_ref: "{{ cluster.helm_registry_url }}/kube-eng-tempo"
+        chart_ref: "{{ cluster.registry.url }}/kube-eng-tempo"
         chart_version: "{{ host.tool.helm.chart_version }}"
         binary_path: "{{ host.tool.helm.path }}"
         wait: true
@@ -402,18 +398,17 @@
                     insecure: false
                     tls_insecure_skip_verify: true
     - name: Update DNS with a record for Tempo
-      community.general.nsupdate:
-        key_name: "{{ host.dns.key_name }}"
-        key_secret: "{{ host.dns.key_secret }}"
-        key_algorithm: "{{ host.dns.key_algorithm }}"
-        server: "{{ host.dns.server }}"
-        port: "{{ host.dns.port | int }}"
-        protocol: "{{ host.dns.protocol }}"
-        record: "{{ stack.tempo.hostname }}.{{ host.dns.zone }}."
-        ttl: "{{ host.dns.ttl | int }}"
-        value: "{{ edge_gateway.resources[0].status.addresses[0].value }}"
-        type: A
-        state: present
+      ansible.builtin.import_role:
+        name: update_dns_record
+      vars:
+        dns_key_name: "{{ cluster.dns.key_name }}"
+        dns_key_secret: "{{ cluster.dns.key_secret }}"
+        dns_key_algorithm: "{{ cluster.dns.key_algorithm }}"
+        dns_server: "{{ cluster.dns.server }}"
+        dns_protocol: "{{ cluster.dns.protocol }}"
+        dns_ttl: "{{ cluster.dns.ttl | int }}"
+        dns_record: "{{ stack.tempo.hostname }}.{{ host.dns.zone }}."
+        dns_value: "{{ edge_gateway.resources[0].status.addresses[0].value }}"
 
   - name: Deploy Kiali
     when: "stack.kiali.enabled | bool == true"
@@ -520,7 +515,7 @@
         name: kiali
         create_namespace: false
         release_namespace: "{{ stack.kiali.ns }}"
-        chart_ref: "{{ cluster.helm_registry_url }}/kube-eng-kiali"
+        chart_ref: "{{ cluster.registry.url }}/kube-eng-kiali"
         chart_version: "{{ host.tool.helm.chart_version }}"
         binary_path: "{{ host.tool.helm.path }}"
         wait: true
@@ -552,15 +547,14 @@
               external_url: "https://{{ stack.tempo.hostname }}.{{ host.dns.zone }}/"
               collector_url: "tempo.{{ stack.tempo.ns }}.svc.cluster.local:4317"
     - name: Update DNS with a record for Kiali
-      community.general.nsupdate:
-        key_name: "{{ host.dns.key_name }}"
-        key_secret: "{{ host.dns.key_secret }}"
-        key_algorithm: "{{ host.dns.key_algorithm }}"
-        server: "{{ host.dns.server }}"
-        port: "{{ host.dns.port | int }}"
-        protocol: "{{ host.dns.protocol }}"
-        record: "{{ stack.kiali.hostname }}.{{ host.dns.zone }}."
-        ttl: "{{ host.dns.ttl | int }}"
-        value: "{{ edge_gateway.resources[0].status.addresses[0].value }}"
-        type: A
-        state: present
+      ansible.builtin.import_role:
+        name: update_dns_record
+      vars:
+        dns_key_name: "{{ cluster.dns.key_name }}"
+        dns_key_secret: "{{ cluster.dns.key_secret }}"
+        dns_key_algorithm: "{{ cluster.dns.key_algorithm }}"
+        dns_server: "{{ cluster.dns.server }}"
+        dns_protocol: "{{ cluster.dns.protocol }}"
+        dns_ttl: "{{ cluster.dns.ttl | int }}"
+        dns_record: "{{ stack.kiali.hostname }}.{{ host.dns.zone }}."
+        dns_value: "{{ edge_gateway.resources[0].status.addresses[0].value }}"
