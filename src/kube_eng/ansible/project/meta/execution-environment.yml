@@ -1,0 +1,5 @@
+version: 3
+dependencies:
+  galaxy:
+    galaxy_collections:
+      - "kubernetes.core>=6.4.0"
