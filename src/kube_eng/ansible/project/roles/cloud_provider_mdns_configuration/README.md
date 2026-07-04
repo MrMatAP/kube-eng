@@ -13,7 +13,7 @@ Role Variables
 
 | Variable                 | Type | Required | Default | Description                                                     |
 |--------------------------|------|----------|---------|-----------------------------------------------------------------|
-| tool_cloud_provider_mdns | str  | false    | N/A     | Path to the cloud-provider-mdns executable                      |
+| tool_cloud_provider_mdns | str  | true     | N/A     | Path to the cloud-provider-mdns executable                      |
 | directory                | str  | true     | N/A     | Path to the the directory in which cloud-provider-mdns operates |
 | user                     | str  | true     | N/A     | User to run cloud-provider-mdns with                            |
 
@@ -35,7 +35,7 @@ Example Playbook
   ansible.builtin.import_role:
     name: mrmat.kube_eng.cloud_provider_mdns_configuration
   vars:
-    cloud_provider_mdns_executable: "{{ cloud_provider_mdns }}"
+    tool_cloud_provider_mdns: "{{ cloud_provider_mdns }}"
     directory: "{{ dist_dir }}/cloud-provider-mdns"
     user: "{{ user_id }}"
 ```

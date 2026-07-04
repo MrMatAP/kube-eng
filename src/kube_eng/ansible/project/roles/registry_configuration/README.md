@@ -13,7 +13,7 @@ Role Variables
 
 | Variable  | Type | Required | Default | Description                                                     |
 |-----------|------|----------|---------|-----------------------------------------------------------------|
-| directory | str  | true     | 1       | Path to the directory to hold air gapped registry configuration |
+| directory | str  | true     | N/A     | Path to the directory to hold air gapped registry configuration |
 
 Dependencies
 ------------
