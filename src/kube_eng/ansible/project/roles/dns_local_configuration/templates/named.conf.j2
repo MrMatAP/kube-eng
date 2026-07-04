@@ -60,7 +60,7 @@ tls google-tls {
 include "/etc/bind/update.key";
 
 controls {
-    inet 127.0.0.1 port 953 allow { localhost; } keys { "update-key"; };
+    inet 127.0.0.1 port 953 allow { localhost; } keys { "{{ dns_local_key_name }}"; };
 };
 
 statistics-channels {
