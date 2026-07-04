@@ -12,7 +12,7 @@ from kube_eng import __version__
 from .base import RootConfigAware
 
 from .cluster_config import ClusterConfig
-from .host_config import HostConfig, HostDNSKindEnum
+from .host_config import HostConfig
 from .stack_config import StackConfig
 
 
@@ -47,7 +47,7 @@ class RootConfig(BaseModel):
         Returns:
             Path to the cluster configuration file
         """
-        return self.config_path / "kube-eng.yaml"
+        return self.config_path / "config.yaml"
 
     @computed_field
     @property
@@ -88,7 +88,7 @@ class RootConfig(BaseModel):
         Returns:
             An initialised Config object.
         """
-        config_file_path = config_path / "kube-eng.yaml"
+        config_file_path = config_path / "config.yaml"
         if config_file_path.exists():
             return cls.model_validate(yaml.safe_load(config_file_path.open()))
         else:
@@ -114,7 +114,15 @@ class RootConfig(BaseModel):
 
         # If we are to use the local default DNS server and have not been
         # given a key_secret, we default to the base64-encoded admin password
-        if self.host.dns.kind == HostDNSKindEnum.local and self.host.dns.key_secret == "":
-            self.host.dns.key_secret = base64.b64encode(
+        if self.host.dns.enabled and self.cluster.dns.key_secret == "":
+            self.cluster.dns.key_secret = base64.b64encode(
                 bytes(self.admin_password, encoding='utf-8')
             ).decode('utf-8')
+
+        # Populate the cluster Helm registry if not provided
+        if self.cluster.registry.url == "" and self.host.registry.enabled:
+            self.cluster.registry.url = f"oci://{ self.host.registry.name }.{ self.host.dns.zone }:{ self.host.registry.host_port }/kube-eng"
+
+        # Populate the IdP database password if not provided
+        if self.host.idp.enabled and self.host.idp.db_password == "":
+            self.host.idp.db_password = self.admin_password

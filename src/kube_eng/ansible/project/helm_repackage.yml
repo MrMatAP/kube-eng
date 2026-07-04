@@ -11,7 +11,7 @@
       chart_name: "{{ item }}"
       chart_src_path: "{{ host.tool.helm.chart_path }}/{{ item }}"
       chart_pkg_path: "{{ host.tool.helm.packaged_chart_path }}"
-      chart_registry_url: "{{ cluster.helm_registry_url }}"
+      chart_registry_url: "{{ cluster.registry.url }}"
     loop:
     - kube-eng-cilium
     - kube-eng-istio

@@ -1,4 +1,3 @@
-import enum
 import pathlib
 
 from pydantic import Field, computed_field
@@ -26,7 +25,7 @@ class HostToolKubectlConfig(RootConfigAware):
     path: pathlib.Path = Field(default=pathlib.Path('/opt/homebrew/bin/kubectl'))
 
 class HostToolHelmConfig(RootConfigAware):
-    path: pathlib.Path = Field(default=pathlib.Path('/opt/homebrew/Cellar/helm@3/3.20.1/bin/helm'))
+    path: pathlib.Path = Field(default=pathlib.Path('/opt/homebrew/bin/helm'))
 
     @computed_field
     @property
@@ -61,7 +60,18 @@ class HostToolHelmConfig(RootConfigAware):
 class HostToolCloudProviderKindConfig(RootConfigAware):
     enabled: bool = Field(default=True)
     path: pathlib.Path = Field(default=pathlib.Path('/opt/homebrew/bin/cloud-provider-kind'))
-    url: str = Field(default='https://github.com/kubernetes-sigs/cloud-provider-kind/releases/download/v0.10.0/cloud-provider-kind_0.10.0_darwin_arm64.tar.gz')
+    arch: str = Field(default='arm64')
+    version: str = Field(default='0.11.1')
+
+    @computed_field
+    @property
+    def url(self) -> str:
+        """
+        Construct the download URL for the cloud-provider-kind binary using the provided version and system architecture
+        Returns:
+            The download URL for the cloud-provider-kind binary
+        """
+        return f"https://github.com/kubernetes-sigs/cloud-provider-kind/releases/download/v{self.version}/cloud-provider-kind_{self.version}_darwin_{self.arch}.tar.gz"
 
     @computed_field
     @property
@@ -141,24 +151,13 @@ class HostPKIConfig(RootConfigAware):
         """
         return self.config_path / "truststore.pem"
 
-class HostDNSKindEnum(str, enum.Enum):
-    local = "local"
-    remote = "remote"
-
 class HostDNSConfig(RootConfigAware):
-    kind: HostDNSKindEnum = Field(default=HostDNSKindEnum.local, description='Whether to run a local DNS server in a container image or use a remote one')
+    enabled: bool = Field(default=False, description='Whether to enable a local DNS server on this host')
     name: str = Field(default="dns", description='Name of the DNS container')
     image: str = Field(default="ubuntu/bind9:latest", description="DNS container image")
     cache_volume_name: str = Field(default="dns-volume-cache", description='Name of the DNS cache volume')
     zones_volume_name: str = Field(default="dns-volume-zones", description='Name of the DNS volume for zones')
     server: str = Field(default="127.0.0.1", description="DNS server IP address. This should be 127.0.0.1 for local DNS")
-    port: int = Field(default=53, description="DNS server port to bind, used for local DNS server only")
-    control_port: int = Field(default=953, description="DNS server control port, used for local DNS server only")
-    key_name: str = Field(default="update-key", description='Name of the key to sign dynamic DNS updates with')
-    key_algorithm: str = Field(default="hmac-sha256", description='Algorithm to use for signing dynamic DNS updates')
-    key_secret: str = Field(default="", description='Secret containing the key to sign dynamic DNS updates with. If empty, defaults to the admin password')
-    protocol: str = Field(default="tcp", description="DNS server protocol for DNS updates")
-    ttl: int = Field(default=1800, description="Time to live (TTL) for DNS records")
     host_ip: str = Field(default="127.0.0.1", description="IP address to expose the DNS server on the host")
     host_port: int = Field(default=53, description="Port to expose the DNS server on the host")
     host_control_port: int = Field(default=953, description="Port to expose the DNS server control port on the host")
@@ -183,41 +182,23 @@ class HostDNSConfig(RootConfigAware):
         """
         return f'{self._root_config.cluster.name}.k8s'
 
-class HostRegistryConfig(RootConfigAware):
-    enabled: bool = Field(default=True)
-    name: str = Field(default="registry")
-    port: int = Field(default=5000)
-    image: str = Field(default="ghcr.io/project-zot/zot-linux-arm64:v2.1.15")
-    volume_name: str = Field(default="registry-volume")
-    host_ip: str = Field(default="127.0.0.1", description="IP address to expose the registry on the host")
-    host_port: int = Field(default=5001, description="Port to expose the registry on the host")
-
-    @computed_field
-    @property
-    def config_path(self) -> pathlib.Path:
-        """
-        Directory to store registry configuration in.
-        Returns:
-            Path to the registry configuration directory.
-        """
-        return self._root_config.config_path / "registry"
-
 class HostPostgresqlConfig(RootConfigAware):
-    enabled: bool = Field(default=True)
-    name: str = Field(default="pg")
-    port: int = Field(default=5432)
-    image: str = Field(default="postgres:16-alpine")
-    volume_name: str = Field(default="pg-volume")
+    enabled: bool = Field(default=True, description="Whether to enable a local PostgreSQL server on this host")
+    name: str = Field(default="pg", description="Name of the PostgreSQL container")
+    image: str = Field(default="postgres:18-alpine", description="PostgreSQL container image")
+    volume_name: str = Field(default="pg-volume", description="Name of the PostgreSQL volume")
     host_ip: str = Field(default="127.0.0.1", description="IP address to expose the PostgreSQL server on the host")
     host_port: int = Field(default=5432, description="Port to expose the PostgreSQL server on the host")
 
 class HostIDPConfig(RootConfigAware):
-    enabled: bool = Field(default=True)
-    name: str = Field(default="idp")
-    image: str = Field(default="keycloak/keycloak:26.5.6")
-    port: int = Field(default=8443)
-    db_user: str = Field(default="idp")
-    db_name: str = Field(default="idp")
+    enabled: bool = Field(default=True, description="Whether to enable a local IDP server on this host")
+    name: str = Field(default="idp", description="Name of the IDP container")
+    image: str = Field(default="keycloak/keycloak:26.5.6", description="IDP container image")
+    db_host: str = Field(default="pg.kind", description="Host for the IDP database")
+    db_port: int = Field(default=5432, description="Port for the IDP database")
+    db_user: str = Field(default="idp", description="Username for the IDP database")
+    db_password: str = Field(default="", description="Password for the IDP database")
+    db_name: str = Field(default="idp", description="Name of the IDP database")
     host_ip: str = Field(default="127.0.0.1", description="IP address to expose the IDP server on the host")
     host_port: int = Field(default=8443, description="Port to expose the IDP server on the host")
 
@@ -232,12 +213,12 @@ class HostIDPConfig(RootConfigAware):
         return self._root_config.config_path / "idp"
 
 class HostS3Config(RootConfigAware):
-    enabled: bool = Field(default=True)
-    name: str = Field(default="s3")
-    port: int = Field(default=9000)
-    console_port: int = Field(default=9001)
-    image: str = Field(default="rustfs/rustfs:latest")
-    volume_name: str = Field(default="s3-volume")
+    enabled: bool = Field(default=True, description="Whether to enable a local S3-compatible server on this host")
+    name: str = Field(default="s3", description="Name of the S3 server container")
+    port: int = Field(default=9000, description="Port to run the S3 server on inside the container")
+    console_port: int = Field(default=9001, description="Port to run the S3 console on inside the container")
+    image: str = Field(default="rustfs/rustfs:latest", description="S3 server container image")
+    volume_name: str = Field(default="s3-volume", description="Name of the S3 volume")
     host_ip: str = Field(default="127.0.0.1", description="IP address to expose the S3 server on the host")
     host_port: int = Field(default=9000, description="Port to expose the S3 server on the host")
     host_console_port: int = Field(default=9001, description="Port to expose the S3 console on the host")
@@ -252,12 +233,31 @@ class HostS3Config(RootConfigAware):
         """
         return self._root_config.config_path / "s3"
 
+class HostRegistryConfig(RootConfigAware):
+    enabled: bool = Field(default=True, description="Whether to enable a local OCI registry on this host")
+    name: str = Field(default="registry", description="Name of the OCI registry container")
+    port: int = Field(default=5000, description="Port to run the OCI registry on inside the container")
+    image: str = Field(default="ghcr.io/project-zot/zot-linux-arm64:v2.1.15", description="OCI registry container image")
+    volume_name: str = Field(default="registry-volume", description="Name of the OCI registry volume")
+    host_ip: str = Field(default="127.0.0.1", description="IP address to expose the OCI registry on the host")
+    host_port: int = Field(default=5001, description="Port to expose the OCI registry on the host")
+
+    @computed_field
+    @property
+    def config_path(self) -> pathlib.Path:
+        """
+        Directory to store registry configuration in.
+        Returns:
+            Path to the registry configuration directory.
+        """
+        return self._root_config.config_path / "registry"
+
 class HostKafkaConfig(RootConfigAware):
-    enabled: bool = Field(default=True)
-    name: str = Field(default="kafka")
-    port: int = Field(default=9092)
-    image: str = Field(default="apache/kafka:latest")
-    volume_name: str = Field(default="kafka-volume")
+    enabled: bool = Field(default=True, description="Whether to enable a local Kafka server on this host")
+    name: str = Field(default="kafka", description="Name of the Kafka server container")
+    port: int = Field(default=9092, description="Port to run the Kafka server on inside the container")
+    image: str = Field(default="apache/kafka:latest", description="Kafka server container image")
+    volume_name: str = Field(default="kafka-volume", description="Name of the Kafka volume")
     host_ip: str = Field(default="127.0.0.1", description="IP address to expose the Kafka server on the host")
     host_port: int = Field(default=9092, description="Port to expose the Kafka server on the host")
 
