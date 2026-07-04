@@ -1,7 +1,23 @@
 {
   "permissions": {
     "allow": [
-      "mcp__ide__getDiagnostics"
+      "mcp__ide__getDiagnostics",
+      "Read(//Users/imfeldma/.claude/plugins/**)",
+      "Read(//Users/imfeldma/.claude/**)"
     ]
-  }
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit|MultiEdit|NotebookEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/post-tool-call.py"
+          }
+        ]
+      }
+    ]
+  },
+  "outputStyle": "default"
 }

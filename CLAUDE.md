@@ -94,11 +94,25 @@ Playbooks are triggered from the TUI via keyboard bindings (`a` = Actions modal,
 
 Playbooks: `host_apply.yml`, `cluster_apply.yml`, `cluster_destroy.yml`, `stack_apply.yml`, `helm_repackage.yml`, `dns_update.yml`.
 
+### Ansible Roles (`src/kube_eng/ansible/project/roles/`)
+
+| Role | Purpose |
+|------|---------|
+| `cloud_provider_kind_configuration` | kind cloud provider setup |
+| `cloud_provider_mdns_configuration` | mDNS cloud provider config |
+| `create_namespace` | Kubernetes namespace creation |
+| `dns_local_configuration` | Local BIND DNS server configuration |
+| `helm_publish` | Package and publish Helm charts to a registry |
+| `issue_tls_certificate` | Generate private key, CSR, and signed TLS certificate into `var/pki/` |
+| `kind_configuration` | kind cluster configuration |
+| `registry_configuration` | Local container registry setup |
+| `update_dns_record` | DDNS update via TSIG key to the local DNS server |
+
 The `RootConfig` model is dumped as JSON and passed as `extravars`, so Ansible variables mirror the Python config hierarchy (e.g., `host.registry.port`).
 
 ### Helm Charts (`src/kube_eng/helm/`)
 
-Wrapper charts for: cert-manager, edge (Traefik/Istio gateway), Prometheus, Alloy, Loki, Keycloak operator + Keycloak, Grafana, Jaeger (v1 + v2), Kiali. Charts are packaged by `make charts` into `.dist/charts/`.
+Wrapper charts for: cert-manager, cilium (CNI), edge (Traefik/Istio gateway), grafana, istio, kiali, loki, prometheus, alloy, tempo. Charts are packaged by `make charts` into `.dist/charts/`.
 
 ## Key File Locations
 
