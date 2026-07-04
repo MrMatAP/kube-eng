@@ -1,0 +1,9 @@
+#SPDX-License-Identifier: MIT-0
+galaxy_info:
+  author: MrMatAP
+  description: Create a private key, generate a CSR, and sign it with the local CA
+  company: The MrMat Organisation
+  license: MIT
+  min_ansible_version: 2.1
+  galaxy_tags: ['kube-eng']
+dependencies: []

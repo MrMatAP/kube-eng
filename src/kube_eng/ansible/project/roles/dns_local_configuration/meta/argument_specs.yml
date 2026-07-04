@@ -12,7 +12,11 @@ argument_specs:
         description: Name of the zone to authoritatively host
         type: str
         required: true
-      dns_local_update_key:
-        description: TSIG key to use for DDNS updates
+      dns_local_key_name:
+        description: Name of the TSIG key to use for DDNS updates
+        type: str
+        required: false
+      dns_local_key_secret:
+        description: Secret of the TSIG key to use for DDNS updates
         type: str
         required: true

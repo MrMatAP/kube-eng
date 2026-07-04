@@ -2,3 +2,4 @@
 ---
 # defaults file for dns_local_configuration
 dns_local_zone: k8s
+dns_local_key_name: update-key

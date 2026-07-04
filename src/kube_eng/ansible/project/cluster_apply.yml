@@ -15,7 +15,7 @@
       chart_name: "{{ item }}"
       chart_src_path: "{{ host.tool.helm.chart_path }}/{{ item }}"
       chart_pkg_path: "{{ host.tool.helm.packaged_chart_path }}"
-      chart_registry_url: "{{ cluster.helm_registry_url }}"
+      chart_registry_url: "{{ cluster.registry.url }}"
     loop:
     - kube-eng-cilium
     - kube-eng-istio
@@ -62,8 +62,8 @@
         auth_username: admin
         auth_password: "{{ admin_password }}"
         client_id: "kube-eng-{{ cluster.name }}"
-        name: "Kube Eng :: Cluster {{ cluster.name }}"
-        description: "OIDC Authentication for the Kube Eng Cluster"
+        name: "Kube Eng :: Cluster :: {{ cluster.name }}"
+        description: "OIDC Authentication for the {{ cluster.name }} Kube Eng Cluster"
         enabled: true
         protocol: openid-connect
         public_client: true
@@ -158,7 +158,7 @@
         pod_subnet_cidr: "{{ cluster.pod_subnet_cidr }}"
         service_subnet_cidr: "{{ cluster.service_subnet_cidr }}"
         cni: "{{ cluster.cni.kind }}"
-        oidc_discovery_url: "https://{{ host.idp.name }}.{{ host.dns.zone }}:{{ host.idp.port }}/realms/master/.well-known/openid-configuration"
+        oidc_discovery_url: "https://{{ host.idp.name }}.{{ host.dns.zone }}:{{ host.idp.host_port }}/realms/master/.well-known/openid-configuration"
         oidc_issuer_url: "{{ cluster.oidc.issuer_url }}"
         oidc_client_id: "kube-eng-{{ cluster.name }}"
         oidc_username_claim: "{{ cluster.oidc.username_claim }}"
@@ -270,22 +270,22 @@
 
   - name: Apply CRDs
     block:
-    - name: Apply the ServiceMonitor CRD
-      kubernetes.core.k8s:
-        state: present
-        apply: true
-        src: "{{ preheat_path }}/servicemonitor-crd.yaml"
-        server_side_apply:
-          field_manager: ansible
-        wait: true
-    - name: Apply the PodMonitor CRD
-      kubernetes.core.k8s:
-        state: present
-        apply: true
-        src: "{{ preheat_path }}/podmonitor-crd.yaml"
-        server_side_apply:
-          field_manager: ansible
-        wait: true
+#    - name: Apply the ServiceMonitor CRD
+#      kubernetes.core.k8s:
+#        state: present
+#        apply: true
+#        src: "{{ preheat_path }}/servicemonitor-crd.yaml"
+#        server_side_apply:
+#          field_manager: ansible
+#        wait: true
+#    - name: Apply the PodMonitor CRD
+#      kubernetes.core.k8s:
+#        state: present
+#        apply: true
+#        src: "{{ preheat_path }}/podmonitor-crd.yaml"
+#        server_side_apply:
+#          field_manager: ansible
+#        wait: true
     - name: Apply the Gateway API CRDs
       kubernetes.core.k8s:
         state: present
@@ -303,7 +303,7 @@
         name: cilium-system
         create_namespace: true
         release_namespace: cilium
-        chart_ref: ""{{ cluster.helm_registry_url }}/kube-eng-cilium"
+        chart_ref: "{{ cluster.registry.url }}/kube-eng-cilium"
         chart_version: "{{ host.tool.helm.chart_version }}"
         binary_path: "{{ host.tool.helm.path }}"
         wait: true
@@ -330,7 +330,7 @@
         name: istio
         create_namespace: true
         release_namespace: "{{ cluster.mesh.ns }}"
-        chart_ref: ""{{ cluster.helm_registry_url }}/kube-eng-istio"
+        chart_ref: "{{ cluster.registry.url }}/kube-eng-istio"
         chart_version: "{{ host.tool.helm.chart_version }}"
         binary_path: "{{ host.tool.helm.path }}"
         wait: true
@@ -481,7 +481,7 @@
         name: cert-manager
         create_namespace: false
         release_namespace: "{{ cluster.pki.ns }}"
-        chart_ref: "{{ cluster.helm_registry_url }}/kube-eng-cert-manager"
+        chart_ref: "{{ cluster.registry.url }}/kube-eng-cert-manager"
         chart_version: "{{ host.tool.helm.chart_version }}"
         binary_path: "{{ host.tool.helm.path }}"
         wait: true
@@ -504,7 +504,7 @@
         name: edge
         create_namespace: false
         release_namespace: "{{ cluster.edge.ns }}"
-        chart_ref: "{{ cluster.helm_registry_url }}/kube-eng-edge"
+        chart_ref: "{{ cluster.registry.url }}/kube-eng-edge"
         chart_version: "{{ host.tool.helm.chart_version }}"
         binary_path: "{{ host.tool.helm.path }}"
         wait: true

@@ -28,3 +28,4 @@
   - docker.io
   - quay.io
   - ghcr.io
+  - registry.istio.io
