@@ -68,6 +68,11 @@
           "urls": ["https://ghcr.io"],
           "onDemand": true,
           "tlsVerify": true
+        },
+        {
+          "urls": ["https://registry.istio.io"],
+          "onDemand": true,
+          "tlsVerify": true
         }
       ]
     }
