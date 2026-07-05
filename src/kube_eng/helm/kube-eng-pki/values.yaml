@@ -1,20 +1,21 @@
 #
-# Default values for Kube Eng :: cert-manager
+# Default values for Kube Eng :: PKI
 
 #
 # Dependency Chart overrides
 
-overrides:
+cert-manager:
   global:
     commonLabels:
       sidecar.istio.io/inject: "false"
   crds:
-    enabled: false
+    enabled: true
     keep: true
   replicaCount: 1
   fullnameOverride: cert-manager
   serviceAccount:
     create: true
+    name: sa-cert-manager
   config:
     enableGatewayAPI: true
   prometheus:
@@ -23,4 +24,3 @@ overrides:
       enabled: false
     podmonitor:
       enabled: false
-

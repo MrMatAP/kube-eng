@@ -1,0 +1,21 @@
+#
+# Default values for Kube Eng :: PKI Trust
+
+#
+# Dependency Chart overrides
+
+trust-manager:
+  crds:
+    enabled: true
+    keep: true
+  replicaCount: 1
+  serviceAccount:
+    create: true
+    # There is a bug in the current trust-manager that does not provision
+    # a custom service account correctly
+    #name: sa-trust-manager
+  app:
+    minTLSVersion: "VersionTLS13"
+    cipherSuites: "TLS_AES_128_GCM_SHA256,TLS_AES_256_GCM_SHA384,TLS_CHACHA20_POLY1305_SHA256"
+    trust:
+      namespace: cert-manager
