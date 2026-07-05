@@ -23,12 +23,12 @@ argument_specs:
         description: Path to the directory to hold kind configuration
         type: str
         required: true
-      ca_file_path:
-        description: Path to the CA trust file which has signed the air gapped registry certificate
+      truststore_path:
+        description: Path to the CA trust store
         type: str
         required: true
-      airgap_registry_name:
-        description: Name of the airgap registry
+      airgap_registry_url:
+        description: URL of the airgap registry
         type: str
         required: true
       pod_subnet_cidr:

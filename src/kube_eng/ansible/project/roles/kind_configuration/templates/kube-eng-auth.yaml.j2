@@ -8,7 +8,7 @@ jwt:
     audiences:
     - "{{ oidc_client_id }}"
     certificateAuthority: |
-      {{ lookup('ansible.builtin.file', ca_file_path) | indent(6) }}
+      {{ lookup('ansible.builtin.file', truststore_path) | indent(6) }}
 {#  claimValidationRules:#}
 {#  - expression: 'claims.exp - claims.nbf <= 86400'#}
 {#    message: total token lifetime must not exceed 24 hours#}

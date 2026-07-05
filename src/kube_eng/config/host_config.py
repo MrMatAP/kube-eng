@@ -110,6 +110,7 @@ class HostPKIConfig(RootConfigAware):
     key_curve: str = Field(default="secp384r1")
     key_size: int = Field(default=4096)
     crt_validity: str = Field(default="+825d")
+    extra_ca_path: pathlib.Path | None = Field(default=None, description="Path to any extra certificates to add to the trust store")
 
     @computed_field
     @property

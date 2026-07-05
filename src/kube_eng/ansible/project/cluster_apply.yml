@@ -15,11 +15,12 @@
       chart_name: "{{ item }}"
       chart_src_path: "{{ host.tool.helm.chart_path }}/{{ item }}"
       chart_pkg_path: "{{ host.tool.helm.packaged_chart_path }}"
-      chart_registry_url: "{{ cluster.registry.url }}"
+      chart_registry_url: "{{ cluster.registry.url }}/kube-eng/"
     loop:
     - kube-eng-cilium
     - kube-eng-istio
-    - kube-eng-cert-manager
+    - kube-eng-pki
+    - kube-eng-pki-trust
     - kube-eng-prometheus
     - kube-eng-edge
     - kube-eng-loki
@@ -149,12 +150,13 @@
       ansible.builtin.import_role:
         name: kind_configuration
       vars:
+        image: "{{ cluster.image }}"
         control_plane_nodes: "{{ cluster.control_plane_nodes | int }}"
         worker_nodes: "{{ cluster.worker_nodes | int }}"
         cluster_name: "{{ cluster.name }}"
         directory: "{{ host.tool.kind.config_path }}"
-        ca_file_path: "{{ host.pki.ca_path }}"
-        airgap_registry_name: "{{ host.registry.name }}"
+        truststore_path: "{{ host.pki.ca_truststore_path }}"
+        airgap_registry_url: "{{ cluster.registry.https_url }}"
         pod_subnet_cidr: "{{ cluster.pod_subnet_cidr }}"
         service_subnet_cidr: "{{ cluster.service_subnet_cidr }}"
         cni: "{{ cluster.cni.kind }}"
@@ -270,22 +272,6 @@
 
   - name: Apply CRDs
     block:
-#    - name: Apply the ServiceMonitor CRD
-#      kubernetes.core.k8s:
-#        state: present
-#        apply: true
-#        src: "{{ preheat_path }}/servicemonitor-crd.yaml"
-#        server_side_apply:
-#          field_manager: ansible
-#        wait: true
-#    - name: Apply the PodMonitor CRD
-#      kubernetes.core.k8s:
-#        state: present
-#        apply: true
-#        src: "{{ preheat_path }}/podmonitor-crd.yaml"
-#        server_side_apply:
-#          field_manager: ansible
-#        wait: true
     - name: Apply the Gateway API CRDs
       kubernetes.core.k8s:
         state: present
@@ -303,7 +289,7 @@
         name: cilium-system
         create_namespace: true
         release_namespace: cilium
-        chart_ref: "{{ cluster.registry.url }}/kube-eng-cilium"
+        chart_ref: "{{ cluster.registry.url }}/kube-eng/kube-eng-cilium"
         chart_version: "{{ host.tool.helm.chart_version }}"
         binary_path: "{{ host.tool.helm.path }}"
         wait: true
@@ -330,7 +316,7 @@
         name: istio
         create_namespace: true
         release_namespace: "{{ cluster.mesh.ns }}"
-        chart_ref: "{{ cluster.registry.url }}/kube-eng-istio"
+        chart_ref: "{{ cluster.registry.url }}/kube-eng/kube-eng-istio"
         chart_version: "{{ host.tool.helm.chart_version }}"
         binary_path: "{{ host.tool.helm.path }}"
         wait: true
@@ -443,14 +429,20 @@
       vars:
         ns: "{{ cluster.pki.ns }}"
         mesh: "{{ cluster.mesh.kind }}"
-    - name: Apply the cert-manager CRDs
-      kubernetes.core.k8s:
-        state: present
-        apply: true
-        src: "{{ preheat_path }}/cert-manager-crds.yaml"
-        server_side_apply:
-          field_manager: ansible
+    - name: Deploy the PKI Helm chart
+      kubernetes.core.helm:
+        name: kube-eng-pki
+        create_namespace: false
+        release_namespace: "{{ cluster.pki.ns }}"
+        chart_ref: "{{ cluster.registry.url }}/kube-eng/kube-eng-pki"
+        chart_version: "{{ host.tool.helm.chart_version }}"
+        binary_path: "{{ host.tool.helm.path }}"
         wait: true
+        values:
+          cert-manager:
+            namespace: "{{ cluster.pki.ns }}"
+            prometheus:
+              enabled: "{{ stack.prometheus.enabled | bool }}"
     - name: Create a secret from the local CA files
       kubernetes.core.k8s:
         state: present
@@ -476,20 +468,41 @@
           spec:
             ca:
               secretName: cluster-ca
-    - name: Deploy the cert-manager Helm chart
+    - name: Deploy the PKI Trust Helm chart
       kubernetes.core.helm:
-        name: cert-manager
+        name: kube-eng-pki-trust
         create_namespace: false
         release_namespace: "{{ cluster.pki.ns }}"
-        chart_ref: "{{ cluster.registry.url }}/kube-eng-cert-manager"
+        chart_ref: "{{ cluster.registry.url }}/kube-eng/kube-eng-pki-trust"
         chart_version: "{{ host.tool.helm.chart_version }}"
         binary_path: "{{ host.tool.helm.path }}"
         wait: true
         values:
-          overrides:
+          trust-manager:
+            app:
+              trust:
+                namespace: "{{ cluster.pki.ns }}"
+    - name: Declare the cluster CA trust bundle
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: trust.cert-manager.io/v1alpha1
+          kind: Bundle
+          metadata:
+            name: ca-trust
             namespace: "{{ cluster.pki.ns }}"
-            prometheus:
-              enabled: "{{ stack.prometheus.enabled | bool }}"
+          spec:
+            sources:
+              - useDefaultCAs: true
+              - secret:
+                  name: cluster-ca
+                  key: tls.crt
+            target:
+              configMap:
+                key: "truststore.pem"
+              additionalFormats:
+                pkcs12:
+                  key: "truststore.pkcs12"
 
   - name: Deploy Edge
     block:
@@ -504,7 +517,7 @@
         name: edge
         create_namespace: false
         release_namespace: "{{ cluster.edge.ns }}"
-        chart_ref: "{{ cluster.registry.url }}/kube-eng-edge"
+        chart_ref: "{{ cluster.registry.url }}/kube-eng/kube-eng-edge"
         chart_version: "{{ host.tool.helm.chart_version }}"
         binary_path: "{{ host.tool.helm.path }}"
         wait: true

@@ -1,5 +1,5 @@
-server = "https://{{ host.registry.name }}"
+server = "{{ airgap_registry_url }}"
 
-[host."https://{{ host.registry.name }}:5000"]
+[host."{{ airgap_registry_url }}"]
   capabilities = ["pull", "resolve"]
   ca = "/usr/local/share/ca-certificates/kube-eng/ca.crt"

@@ -121,7 +121,7 @@ class RootConfig(BaseModel):
 
         # Populate the cluster Helm registry if not provided
         if self.cluster.registry.url == "" and self.host.registry.enabled:
-            self.cluster.registry.url = f"oci://{ self.host.registry.name }.{ self.host.dns.zone }:{ self.host.registry.host_port }/kube-eng"
+            self.cluster.registry.url = f"oci://{ self.host.registry.name }.{ self.host.dns.zone }:{ self.host.registry.host_port }/"
 
         # Populate the IdP database password if not provided
         if self.host.idp.enabled and self.host.idp.db_password == "":

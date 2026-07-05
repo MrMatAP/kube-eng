@@ -60,6 +60,12 @@
         path: "{{ host.pki.ca_truststore_path }}"
         line: "{{ lookup('ansible.builtin.file', host.pki.ca_path) }}"
         insertafter: EOF
+    - name: Append any extra CA certificates to the trust store
+      when: host.pki.extra_ca_path is defined
+      ansible.builtin.lineinfile:
+        path: "{{ host.pki.ca_truststore_path }}"
+        line: "{{ lookup('ansible.builtin.file', host.pki.extra_ca_path) }}"
+        insertafter: EOF
 
   - name: Create a local DNS server, if enabled
     when: host.dns.enabled

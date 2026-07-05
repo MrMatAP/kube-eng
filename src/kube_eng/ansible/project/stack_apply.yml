@@ -37,7 +37,7 @@
         name: prometheus
         create_namespace: false
         release_namespace: "{{ stack.prometheus.ns }}"
-        chart_ref: "{{ cluster.registry.url }}/kube-eng-prometheus"
+        chart_ref: "{{ cluster.registry.url }}/kube-eng/kube-eng-prometheus"
         chart_version: "{{ host.tool.helm.chart_version }}"
         binary_path: "{{ host.tool.helm.path }}"
         wait: true
@@ -110,7 +110,7 @@
         auth_username: admin
         auth_password: "{{ admin_password }}"
         client_id: "{{ stack.grafana.client_id }}"
-        name: "Kube Eng :: Grafana"
+        name: "Kube Eng :: Grafana :: {{ cluster.name }}"
         description: "Grafana metrics visualisation for the Kube Eng cluster"
         enabled: true
         protocol: openid-connect
@@ -180,7 +180,7 @@
         name: grafana
         create_namespace: false
         release_namespace: "{{ stack.grafana.ns }}"
-        chart_ref: "{{ cluster.registry.url }}/kube-eng-grafana"
+        chart_ref: "{{ cluster.registry.url }}/kube-eng/kube-eng-grafana"
         chart_version: "{{ host.tool.helm.chart_version }}"
         binary_path: "{{ host.tool.helm.path }}"
         wait: true
@@ -240,7 +240,7 @@
         name: alloy
         create_namespace: false
         release_namespace: "{{ stack.alloy.ns }}"
-        chart_ref: "{{ cluster.registry.url }}/kube-eng-alloy"
+        chart_ref: "{{ cluster.registry.url }}/kube-eng/kube-eng-alloy"
         chart_version: "{{ host.tool.helm.chart_version }}"
         binary_path: "{{ host.tool.helm.path }}"
         wait: true
@@ -305,7 +305,7 @@
         name: loki
         create_namespace: false
         release_namespace: "{{ stack.loki.ns }}"
-        chart_ref: "{{ cluster.registry.url }}/kube-eng-loki"
+        chart_ref: "{{ cluster.registry.url }}/kube-eng/kube-eng-loki"
         chart_version: "{{ host.tool.helm.chart_version }}"
         binary_path: "{{ host.tool.helm.path }}"
         wait: true
@@ -372,7 +372,7 @@
         name: tempo
         create_namespace: false
         release_namespace: "{{ stack.tempo.ns }}"
-        chart_ref: "{{ cluster.registry.url }}/kube-eng-tempo"
+        chart_ref: "{{ cluster.registry.url }}/kube-eng/kube-eng-tempo"
         chart_version: "{{ host.tool.helm.chart_version }}"
         binary_path: "{{ host.tool.helm.path }}"
         wait: true
@@ -515,7 +515,7 @@
         name: kiali
         create_namespace: false
         release_namespace: "{{ stack.kiali.ns }}"
-        chart_ref: "{{ cluster.registry.url }}/kube-eng-kiali"
+        chart_ref: "{{ cluster.registry.url }}/kube-eng/kube-eng-kiali"
         chart_version: "{{ host.tool.helm.chart_version }}"
         binary_path: "{{ host.tool.helm.path }}"
         wait: true

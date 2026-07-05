@@ -86,8 +86,14 @@ class ClusterDNSConfig(RootConfigAware):
 class ClusterRegistryConfig(RootConfigAware):
     url: str = Field(default="", description="URL of the registry to use for images and Helm charts")
 
+    @computed_field
+    @property
+    def https_url(self) -> str:
+        return self.url.replace('oci', 'https')
+
 class ClusterConfig(RootConfigAware):
     name: str = Field(description="Name of the cluster", default_factory=socket.gethostname)
+    image: str = Field(description="Image to use for the cluster", default='kindest/node:v1.36.1@sha256:3489c7674813ba5d8b1a9977baea8a6e553784dab7b84759d1014dbd78f7ebd5')
     pod_subnet_cidr: str = Field(default="10.244.0.0/16")
     service_subnet_cidr: str = Field(default="10.96.0.0/12")
     control_plane_nodes: int = Field(default=1)

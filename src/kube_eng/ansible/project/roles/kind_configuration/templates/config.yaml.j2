@@ -9,6 +9,7 @@ networking:
 nodes:
 {% for cp in range(0, control_plane_nodes | int) %}
 - role: control-plane
+  image: {{ image }}
   kubeadmConfigPatches:
   - |
     kind: ClusterConfiguration
@@ -38,17 +39,18 @@ nodes:
   - containerPath: /etc/containerd/certs.d
     hostPath: "{{ directory }}/certs.d"
   - containerPath: /usr/local/share/ca-certificates/kube-eng/ca.crt
-    hostPath: "{{ ca_file_path }}"
+    hostPath: "{{ truststore_path }}"
   - containerPath: /opt/extra-config/kube-eng-auth.yaml
     hostPath: "{{ directory }}/kube-eng-auth.yaml"
 {% endfor %}
 {% for worker in range(0, worker_nodes | int) %}
 - role: worker
+  image: {{ image }}
   extraMounts:
   - containerPath: /etc/containerd/certs.d
     hostPath: "{{ directory }}/certs.d"
   - containerPath: /usr/local/share/ca-certificates/kube-eng/ca.crt
-    hostPath: "{{ ca_file_path }}"
+    hostPath: "{{ truststore_path }}"
 {% endfor %}
 containerdConfigPatches:
 - |-
