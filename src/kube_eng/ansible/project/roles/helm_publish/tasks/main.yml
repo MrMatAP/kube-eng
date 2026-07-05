@@ -19,7 +19,7 @@
       --destination {{ chart_pkg_path }}
       {{ chart_src_path }}
 
-- name: Upload the Helm chart to the local registry
+- name: Upload the Helm chart to the registry
   ansible.builtin.command:
     cmd: >
       {{ helm_tool_path }} push
