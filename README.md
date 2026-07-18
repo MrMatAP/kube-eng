@@ -125,7 +125,7 @@ You can use the `oidc-login` CLI to debug OIDC issues:
 
 ```shell
 $ kubectl oidc-login setup --oidc-issuer-url=https://idp.nostromo.k8s:8443/realms/master 
---oidc-client-id=kube-eng-nostromo --grant-type=authcode --oidc-redirect-url=http://localhost:8000 --grant-type=authcode
+--oidc-client-id=kube-eng-nostromo --grant-type=authcode --oidc-redirect-url=http://localhost:8000
 ```
 
 ### Debug pod
