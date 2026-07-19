@@ -144,8 +144,16 @@ class RootConfig(BaseModel):
             self.host.idp.db_password = self.admin_password
 
         # Local infrastructure credentials default to the admin password
+        infra = self.infrastructure
         if (
-            self.infrastructure.postgresql.provider == 'local'
-            and self.infrastructure.postgresql.admin_password == ''
+            infra.postgresql.provider == 'local'
+            and infra.postgresql.admin_password == ''
         ):
-            self.infrastructure.postgresql.admin_password = self.admin_password
+            infra.postgresql.admin_password = self.admin_password
+        if infra.idp.provider == 'local':
+            if infra.idp.admin_password == '':
+                infra.idp.admin_password = self.admin_password
+            if infra.idp.db_password == '':
+                infra.idp.db_password = self.admin_password
+        if infra.s3.provider == 'local' and infra.s3.secret_key == '':
+            infra.s3.secret_key = self.admin_password
