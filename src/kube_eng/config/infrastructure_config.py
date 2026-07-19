@@ -279,7 +279,10 @@ class LocalRegistryConfig(RootConfigAware):
 
 
 class RemoteRegistryConfig(RootConfigAware):
-    """Central OCI registry hosted elsewhere. Authenticate out of band (docker/helm login)."""
+    """Central OCI registry hosted elsewhere.
+
+    Authenticate out of band (docker/helm login).
+    """
 
     provider: typing.Literal['remote'] = 'remote'
     url: str = Field(
