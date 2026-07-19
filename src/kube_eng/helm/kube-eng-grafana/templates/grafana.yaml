@@ -26,6 +26,9 @@ spec:
           - name: dashboard-provisioning-config
             configMap:
               name: dashboard-provisioning-config
+          - name: mrmat-ca-trust
+            configMap:
+              name: mrmat-ca-trust
           containers:
             - name: grafana
               volumeMounts:
@@ -33,6 +36,9 @@ spec:
                 name: dashboard-provisioning-config
               - mountPath: /var/lib/grafana/dashboards
                 name: dashboards
+              - mountPath: /opt/mrmat
+                name: mrmat-ca-trust
+                readOnly: true
               env:
                 - name: GF_SECURITY_ADMIN_USER
                   valueFrom:
@@ -72,15 +78,30 @@ spec:
                 name: dashboards
   config:
     analytics:
+      enabled: "false"
+      reporting_enabled: "false"
       check_for_updates: "false"
     log:
       mode: "console"
     server:
       root_url: {{ .Values.integration.rootUrl }}
+      min_tls_version: TLS1.3
+    database:
+      ca_cert_path: /opt/mrmat/truststore.pem
+      type: {{ .Values.integration.database.kind }}
+      {{- if eq .Values.integration.database.kind "postgres" }}
+      host: "{{ .Values.integration.database.host }}:{{ .Values.integration.database.port }}"
+      name: {{ .Values.integration.database.name }}
+      user: {{ .Values.integration.database.user }}
+      password: {{ .Values.integration.database.password }}
+      ssl_mode: {{ .Values.integration.database.ssl_mode }}
+      {{- end }}
     auth:
       disable_login_form: "false"
-    auth_generic_oauth:
+    auth.generic_oauth:
       enabled: "true"
+      tls_client_ca: /opt/mrmat/truststore.pem
+      use_pkce: "true"
       allow_sign_up: "true"
       name: "Kube Eng :: IdP"
       client_id: ${AUTH_CLIENT_ID}
@@ -88,8 +109,8 @@ spec:
       auth_url: {{ .Values.integration.oauth.authUrl }}
       token_url: {{ .Values.integration.oauth.tokenUrl }}
       api_url: {{ .Values.integration.oauth.apiUrl }}
-      scopes: openid email profile
+      scopes: "openid email profile"
       email_attribute_path: email
       login_attribute_path: username
       name_attribute_path: full_name
-      role_attribute_path: contains(roles.[*], 'grafana-admin') && 'Admin' || contains(roles.[*], 'grafana-editor') && 'Editor' || 'Viewer'
+      role_attribute_path: "contains(roles, 'grafana-admin') && 'Admin' || contains(roles, 'grafana-editor') && 'Editor' || 'Viewer'"

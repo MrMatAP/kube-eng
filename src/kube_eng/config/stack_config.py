@@ -1,3 +1,5 @@
+import enum
+
 from pydantic import Field
 
 from .base import RootConfigAware
@@ -26,12 +28,29 @@ class StackKeycloakConfig(RootConfigAware):
     hostname: str = Field(default="keycloak")
     operator_version: str = Field(default="26.4.7")
 
+class StackGrafanaDBKind(str, enum.Enum):
+    postgres = "postgres"
+    sqlite3 = "sqlite3"
+
+class StackGrafanaDBSSL(str, enum.Enum):
+    disable = "disable"
+    require = "require"
+    verify_ca = "verify-ca"
+    verify_full = "verify-full"
+
 class StackGrafanaConfig(RootConfigAware):
     enabled: bool = Field(default=True)
     ns: str = Field(default="grafana")
     hostname: str = Field(default="grafana")
     client_id: str = Field(default="kube-eng-grafana")
     admin_user: str = Field(default="admin")
+    db_kind: StackGrafanaDBKind = Field(default=StackGrafanaDBKind.sqlite3)
+    db_host: str = Field(default="pg")
+    db_port: int = Field(default=5432)
+    db_name: str = Field(default="grafana")
+    db_user: str = Field(default="grafana")
+    db_password: str = Field(default="grafana")
+    db_ssl_mode: StackGrafanaDBSSL = Field(default=StackGrafanaDBSSL.require)
 
 class StackTempoConfig(RootConfigAware):
     enabled: bool = Field(default=True)

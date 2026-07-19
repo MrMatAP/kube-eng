@@ -21,6 +21,14 @@ integration:
     authUrl: http://keycloak.cluster.k8s/realms/master/protocol/openid-connect/auth
     tokenUrl: http://keycloak.cluster.k8s/realms/master/protocol/openid-connect/token
     apiUrl: http://keycloak.cluster.k8s/realms/master/protocol/openid-connect/userinfo
+  database:
+    kind: sqlite3
+    host: pg
+    port: 5432
+    name: grafana
+    user: grafana
+    password: ~
+    ssl_mode: require
   prometheus:
     url: http://prometheus.prometheus.svc.cluster.local
     isDefault: true

@@ -164,17 +164,32 @@
         client_id: "{{ stack.grafana.client_id }}"
         state: present
         validate_certs: true
-    - name: Create a CA trust store ConfigMap for Grafana
-      kubernetes.core.k8s:
-        state: present
-        definition:
-          apiVersion: v1
-          kind: ConfigMap
-          metadata:
-            name: grafana-cabundle
-            namespace: "{{ stack.grafana.ns }}"
-          data:
-            additional-ca-bundle.pem: "{{ lookup('ansible.builtin.file', host.pki.ca_path) }}"
+    - when: stack.grafana.db_kind == "postgres"
+      block:
+      - name: Create a user for Grafana in PostgreSQL
+        community.postgresql.postgresql_user:
+          login_host: "{{ host.postgresql.host_ip }}"
+          login_port: "{{ host.postgresql.host_port | int }}"
+          login_user: postgres
+          login_password: "{{ admin_password }}"
+          login_db: postgres
+          name: "{{ stack.grafana.db_user }}"
+          password: "{{ stack.grafana.db_password }}"
+          comment: "Grafana DB User"
+          state: present
+        environment:
+          PGOPTIONS: "-c password_encryption=scram-sha-256"
+      - name: Create a database for Grafana in PostgreSQL
+        community.postgresql.postgresql_db:
+          login_host: "{{ host.postgresql.host_ip }}"
+          login_port: "{{ host.postgresql.host_port | int }}"
+          login_user: postgres
+          login_password: "{{ admin_password }}"
+          name: "{{ stack.grafana.db_name }}"
+          owner: "{{ stack.grafana.db_name }}"
+          comment: "Grafana Database"
+          encoding: UTF-8
+          state: present
     - name: Install Grafana
       kubernetes.core.helm:
         name: grafana
@@ -203,6 +218,13 @@
               authUrl: "https://{{ host.idp.name }}.{{ host.dns.zone }}:{{ host.idp.host_port }}/realms/master/protocol/openid-connect/auth"
               tokenUrl: "https://{{ host.idp.name }}.{{ host.dns.zone }}:{{ host.idp.host_port }}/realms/master/protocol/openid-connect/token"
               apiUrl: "https://{{ host.idp.name }}.{{ host.dns.zone }}:{{ host.idp.host_port }}/realms/master/protocol/openid-connect/userinfo"
+            database:
+              type: "{{ stack.grafana.db_kind }}"
+              host: "{{ stack.grafana.db_host }}:{{ stack.grafana.db_port | int }}"
+              name: "{{ stack.grafana.db_name }}"
+              user: "{{ stack.grafana.db_user }}"
+              password: "{{ stack.grafana.db_password }}"
+              ssl_mode: "{{ stack.grafana.db_ssl_mode }}"
             prometheus:
               url: "http://prometheus-operated.{{ stack.prometheus.ns }}.svc.cluster.local:9090/"
     - name: Update DNS with a record for Grafana
@@ -356,17 +378,6 @@
       vars:
         ns: "{{ stack.tempo.ns }}"
         mesh: "{{ cluster.mesh.kind }}"
-    - name: Create a CA trust store ConfigMap for Tempo
-      kubernetes.core.k8s:
-        state: present
-        definition:
-          apiVersion: v1
-          kind: ConfigMap
-          metadata:
-            name: tempo-truststore
-            namespace: "{{ stack.tempo.ns }}"
-          data:
-            truststore.pem: "{{ lookup('ansible.builtin.file', host.pki.ca_path) }}"
     - name: Deploy the Tempo Helm chart
       kubernetes.core.helm:
         name: tempo
