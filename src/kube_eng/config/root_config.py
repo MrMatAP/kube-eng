@@ -13,6 +13,7 @@ from .base import RootConfigAware
 
 from .cluster_config import ClusterConfig
 from .host_config import HostConfig
+from .infrastructure_config import InfrastructureConfig
 from .stack_config import StackConfig
 
 
@@ -20,13 +21,28 @@ class RootConfig(BaseModel):
     """
     Configuration of the kube-eng cluster
     """
-    config_path: pathlib.Path = Field(description='Path to the configuration directory')
-    admin_password: str = Field(default_factory=secrets.token_urlsafe, description="Admin password for the cluster and its services")
-    user_id: str = Field(default_factory=getpass.getuser, description="Real user id of the current user")
 
-    host: HostConfig = Field(default_factory=HostConfig, description="Host configuration")
-    cluster: ClusterConfig = Field(default_factory=ClusterConfig, description="Cluster configuration")
-    stack: StackConfig = Field(default_factory=StackConfig, description="Stack configuration")
+    config_path: pathlib.Path = Field(description='Path to the configuration directory')
+    admin_password: str = Field(
+        default_factory=secrets.token_urlsafe,
+        description='Admin password for the cluster and its services',
+    )
+    user_id: str = Field(
+        default_factory=getpass.getuser, description='Real user id of the current user'
+    )
+
+    host: HostConfig = Field(
+        default_factory=HostConfig, description='Host configuration'
+    )
+    cluster: ClusterConfig = Field(
+        default_factory=ClusterConfig, description='Cluster configuration'
+    )
+    stack: StackConfig = Field(
+        default_factory=StackConfig, description='Stack configuration'
+    )
+    infrastructure: InfrastructureConfig = Field(
+        default_factory=InfrastructureConfig, description='Infrastructure configuration'
+    )
 
     @computed_field
     @property
@@ -47,7 +63,7 @@ class RootConfig(BaseModel):
         Returns:
             Path to the cluster configuration file
         """
-        return self.config_path / "config.yaml"
+        return self.config_path / 'config.yaml'
 
     @computed_field
     @property
@@ -57,7 +73,7 @@ class RootConfig(BaseModel):
         Returns:
             Path to the preheat directory.
         """
-        return self.config_path / "preheat"
+        return self.config_path / 'preheat'
 
     @computed_field
     @property
@@ -67,7 +83,7 @@ class RootConfig(BaseModel):
         Returns:
             Path to the Ansible artefacts directory.
         """
-        return self.config_path / "ansible"
+        return self.config_path / 'ansible'
 
     def save(self) -> None:
         """
@@ -76,10 +92,10 @@ class RootConfig(BaseModel):
             Nothing
         """
         self.config_path.mkdir(parents=True, exist_ok=True)
-        yaml.dump(self.model_dump(mode="json"), self.config_file_path.open("w"))
+        yaml.dump(self.model_dump(mode='json'), self.config_file_path.open('w'))
 
     @classmethod
-    def load(cls, config_path: pathlib.Path) -> "RootConfig":
+    def load(cls, config_path: pathlib.Path) -> 'RootConfig':
         """
         Load the configuration from disk.
         Args:
@@ -88,7 +104,7 @@ class RootConfig(BaseModel):
         Returns:
             An initialised Config object.
         """
-        config_file_path = config_path / "config.yaml"
+        config_file_path = config_path / 'config.yaml'
         if config_file_path.exists():
             return cls.model_validate(yaml.safe_load(config_file_path.open()))
         else:
@@ -114,15 +130,22 @@ class RootConfig(BaseModel):
 
         # If we are to use the local default DNS server and have not been
         # given a key_secret, we default to the base64-encoded admin password
-        if self.host.dns.enabled and self.cluster.dns.key_secret == "":
+        if self.host.dns.enabled and self.cluster.dns.key_secret == '':
             self.cluster.dns.key_secret = base64.b64encode(
                 bytes(self.admin_password, encoding='utf-8')
             ).decode('utf-8')
 
         # Populate the cluster Helm registry if not provided
-        if self.cluster.registry.url == "" and self.host.registry.enabled:
-            self.cluster.registry.url = f"oci://{ self.host.registry.name }.{ self.host.dns.zone }:{ self.host.registry.host_port }/"
+        if self.cluster.registry.url == '' and self.host.registry.enabled:
+            self.cluster.registry.url = f'oci://{self.host.registry.name}.{self.host.dns.zone}:{self.host.registry.host_port}/'
 
         # Populate the IdP database password if not provided
-        if self.host.idp.enabled and self.host.idp.db_password == "":
+        if self.host.idp.enabled and self.host.idp.db_password == '':
             self.host.idp.db_password = self.admin_password
+
+        # Local infrastructure credentials default to the admin password
+        if (
+            self.infrastructure.postgresql.provider == 'local'
+            and self.infrastructure.postgresql.admin_password == ''
+        ):
+            self.infrastructure.postgresql.admin_password = self.admin_password

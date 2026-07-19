@@ -1,5 +1,6 @@
 from pydantic import BaseModel
 
+
 class RootConfigAware(BaseModel):
     """
     The common base class for all configuration models except for the RootConfig
@@ -10,6 +11,7 @@ class RootConfigAware(BaseModel):
     We accept the slight uglyness for this to be a dunder attribute we set from
     outside __init__. This is required for pydantic to not complain about it.
     """
+
     _root_config: 'RootConfig' = None  # noqa: F821
 
     def propagate_root_config(self, root_config: 'RootConfig') -> None:  # noqa: F821
