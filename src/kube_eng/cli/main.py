@@ -17,8 +17,8 @@ from kube_eng.common import AnsibleEvent, AnsibleExecution
 
 console = rich.console.Console()
 
-class CLIAnsibleEventLog:
 
+class CLIAnsibleEventLog:
     _status_display: typing.Dict[AnsibleStatusEnum, str] = {
         AnsibleStatusEnum.ok: 'green',
         AnsibleStatusEnum.unchanged: 'dim green',
@@ -31,23 +31,37 @@ class CLIAnsibleEventLog:
     def __init__(self, ev: AnsibleEvent) -> None:
         self._ev = ev
 
-    def __rich_console__(self, _con: rich.console.Console, _options: rich.console.ConsoleOptions):
+    def __rich_console__(
+        self, _con: rich.console.Console, _options: rich.console.ConsoleOptions
+    ):
         color = self._status_display.get(self._ev.status, 'white')
         yield f'{self._ev.status.value} [{color}]{self._ev.task}[/{color}]'
         if self._ev.msg:
-            yield Padding(self._ev.msg, pad=(0, 2, 0, 4), style=f'dim {color}', expand=True)
+            yield Padding(
+                self._ev.msg, pad=(0, 2, 0, 4), style=f'dim {color}', expand=True
+            )
         if self._ev.verbose:
-            yield Padding(f'{self._ev.uuid} - {self._ev.event}', pad=(0, 2, 0, 4), style='blue', expand=True)
+            yield Padding(
+                f'{self._ev.uuid} - {self._ev.event}',
+                pad=(0, 2, 0, 4),
+                style='blue',
+                expand=True,
+            )
         if self._ev.stdout:
             yield Padding('Stdout:', pad=(0, 2, 0, 4), style='dim white', expand=True)
-            yield Padding(self._ev.stdout, pad=(0, 2, 0, 6), style='dim white', expand=True)
+            yield Padding(
+                self._ev.stdout, pad=(0, 2, 0, 6), style='dim white', expand=True
+            )
         if self._ev.stderr:
             yield Padding('Stderr:', pad=(0, 2, 0, 4), style='dim yellow', expand=True)
-            yield Padding(self._ev.stderr, pad=(0, 2, 0, 6), style='dim yellow', expand=True)
+            yield Padding(
+                self._ev.stderr, pad=(0, 2, 0, 6), style='dim yellow', expand=True
+            )
         if self._ev.warnings:
             yield Padding('Warnings:', pad=(0, 2, 0, 4), style='yellow', expand=True)
             for warning in self._ev.warnings:
                 yield Padding(warning, pad=(0, 2, 0, 6), style='yellow', expand=True)
+
 
 def _log_ansible_event(ev: AnsibleEvent) -> None:
     """
@@ -57,13 +71,15 @@ def _log_ansible_event(ev: AnsibleEvent) -> None:
     """
     if ev.event in ['playbook_on_task_start', 'runner_on_start']:
         return
-    #console.print(f'{ev.status.value}: {ev.task}')
+    # console.print(f'{ev.status.value}: {ev.task}')
     console.print(CLIAnsibleEventLog(ev))
+
 
 async def config_list(config: RootConfig, args: argparse.Namespace) -> int:
     del args
     console.print(yaml.dump(config.model_dump()))
     return 0
+
 
 async def config_get(config: RootConfig, args: argparse.Namespace) -> int:
     """
@@ -83,6 +99,7 @@ async def config_get(config: RootConfig, args: argparse.Namespace) -> int:
         value = value[p]
     console.print(yaml.dump(value))
     return 0
+
 
 async def config_set(config: RootConfig, args: argparse.Namespace) -> int:
     """
@@ -111,11 +128,15 @@ async def config_set(config: RootConfig, args: argparse.Namespace) -> int:
         console.print(f'There is no attribute at {".".join(current_path + [leaf])}')
         return 1
     if issubclass(type(getattr(parent, leaf)), BaseModel):
-        console.print('You cannot set the value of an entire object. Set a path that resolves to an attribute instead.')
+        console.print(
+            'You cannot set the value of an entire object. Set a path that resolves to an attribute instead.'
+        )
         return 1
     if issubclass(type(getattr(parent, leaf)), enum.Enum):
         if args.value not in list(type(getattr(parent, leaf))):
-            console.print(f'The value {args.value} is not a valid option for {args.key}')
+            console.print(
+                f'The value {args.value} is not a valid option for {args.key}'
+            )
             return 1
         else:
             setattr(parent, leaf, type(getattr(parent, leaf))(args.value))
@@ -125,6 +146,7 @@ async def config_set(config: RootConfig, args: argparse.Namespace) -> int:
         setattr(parent, leaf, args.value)
     config.save()
     return 0
+
 
 def _set_nested_value(target: dict, path: list[str], value: typing.Any) -> None:
     current = target
@@ -163,6 +185,7 @@ async def ansible_execute(config: RootConfig, args: argparse.Namespace) -> int:
     await ex.execute(playbook=cmd_to_playbook[args.playbook], overrides=overrides)
     return 0
 
+
 async def main() -> int:
     try:
         parser = argparse.ArgumentParser(f'Kube-Eng {__version__}')
@@ -174,54 +197,71 @@ async def main() -> int:
             default=__default_config_path__,
             help=f'Path to the config file, defaults to {__default_config_path__}',
         )
-        parser.add_argument('--verbose', '-v',
-                            action='store_true',
-                            default=False,
-                            required=False,
-                            dest='verbose',
-                            help='Enable verbose output')
+        parser.add_argument(
+            '--verbose',
+            '-v',
+            action='store_true',
+            default=False,
+            required=False,
+            dest='verbose',
+            help='Enable verbose output',
+        )
         subparsers = parser.add_subparsers(required=True, help='Sub-commands')
         config_parser = subparsers.add_parser('config', help='Configuration commands')
         config_subparser = config_parser.add_subparsers(required=True)
-        config_list_parser = config_subparser.add_parser('list', help='List current configuration')
+        config_list_parser = config_subparser.add_parser(
+            'list', help='List current configuration'
+        )
         config_list_parser.set_defaults(func=config_list)
-        config_get_parser = config_subparser.add_parser('get', help='Get a configuration value')
+        config_get_parser = config_subparser.add_parser(
+            'get', help='Get a configuration value'
+        )
         config_get_parser.add_argument('key', help='Setting key')
         config_get_parser.set_defaults(func=config_get)
         config_set_parser = config_subparser.add_parser(
             'set', help='Set a configuration value'
         )
         config_set_parser.add_argument('key', help='Setting key')
-        config_set_parser.add_argument(
-            'value', help='Value to set for the key'
-        )
+        config_set_parser.add_argument('value', help='Value to set for the key')
         config_set_parser.set_defaults(func=config_set)
-        apply_host_parser = subparsers.add_parser(
-            'host-apply', help='Apply the host configuration'
+        apply_infra_parser = subparsers.add_parser(
+            'infra-apply', help='Apply the infrastructure configuration'
         )
-        apply_host_parser.set_defaults(func=ansible_execute, playbook='host-apply')
+        apply_infra_parser.set_defaults(func=ansible_execute, playbook='infra-apply')
         apply_cluster_parser = subparsers.add_parser(
             'cluster-apply', help='Apply the cluster configuration'
         )
-        apply_cluster_parser.set_defaults(func=ansible_execute, playbook='cluster-apply')
+        apply_cluster_parser.set_defaults(
+            func=ansible_execute, playbook='cluster-apply'
+        )
         destroy_cluster_parser = subparsers.add_parser(
             'cluster-destroy', help='Destroy the cluster'
         )
-        destroy_cluster_parser.set_defaults(func=ansible_execute, playbook='cluster-destroy')
+        destroy_cluster_parser.set_defaults(
+            func=ansible_execute, playbook='cluster-destroy'
+        )
         apply_stack_parser = subparsers.add_parser(
             'stack-apply', help='Apply the stack configuration'
         )
         apply_stack_parser.set_defaults(func=ansible_execute, playbook='stack-apply')
 
-        helm_repackage_parser = subparsers.add_parser('helm-repackage', help='Repackage Helm charts')
-        helm_repackage_parser.set_defaults(func=ansible_execute, playbook='helm-repackage')
-        helm_repackage_parser.add_argument('--registry',
-                                           type=str,
-                                           required=False,
-                                           dest='override_cluster__helm_registry_url',
-                                           help='Helm registry URL')
+        helm_repackage_parser = subparsers.add_parser(
+            'helm-repackage', help='Repackage Helm charts'
+        )
+        helm_repackage_parser.set_defaults(
+            func=ansible_execute, playbook='helm-repackage'
+        )
+        helm_repackage_parser.add_argument(
+            '--registry',
+            type=str,
+            required=False,
+            dest='override_cluster__helm_registry_url',
+            help='Helm registry URL',
+        )
 
-        dns_update_parser = subparsers.add_parser('dns-update', help='Update DNS records')
+        dns_update_parser = subparsers.add_parser(
+            'dns-update', help='Update DNS records'
+        )
         dns_update_parser.set_defaults(func=ansible_execute, playbook='dns-update')
 
         args = parser.parse_args()
@@ -233,6 +273,7 @@ async def main() -> int:
     except Exception as e:
         print(e)
     return 1
+
 
 def run() -> int:
     return asyncio.run(main())

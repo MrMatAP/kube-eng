@@ -18,7 +18,5 @@ class StatusTab(TabPane):
         with Center():
             with Middle():
                 yield Static(
-                    "System Status\n\n"
-                    "[ Coming Soon ]",
-                    classes='status-placeholder'
+                    'System Status\n\n[ Coming Soon ]', classes='status-placeholder'
                 )

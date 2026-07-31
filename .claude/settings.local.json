@@ -3,7 +3,20 @@
     "allow": [
       "mcp__ide__getDiagnostics",
       "Read(//Users/imfeldma/.claude/plugins/**)",
-      "Read(//Users/imfeldma/.claude/**)"
+      "Read(//Users/imfeldma/.claude/**)",
+      "Bash(uv run *)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(/Users/imfeldma/.claude/plugins/cache/claude-plugins-official/superpowers/6.1.1/skills/subagent-driven-development/scripts/review-package 9f0efa5 HEAD)",
+      "Bash(/Users/imfeldma/.claude/plugins/cache/claude-plugins-official/superpowers/6.1.1/skills/subagent-driven-development/scripts/task-brief docs/superpowers/plans/2026-07-19-infrastructure-config.md 2)",
+      "Bash(/Users/imfeldma/.claude/plugins/cache/claude-plugins-official/superpowers/6.1.1/skills/subagent-driven-development/scripts/review-package 0e64838 *)",
+      "Bash(awk NR==282{print length} *)",
+      "Bash(awk length>88{print NR\": \"length} *)",
+      "Bash(awk length>88{print FILENAME\":\"FNR\": \"length} *)",
+      "Bash(awk length>88 {print FILENAME\": \"FNR} *)",
+      "Bash(awk 'length>88 {print FILENAME\": \"FNR}' src/kube_eng/config/infrastructure_config.py)",
+      "Bash(echo \"exit:$?\")",
+      "Bash(git stash *)"
     ]
   },
   "hooks": {

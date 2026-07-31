@@ -30,6 +30,7 @@ class AppBody(Vertical):
     """
     Main application body container
     """
+
     pass
 
 
@@ -38,21 +39,42 @@ class TUILog(DataTable):
     Log table widget for displaying Ansible execution events
     """
 
-    def __init__(self, *, show_header: bool = True, show_row_labels: bool = True,
-                 fixed_rows: int = 0, fixed_columns: int = 0, zebra_stripes: bool = False,
-                 header_height: int = 1, show_cursor: bool = True,
-                 cursor_foreground_priority: Literal["renderable", "css"] = "css",
-                 cursor_background_priority: Literal["renderable", "css"] = "renderable",
-                 cursor_type: CursorType = "cell", cell_padding: int = 1, name: str | None = None,
-                 id: str | None = None, classes: str | None = None, disabled: bool = False) -> None:
-        super().__init__(show_header=show_header, show_row_labels=show_row_labels,
-                         fixed_rows=fixed_rows, fixed_columns=fixed_columns,
-                         zebra_stripes=zebra_stripes, header_height=header_height,
-                         show_cursor=show_cursor,
-                         cursor_foreground_priority=cursor_foreground_priority,
-                         cursor_background_priority=cursor_background_priority,
-                         cursor_type=cursor_type, cell_padding=cell_padding, name=name, id=id,
-                         classes=classes, disabled=disabled)
+    def __init__(
+        self,
+        *,
+        show_header: bool = True,
+        show_row_labels: bool = True,
+        fixed_rows: int = 0,
+        fixed_columns: int = 0,
+        zebra_stripes: bool = False,
+        header_height: int = 1,
+        show_cursor: bool = True,
+        cursor_foreground_priority: Literal['renderable', 'css'] = 'css',
+        cursor_background_priority: Literal['renderable', 'css'] = 'renderable',
+        cursor_type: CursorType = 'cell',
+        cell_padding: int = 1,
+        name: str | None = None,
+        id: str | None = None,
+        classes: str | None = None,
+        disabled: bool = False,
+    ) -> None:
+        super().__init__(
+            show_header=show_header,
+            show_row_labels=show_row_labels,
+            fixed_rows=fixed_rows,
+            fixed_columns=fixed_columns,
+            zebra_stripes=zebra_stripes,
+            header_height=header_height,
+            show_cursor=show_cursor,
+            cursor_foreground_priority=cursor_foreground_priority,
+            cursor_background_priority=cursor_background_priority,
+            cursor_type=cursor_type,
+            cell_padding=cell_padding,
+            name=name,
+            id=id,
+            classes=classes,
+            disabled=disabled,
+        )
         self._ansible_events: dict[str, AnsibleEvent] = {}
 
     def on_mount(self):
@@ -73,18 +95,16 @@ class TUILog(DataTable):
 
     async def add_event(self, event: AnsibleEvent):
         if event.uuid in self._ansible_events:
-            self.update_cell(event.uuid,
-                             'status',
-                             Text(event.status, justify='right'))
+            self.update_cell(event.uuid, 'status', Text(event.status, justify='right'))
         else:
-            self.add_row(Text(event.task, overflow='ellipsis'),
-                         Text(event.status, justify='right'),
-                         height=None,
-                         key=event.uuid,
-                         label=event.uuid)
+            self.add_row(
+                Text(event.task, overflow='ellipsis'),
+                Text(event.status, justify='right'),
+                height=None,
+                key=event.uuid,
+                label=event.uuid,
+            )
         self._ansible_events[event.uuid] = event
 
     def add_log(self, msg: str, status: str = ''):
-        self.add_row(Text(msg, overflow='ellipsis'),
-                     Text(status),
-                     height=None)
+        self.add_row(Text(msg, overflow='ellipsis'), Text(status), height=None)

@@ -16,13 +16,13 @@ def make_config(tmp_path: pathlib.Path, **infrastructure) -> RootConfig:
         config_path=tmp_path,
         admin_password='test-admin',
         cluster={'name': 'testcluster'},
-        infrastructure=infrastructure,
+        infra=infrastructure,
     )
 
 
 class TestPostgresql:
     def test_local_defaults(self, tmp_path: pathlib.Path):
-        pg = make_config(tmp_path).infrastructure.postgresql
+        pg = make_config(tmp_path).infra.pg
         assert pg.provider == 'local'
         assert pg.client_host == 'pg.testcluster.k8s'
         assert pg.client_port == 5432
@@ -34,7 +34,7 @@ class TestPostgresql:
     def test_local_explicit_admin_password_is_kept(self, tmp_path: pathlib.Path):
         pg = make_config(
             tmp_path, postgresql={'provider': 'local', 'admin_password': 'pg-secret'}
-        ).infrastructure.postgresql
+        ).infra.pg
         assert pg.admin_password == 'pg-secret'
 
     def test_remote(self, tmp_path: pathlib.Path):
@@ -47,7 +47,7 @@ class TestPostgresql:
                 'admin_user': 'postgres',
                 'admin_password': 'central-secret',
             },
-        ).infrastructure.postgresql
+        ).infra.pg
         assert pg.provider == 'remote'
         assert pg.client_host == 'pg.central.example.com'
         assert pg.client_port == 5433
@@ -66,7 +66,7 @@ class TestPostgresql:
 
 class TestIdp:
     def test_local_defaults(self, tmp_path: pathlib.Path):
-        idp = make_config(tmp_path).infrastructure.idp
+        idp = make_config(tmp_path).infra.idp
         assert idp.provider == 'local'
         assert idp.url == 'https://idp.testcluster.k8s:8443'
         assert idp.issuer_url == 'https://idp.testcluster.k8s:8443/realms/master'
@@ -86,7 +86,7 @@ class TestIdp:
                 'admin_user': 'kc-admin',
                 'admin_password': 'kc-secret',
             },
-        ).infrastructure.idp
+        ).infra.idp
         assert idp.url == 'https://idp.central.example.com'
         assert idp.issuer_url == 'https://idp.central.example.com/realms/kube-eng'
 
@@ -99,7 +99,7 @@ class TestIdp:
 
 class TestS3:
     def test_local_defaults(self, tmp_path: pathlib.Path):
-        s3 = make_config(tmp_path).infrastructure.s3
+        s3 = make_config(tmp_path).infra.s3
         assert s3.provider == 'local'
         assert s3.endpoint == 'https://s3.testcluster.k8s:9000'
         assert s3.admin_endpoint == 'https://s3.testcluster.k8s:9000'
@@ -116,7 +116,7 @@ class TestS3:
                 'access_key': 'ak',
                 'secret_key': 'sk',
             },
-        ).infrastructure.s3
+        ).infra.s3
         assert s3.endpoint == 'https://s3.central.example.com'
         assert s3.admin_endpoint == 'https://s3.central.example.com'
 
@@ -130,7 +130,7 @@ class TestS3:
 
 class TestRegistry:
     def test_local_defaults(self, tmp_path: pathlib.Path):
-        registry = make_config(tmp_path).infrastructure.registry
+        registry = make_config(tmp_path).infra.registry
         assert registry.provider == 'local'
         assert registry.url == 'oci://registry.testcluster.k8s:5001'
         assert registry.https_url == 'https://registry.testcluster.k8s:5001'
@@ -142,7 +142,7 @@ class TestRegistry:
                 'provider': 'remote',
                 'url': 'oci://harbor.example.com/kube-eng/',
             },
-        ).infrastructure.registry
+        ).infra.registry
         assert registry.url == 'oci://harbor.example.com/kube-eng'
         assert registry.https_url == 'https://harbor.example.com/kube-eng'
 

@@ -92,7 +92,7 @@ Playbooks are triggered from the TUI via keyboard bindings (`a` = Actions modal,
 
 ### Ansible Playbooks (`src/kube_eng/ansible/project/`)
 
-Playbooks: `host_apply.yml`, `cluster_apply.yml`, `cluster_destroy.yml`, `stack_apply.yml`, `helm_repackage.yml`, `dns_update.yml`.
+Playbooks: `infra_apply.yml`, `cluster_apply.yml`, `cluster_destroy.yml`, `stack_apply.yml`, `helm_repackage.yml`, `dns_update.yml`.
 
 ### Ansible Roles (`src/kube_eng/ansible/project/roles/`)
 

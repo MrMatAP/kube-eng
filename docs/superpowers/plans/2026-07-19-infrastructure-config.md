@@ -79,13 +79,13 @@ def make_config(tmp_path: pathlib.Path, **infrastructure) -> RootConfig:
         config_path=tmp_path,
         admin_password='test-admin',
         cluster={'name': 'testcluster'},
-        infrastructure=infrastructure,
+        infra=infrastructure,
     )
 
 
 class TestPostgresql:
     def test_local_defaults(self, tmp_path: pathlib.Path):
-        pg = make_config(tmp_path).infrastructure.postgresql
+        pg = make_config(tmp_path).infra.pg
         assert pg.provider == 'local'
         assert pg.client_host == 'pg.testcluster.k8s'
         assert pg.client_port == 5432
@@ -97,7 +97,7 @@ class TestPostgresql:
     def test_local_explicit_admin_password_is_kept(self, tmp_path: pathlib.Path):
         pg = make_config(
             tmp_path, postgresql={'provider': 'local', 'admin_password': 'pg-secret'}
-        ).infrastructure.postgresql
+        ).infra.pg
         assert pg.admin_password == 'pg-secret'
 
     def test_remote(self, tmp_path: pathlib.Path):
@@ -110,7 +110,7 @@ class TestPostgresql:
                 'admin_user': 'postgres',
                 'admin_password': 'central-secret',
             },
-        ).infrastructure.postgresql
+        ).infra.pg
         assert pg.provider == 'remote'
         assert pg.client_host == 'pg.central.example.com'
         assert pg.client_port == 5433
@@ -238,11 +238,11 @@ In `model_post_init`, after the existing IdP-db-password block, add:
 
 ```python
         # Local infrastructure credentials default to the admin password
-        if (
-            self.infrastructure.postgresql.provider == 'local'
-            and self.infrastructure.postgresql.admin_password == ''
-        ):
-            self.infrastructure.postgresql.admin_password = self.admin_password
+if (
+        self.infra.pg.provider == 'local'
+        and self.infra.pg.admin_password == ''
+):
+    self.infra.pg.admin_password = self.admin_password
 ```
 
 In `src/kube_eng/config/__init__.py`, add:
@@ -287,7 +287,7 @@ Append to `tests/test_infrastructure_config.py`:
 ```python
 class TestIdp:
     def test_local_defaults(self, tmp_path: pathlib.Path):
-        idp = make_config(tmp_path).infrastructure.idp
+        idp = make_config(tmp_path).infra.idp
         assert idp.provider == 'local'
         assert idp.url == 'https://idp.testcluster.k8s:8443'
         assert idp.issuer_url == 'https://idp.testcluster.k8s:8443/realms/master'
@@ -307,7 +307,7 @@ class TestIdp:
                 'admin_user': 'kc-admin',
                 'admin_password': 'kc-secret',
             },
-        ).infrastructure.idp
+        ).infra.idp
         assert idp.url == 'https://idp.central.example.com'
         assert idp.issuer_url == 'https://idp.central.example.com/realms/kube-eng'
 
@@ -320,7 +320,7 @@ class TestIdp:
 
 class TestS3:
     def test_local_defaults(self, tmp_path: pathlib.Path):
-        s3 = make_config(tmp_path).infrastructure.s3
+        s3 = make_config(tmp_path).infra.s3
         assert s3.provider == 'local'
         assert s3.endpoint == 'https://s3.testcluster.k8s:9000'
         assert s3.admin_endpoint == 'https://s3.testcluster.k8s:9000'
@@ -337,7 +337,7 @@ class TestS3:
                 'access_key': 'ak',
                 'secret_key': 'sk',
             },
-        ).infrastructure.s3
+        ).infra.s3
         assert s3.endpoint == 'https://s3.central.example.com'
         assert s3.admin_endpoint == 'https://s3.central.example.com'
 
@@ -350,7 +350,7 @@ class TestS3:
 
 class TestRegistry:
     def test_local_defaults(self, tmp_path: pathlib.Path):
-        registry = make_config(tmp_path).infrastructure.registry
+        registry = make_config(tmp_path).infra.registry
         assert registry.provider == 'local'
         assert registry.url == 'oci://registry.testcluster.k8s:5001'
         assert registry.https_url == 'https://registry.testcluster.k8s:5001'
@@ -359,7 +359,7 @@ class TestRegistry:
         registry = make_config(
             tmp_path,
             registry={'provider': 'remote', 'url': 'oci://harbor.example.com/kube-eng/'},
-        ).infrastructure.registry
+        ).infra.registry
         assert registry.url == 'oci://harbor.example.com/kube-eng'
         assert registry.https_url == 'https://harbor.example.com/kube-eng'
 
@@ -560,16 +560,16 @@ In `root_config.py` `model_post_init`, extend the credential-defaulting block ad
 
 ```python
         # Local infrastructure credentials default to the admin password
-        infra = self.infrastructure
-        if infra.postgresql.provider == 'local' and infra.postgresql.admin_password == '':
-            infra.postgresql.admin_password = self.admin_password
-        if infra.idp.provider == 'local':
-            if infra.idp.admin_password == '':
-                infra.idp.admin_password = self.admin_password
-            if infra.idp.db_password == '':
-                infra.idp.db_password = self.admin_password
-        if infra.s3.provider == 'local' and infra.s3.secret_key == '':
-            infra.s3.secret_key = self.admin_password
+infra = self.infra
+if infra.pg.provider == 'local' and infra.pg.admin_password == '':
+    infra.pg.admin_password = self.admin_password
+if infra.idp.provider == 'local':
+    if infra.idp.admin_password == '':
+        infra.idp.admin_password = self.admin_password
+    if infra.idp.db_password == '':
+        infra.idp.db_password = self.admin_password
+if infra.s3.provider == 'local' and infra.s3.secret_key == '':
+    infra.s3.secret_key = self.admin_password
 ```
 
 - [ ] **Step 4: Run tests to verify they pass**
@@ -667,8 +667,8 @@ class TestRoundTrip:
         )
         config.save()
         reloaded = RootConfig.load(config_path=tmp_path)
-        assert reloaded.infrastructure.postgresql.provider == 'remote'
-        assert reloaded.infrastructure.idp.provider == 'remote'
+        assert reloaded.infra.pg.provider == 'remote'
+        assert reloaded.infra.idp.provider == 'remote'
         assert reloaded.model_dump(mode='json') == config.model_dump(mode='json')
 
     def test_yaml_round_trip_local(self, tmp_path: pathlib.Path):
@@ -699,14 +699,14 @@ class HostConfig(RootConfigAware):
 
 ```python
     @computed_field
-    @property
-    def issuer_url(self) -> str:
-        """
+@property
+def issuer_url(self) -> str:
+    """
+    Computed IDP issuer URL for the cluster
+    Returns:
         Computed IDP issuer URL for the cluster
-        Returns:
-            Computed IDP issuer URL for the cluster
-        """
-        return self._root_config.infrastructure.idp.issuer_url
+    """
+    return self._root_config.infra.idp.issuer_url
 ```
 
 `stack_config.py`: import `computed_field` from pydantic and change `StackGrafanaConfig` / `StackKialiConfig`:
@@ -722,18 +722,19 @@ class StackGrafanaConfig(RootConfigAware):
     db_kind: StackGrafanaDBKind = Field(default=StackGrafanaDBKind.sqlite3)
     db_name: str = Field(default='grafana')
     db_user: str = Field(default='grafana')
-    db_password: str = Field(default='', description='Grafana database password. If empty, defaults to the admin password')
+    db_password: str = Field(default='',
+                             description='Grafana database password. If empty, defaults to the admin password')
     db_ssl_mode: StackGrafanaDBSSL = Field(default=StackGrafanaDBSSL.require)
 
     @computed_field
     @property
     def db_host(self) -> str:
-        return self._root_config.infrastructure.postgresql.client_host
+        return self._root_config.infra.pg.client_host
 
     @computed_field
     @property
     def db_port(self) -> int:
-        return self._root_config.infrastructure.postgresql.client_port
+        return self._root_config.infra.pg.client_port
 ```
 
 (Preserve any additional fields the pre-plan working tree already added to `StackGrafanaConfig`; only `db_host`/`db_port` move to computed and `db_password` changes default.) Add to `StackKialiConfig`:
@@ -817,7 +818,7 @@ def _remote_config() -> RootConfig:
         admin_password='test-admin',
         user_id='test-user',
         cluster={'name': 'testcluster'},
-        infrastructure={
+        infra={
             'postgresql': {
                 'provider': 'remote',
                 'host': 'pg.central.example.com',

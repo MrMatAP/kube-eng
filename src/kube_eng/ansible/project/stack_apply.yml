@@ -301,7 +301,7 @@
         admin_access_key: admin
         admin_secret_key: "{{ admin_password }}"
         s3_endpoint: "https://{{ host.s3.name }}.{{ host.dns.zone }}:{{ host.s3.port }}"
-        truststore_path: "{{ host.pki.ca_truststore_path }}"
+        truststore_path: "{{ infra.pki.ca_truststore_path }}"
         bucket_name: "{{ item }}"
         state: present
       loop:
@@ -369,7 +369,7 @@
         admin_access_key: admin
         admin_secret_key: "{{ admin_password }}"
         s3_endpoint: "https://{{ host.s3.name }}.{{ host.dns.zone }}:{{ host.s3.port }}"
-        truststore_path: "{{ host.pki.ca_truststore_path }}"
+        truststore_path: "{{ infra.pki.ca_truststore_path }}"
         bucket_name: tempo-traces
         state: present
     - name: Create and label the Tempo namespace
@@ -520,7 +520,7 @@
             name: kiali-cabundle
             namespace: "{{ stack.kiali.ns }}"
           data:
-            additional-ca-bundle.pem: "{{ lookup('ansible.builtin.file', host.pki.ca_path) }}"
+            additional-ca-bundle.pem: "{{ lookup('ansible.builtin.file', infra.pki.ca_path) }}"
     - name: Deploy the Kiali Helm Chart
       kubernetes.core.helm:
         name: kiali

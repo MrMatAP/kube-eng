@@ -1,0 +1,593 @@
+---
+- name: Apply the host infrastructure configuration
+  hosts: localhost
+  tasks:
+
+  - name: Create a dedicated Docker network
+    community.docker.docker_network:
+      name: "{{ infra.net.name }}"
+      driver: bridge
+      enable_ipv4: true
+      enable_ipv6: true
+      scope: local
+      state: present
+
+  - name: Establish the local PKI
+    block:
+    - name: Create a directory for the local PKI
+      ansible.builtin.file:
+        path: "{{ infra.pki.config_path }}"
+        state: directory
+    - name: Create a private key
+      community.crypto.openssl_privatekey:
+        path: "{{ infra.pki.ca_key_path }}"
+        type: "{{ infra.pki.key_type }}"
+        curve: "{{ infra.pki.key_curve }}"
+        size: "{{ infra.pki.key_size }}"
+        return_content: true
+        state: present
+    - name: Generate a CSR
+      community.crypto.openssl_csr:
+        path: "{{ infra.pki.config_path }}/ca.csr"
+        privatekey_path: "{{ infra.pki.ca_key_path }}"
+        common_name: "{{ cluster.name }} Local CA"
+        key_usage_critical: true
+        key_usage:
+        - keyCertSign
+        - cRLSign
+        basic_constraints_critical: true
+        basic_constraints:
+        - "CA:TRUE"
+        - "pathlen:1"
+    - name: Create a self-signed CA
+      community.crypto.x509_certificate:
+        path: "{{ infra.pki.ca_path }}"
+        privatekey_path: "{{ infra.pki.ca_key_path }}"
+        csr_path: "{{ infra.pki.config_path }}/ca.csr"
+        provider: selfsigned
+        return_content: true
+    - name: Obtain the location of the current certifi trust store
+      ansible.builtin.command:
+        cmd: "python -mcertifi"
+      register: trust_store_location
+    - name: Copy the certifi trust store to the PKI directory
+      ansible.builtin.copy:
+        src: "{{ trust_store_location.stdout }}"
+        dest: "{{ infra.pki.ca_truststore_path }}"
+        remote_src: true
+    - name: Append the local CA to the certifi trust store
+      ansible.builtin.lineinfile:
+        path: "{{ infra.pki.ca_truststore_path }}"
+        line: "{{ lookup('ansible.builtin.file', infra.pki.ca_path) }}"
+        insertafter: EOF
+    - name: Append any extra CA certificates to the trust store
+      ansible.builtin.lineinfile:
+        path: "{{ infra.pki.ca_truststore_path }}"
+        line: "{{ lookup('ansible.builtin.file', item) }}"
+        insertafter: EOF
+      loop: "{{ infra.pki.extra_ca_path | list }}"
+
+  # Create a local DNS instance, if enabled
+  - when: infra.dns.provider == 'local'
+    block:
+    - name: Create a directory for DNS
+      ansible.builtin.file:
+        path: "{{ infra.dns.config_path }}"
+        state: directory
+    - name: Template the local DNS configuration
+      ansible.builtin.import_role:
+        name: dns_local_configuration
+      vars:
+        dns_local_config_path: "{{ infra.dns.config_path }}"
+        dns_local_zone: "{{ infra.dns.zone }}"
+        dns_local_key_name: "{{ infra.dns.admin_key_name }}"
+        dns_local_key_secret: "{{ infra.dns.admin_key_secret }}"
+    - name: Create a volume for the DNS cache
+      community.docker.docker_volume:
+        name: "{{ infra.dns.cache_volume_name }}"
+        state: present
+    - name: Create a volume for the DNS zones
+      community.docker.docker_volume:
+        name: "{{ infra.dns.zones_volume_name }}"
+        state: present
+    - name: Start the local DNS server
+      community.docker.docker_container:
+        name: "{{ infra.dns.name }}"
+        image: "{{ infra.dns.image }}"
+        mounts:
+        - source: "{{ infra.dns.cache_volume_name }}"
+          target: /var/cache/bind
+          type: volume
+        - source: "{{ infra.dns.zones_volume_name }}"
+          target: /var/lib/bind
+          type: volume
+        - source: "{{ infra.pki.ca_truststore_path }}"
+          target: /etc/bind/truststore.pem
+          read_only: true
+          type: bind
+        - source: "{{ infra.dns.config_path }}/named.conf"
+          target: /etc/bind/named.conf
+          read_only: true
+          type: bind
+        - source: "{{ infra.dns.config_path }}/update.key"
+          target: /etc/bind/update.key
+          read_only: true
+          type: bind
+        - source: "{{ infra.dns.config_path }}/db.{{ infra.dns.zone }}"
+          target: "/var/lib/bind/db.{{ infra.dns.zone }}"
+          type: bind
+        ports:
+        - "{{ infra.dns.ip }}:{{ infra.dns.port | int }}:53/udp"
+        - "{{ infra.dns.ip }}:{{ infra.dns.port | int }}:53/tcp"
+        - "{{ infra.dns.ip }}:{{ infra.dns.control_port | int }}:953/tcp"
+        networks:
+        - name: "{{ infra.net.name }}"
+          aliases: "{{ infra.dns.name }}"
+        keep_volumes: false
+        restart_policy: always
+        state: started
+  - name: Validate connectivity to DNS
+    dns_validate:
+      dns_ip: "{{ infra.dns.ip }}"
+      dns_admin_key_name: "{{ infra.dns.admin_key_name }}"
+      dns_admin_key_secret: "{{ infra.dns.admin_key_secret }}"
+      dns_protocol: "{{ infra.dns.protocol }}"
+      dns_zone: "{{ infra.dns.zone }}"
+      dns_domain: "{{ infra.dns.domain }}"
+
+  # Create a local PostgreSQL instance, if enabled
+  - when: infra.pg.provider == 'local'
+    block:
+    - name: Create a volume for PostgreSQL
+      community.docker.docker_volume:
+        name: "{{ infra.pg.volume_name }}"
+        state: present
+    - name: Start PostgreSQL
+      community.docker.docker_container:
+        name: "{{ infra.pg.name }}"
+        image: "{{ infra.pg.image }}"
+        ports:
+        - "{{ infra.pg.ip }}:{{ infra.pg.port | int }}:5432/tcp"
+        mounts:
+        - source: "{{ infra.pg.volume_name }}"
+          target: /var/lib/postgresql
+        networks:
+        - name: "{{ infra.net.name }}"
+          aliases: "{{ infra.pg.client_fqdn }}"
+        env:
+          POSTGRES_PASSWORD: "{{ infra.pg.admin_password }}"
+          PGDATA: /var/lib/postgresql/data
+        keep_volumes: false
+        restart_policy: always
+        state: healthy
+    - name: Update DNS with a record for PostgreSQL
+      ansible.builtin.import_role:
+        name: update_dns_record
+      vars:
+        dns_key_name: "{{ infra.dns.admin_key_name }}"
+        dns_key_secret: "{{ infra.dns.admin_key_secret }}"
+        dns_key_algorithm: "{{ infra.dns.key_algorithm }}"
+        dns_server: "{{ infra.dns.ip }}"
+        dns_protocol: "{{ infra.dns.protocol }}"
+        dns_ttl: "{{ infra.dns.ttl | int }}"
+        dns_record: "{{ infra.pg.client_fqdn }}."
+        dns_value: "{{ infra.pg.ip }}"
+  - name: Validate connectivity to PostgreSQL
+    pg_validate:
+      admin_dsn: "{{ infra.pg.admin_dsn }}"
+
+  # Create a local IdP, if enabled
+  - when: infra.idp.provider == 'local'
+    block:
+    - name: Create a user for the IdP in PostgreSQL
+      community.postgresql.postgresql_user:
+        login_host: "{{ infra.pg.client_fqdn }}"
+        login_port: "{{ infra.pg.port | int }}"
+        login_user: "{{ infra.pg.admin_user }}"
+        login_password: "{{ infra.pg.admin_password }}"
+        login_db: "{{ infra.pg.admin_db }}"
+        name: "{{ infra.idp.db_user }}"
+        password: "{{ infra.idp.db_password }}"
+        comment: "IdP Database User"
+        state: present
+      environment:
+        PGOPTIONS: "-c password_encryption=scram-sha-256"
+    - name: Create a database for the IdP in PostgreSQL
+      community.postgresql.postgresql_db:
+        login_host: "{{ infra.pg.client_fqdn }}"
+        login_port: "{{ infra.pg.port | int }}"
+        login_user: "{{ infra.pg.admin_user }}"
+        login_password: "{{ infra.pg.admin_password }}"
+        name: "{{ infra.idp.db_name }}"
+        owner: "{{ infra.idp.db_user }}"
+        comment: "IdP Database"
+        encoding: UTF-8
+        state: present
+    - name: Configure the IdP config directory
+      ansible.builtin.file:
+        path: "{{ infra.idp.config_path }}"
+        state: directory
+    - name: Issue a TLS certificate for the IdP
+      ansible.builtin.import_role:
+        name: issue_tls_certificate
+      vars:
+        pki_config_path: "{{ infra.idp.config_path }}"
+        pki_key_filename: idp_key.pem
+        pki_csr_filename: idp_cert.csr
+        pki_cert_filename: idp_cert.pem
+        pki_common_name: "{{ infra.idp.client_fqdn }}"
+        pki_subject_alt_names:
+        - "DNS:{{ infra.idp.client_fqdn }}"
+        - "DNS:{{ infra.idp.name }}.{{ infra.net.name }}"
+        - "DNS:{{ infra.idp.name }}"
+        - "DNS:localhost"
+        pki_key_type: "{{ infra.pki.key_type }}"
+        pki_key_curve: "{{ infra.pki.key_curve }}"
+        pki_key_size: "{{ infra.pki.key_size }}"
+        pki_ca_path: "{{ infra.pki.ca_path }}"
+        pki_ca_key_path: "{{ infra.pki.ca_key_path }}"
+        pki_cert_validity: "{{ infra.pki.crt_validity }}"
+    - name: Copy the truststore to the IdP config directory
+      ansible.builtin.copy:
+        src: "{{ infra.pki.ca_truststore_path }}"
+        dest: "{{ infra.idp.config_path }}/truststore.pem"
+        remote_src: true
+    - name: Deploy the local IdP
+      community.docker.docker_container:
+        name: "{{ infra.idp.name }}"
+        image: "{{ infra.idp.image }}"
+        ports:
+        - "{{ infra.idp.ip }}:{{ infra.idp.port | int }}:8443/tcp"
+        mounts:
+        - source: "{{ infra.idp.config_path }}"
+          target: /config
+          read_only: true
+          type: bind
+        networks:
+        - name: "{{ infra.net.name }}"
+          aliases:
+          - "{{ infra.idp.name }}"
+          - "{{ infra.idp.client_fqdn }}"
+        env:
+          KC_BOOTSTRAP_ADMIN_USERNAME: "{{ infra.idp.admin_user }}"
+          KC_BOOTSTRAP_ADMIN_PASSWORD: "{{ infra.idp.admin_password }}"
+          KC_HTTP_ENABLED: "false"
+          KC_HTTPS_CERTIFICATE_KEY_FILE: /config/idp_key.pem
+          KC_HTTPS_CERTIFICATE_FILE: /config/idp_cert.pem
+          KC_TRUSTSTORE_PATHS: /config/truststore.pem
+          KC_HTTPS_PORT: "8443"
+          KC_HTTPS_PROTOCOLS: "TLSv1.3"
+          KC_HTTPS_MANAGEMENT_CERTIFICATE_KEY_FILE: /config/idp_key.pem
+          KC_HTTPS_MANAGEMENT_CERTIFICATE_FILE: /config/idp_cert.pem
+          KC_DB: postgres
+          KC_DB_URL_HOST: "{{ infra.idp.db_host }}"
+          KC_DB_URL_PORT: "{{ infra.idp.db_port | quote }}"
+          KC_DB_URL_DATABASE: "{{ infra.idp.db_name }}"
+          KC_DB_USERNAME: "{{ infra.idp.db_user }}"
+          KC_DB_PASSWORD: "{{ infra.idp.db_password }}"
+          KC_HOSTNAME: "{{ infra.idp.client_base_url }}"
+          KC_HOSTNAME_BACKCHANNEL_DYNAMIC: "true"
+          KC_TRACING_ENABLED: "true"
+          KC_TRACING_ENDPOINT: "https://{{ stack.tempo.hostname }}.{{ infra.dns.domain }}:4317"
+          KC_TRACING_PROTOCOL: "grpc"
+          KC_TELEMETRY_ENDPOINT: "https://{{ stack.tempo.hostname }}.{{ infra.dns.domain }}:4317"
+          KC_TELEMETRY_PROTOCOL: "grpc"
+          KC_TELEMETRY_SERVICE_NAME: "idp"
+          KC_TELEMETRY_LOGS_ENABLED: "true"
+          KC_TELEMETRY_LOGS_ENDPOINT: "https://{{ stack.tempo.hostname }}.{{ infra.dns.domain }}:4317"
+          KC_TELEMETRY_LOGS_PROTOCOL: "grpc"
+          KC_METRICS_ENABLED: "true"
+          KC_TELEMETRY_METRICS_ENABLED: "true"
+          KC_TELEMETRY_METRICS_ENDPOINT: "https://{{ stack.tempo.hostname }}.{{ infra.dns.domain }}:4317"
+          KC_TELEMETRY_METRICS_PROTOCOL: "grpc"
+          KC_FEATURE_OPENTELEMETRY: "enabled"
+          KC_FEATURE_OPENTELEMETRY_LOGS: "enabled"
+          KC_FEATURE_OPENTELEMETRY_METRICS: "enabled"
+          KC_FEATURE_SPIFFE: "enabled"
+          KC_FEATURE_KUBERNETES_SERVICE_ACCOUNTS: "enabled"
+        keep_volumes: false
+        command: "start-dev"
+        restart_policy: always
+        state: healthy
+    - name: Update DNS with a record for the IdP
+      ansible.builtin.import_role:
+        name: update_dns_record
+      vars:
+        dns_key_name: "{{ infra.dns.admin_key_name }}"
+        dns_key_secret: "{{ infra.dns.admin_key_secret }}"
+        dns_key_algorithm: "{{ infra.dns.key_algorithm }}"
+        dns_server: "{{ infra.dns.ip }}"
+        dns_protocol: "{{ infra.dns.protocol }}"
+        dns_ttl: "{{ infra.dns.ttl | int }}"
+        dns_record: "{{ infra.idp.client_fqdn }}."
+        dns_value: "{{ infra.idp.ip }}"
+  - name: Validate connectivity to the IdP
+    idp_validate:
+      idp_url: "{{ infra.idp.client_base_url }}"
+      idp_admin_user: "{{ infra.idp.admin_user }}"
+      idp_admin_password: "{{ infra.idp.admin_password }}"
+      idp_realm: "{{ infra.idp.realm }}"
+      idp_ca_path: "{{ infra.pki.ca_truststore_path }}"
+    register: idp_validation
+    until: idp_validation.status
+    retries: 3
+    delay: 5
+
+  - name: Create a local S3 instance, if enabled
+    when: infra.s3.provider == 'local'
+    block:
+    - name: Create a volume for S3
+      community.docker.docker_volume:
+        name: "{{ infra.s3.volume_name }}"
+        state: present
+    - name: Configure the S3 config directory
+      ansible.builtin.file:
+        path: "{{ infra.s3.config_path }}/config"
+        state: directory
+    - name: Issue a TLS certificate for S3
+      ansible.builtin.import_role:
+        name: issue_tls_certificate
+      vars:
+        pki_config_path: "{{ infra.s3.config_path }}"
+        pki_key_filename: rustfs_key.pem
+        pki_csr_filename: rustfs_cert.csr
+        pki_cert_filename: rustfs_cert.pem
+        pki_common_name: "{{ infra.s3.client_fqdn }}"
+        pki_subject_alt_names:
+        - "DNS:{{ infra.s3.client_fqdn }}"
+        - "DNS:{{ infra.s3.name }}.{{ infra.net.name }}"
+        - "DNS:{{ infra.s3.name }}"
+        - "DNS:localhost"
+        pki_key_type: "{{ infra.pki.key_type }}"
+        pki_key_curve: "{{ infra.pki.key_curve }}"
+        pki_key_size: "{{ infra.pki.key_size }}"
+        pki_ca_path: "{{ infra.pki.ca_path }}"
+        pki_ca_key_path: "{{ infra.pki.ca_key_path }}"
+        pki_cert_validity: "{{ infra.pki.crt_validity }}"
+    - name: Create a client scope for S3 role memberships
+      community.general.keycloak_clientscope:
+        auth_keycloak_url: "{{ infra.idp.client_base_url }}"
+        auth_realm: "{{ infra.idp.realm }}"
+        auth_username: "{{ infra.idp.admin_user }}"
+        auth_password: "{{ infra.idp.admin_password }}"
+        name: "{{ infra.s3.client_id }}-roles"
+        description: "Add top-level roles to tokens issued for S3"
+        protocol: openid-connect
+        protocol_mappers:
+        - config:
+            access.token.claim: true
+            claim.name: "roles"
+            id.token.claim: true
+            introspection.token.claim: true
+            lightweight.claim: false
+            userinfo.token.claim: true
+            jsonType.label: String
+            multivalued: true
+            usermodel.clientRoleMapping.clientId: "{{ infra.s3.client_id }}"
+          name: "client roles"
+          protocol: openid-connect
+          protocolMapper: oidc-usermodel-client-role-mapper
+        state: present
+        validate_certs: false
+    - name: Start S3
+      community.docker.docker_container:
+        name: "{{ infra.s3.name }}"
+        image: "{{ infra.s3.image }}"
+        ports:
+        - "{{ infra.s3.ip }}:{{ infra.s3.port | int }}:9000/tcp"
+        - "{{ infra.s3.ip }}:{{ infra.s3.console_port | int }}:9001/tcp"
+        mounts:
+        - source: "{{ infra.s3.volume_name }}"
+          target: /data
+        - source: "{{ infra.s3.config_path }}"
+          target: /opt/tls
+          read_only: true
+          type: bind
+        networks:
+        - name: kind
+          aliases:
+          - "{{ infra.s3.name }}"
+          - "{{ infra.s3.client_fqdn }}"
+        env:
+          RUSTFS_ACCESS_KEY: "{{ infra.s3.access_key }}"
+          RUSTFS_SECRET_KEY: "{{ infra.s3.secret_key }}"
+          RUSTFS_CONSOLE_ENABLE: "true"
+          RUSTFS_TLS_PATH: "/opt/tls/"
+          RUSTFS_BROWSER_REDIRECT_URL: "{{ infra.s3.admin_endpoint }}"
+          RUSTFS_IDENTITY_OPENID_ENABLE: "on"
+          export RUSTFS_IDENTITY_OPENID_CLIENT_ID: "<CLIENT_ID>"
+          export RUSTFS_IDENTITY_OPENID_CLIENT_SECRET: "<CLIENT_SECRET>"
+          export RUSTFS_IDENTITY_OPENID_SCOPES: "openid,profile,email"
+          export RUSTFS_IDENTITY_OPENID_REDIRECT_URI: "https://rustfs.example.com/rustfs/admin/v3/oidc/callback/default"
+          export RUSTFS_IDENTITY_OPENID_REDIRECT_URI_DYNAMIC: off
+          export RUSTFS_IDENTITY_OPENID_DISPLAY_NAME: "My IdP"
+          export RUSTFS_IDENTITY_OPENID_GROUPS_CLAIM: "groups"
+          export RUSTFS_IDENTITY_OPENID_ROLES_CLAIM: "roles"
+          export RUSTFS_IDENTITY_OPENID_EMAIL_CLAIM: "email"
+          export RUSTFS_IDENTITY_OPENID_USERNAME_CLAIM: "preferred_username"
+        command: "/data"
+        keep_volumes: false
+        restart_policy: always
+        state: healthy
+    - name: Update DNS with a record for S3
+      ansible.builtin.import_role:
+        name: update_dns_record
+      vars:
+        dns_key_name: "{{ infra.dns.admin_key_name }}"
+        dns_key_secret: "{{ infra.dns.admin_key_secret }}"
+        dns_key_algorithm: "{{ infra.dns.key_algorithm }}"
+        dns_server: "{{ infra.dns.ip }}"
+        dns_protocol: "{{ infra.dns.protocol }}"
+        dns_ttl: "{{ infra.dns.ttl | int }}"
+        dns_record: "{{ infra.s3.client_fqdn }}."
+        dns_value: "{{ infra.s3.ip }}"
+
+
+  - name: Create a local Kafka instance, if enabled
+    when: infra.kafka.provider == 'local' and infra.kafka.enabled
+    block:
+    - name: Configure the Kafka secrets directory
+      ansible.builtin.file:
+        path: "{{ infra.kafka.config_path }}/{{ item }}"
+        state: directory
+      loop:
+        - secrets
+        - config
+    - name: Create a volume for Kafka
+      community.docker.docker_volume:
+        name: "{{ infra.kafka.volume_name }}"
+        state: present
+    - name: Start Kafka
+      community.docker.docker_container:
+        name: "{{ infra.kafka.name }}"
+        image: "{{ infra.kafka.image }}"
+        ports:
+        - "{{ infra.kafka.ip }}:{{ infra.kafka.port | int }}:9092/tcp"
+        mounts:
+        - source: "{{ infra.kafka.volume_name }}"
+          target: /var/lib/kafka/data
+        - source: "{{ infra.kafka.config_path }}/config"
+          target: /mnt/shared/config
+          type: bind
+        - source: "{{ infra.kafka.config_path }}/secrets"
+          target: /etc/kafka/secrets
+          read_only: true
+          type: bind
+        networks:
+        - name: kind
+          aliases:
+          - "{{ infra.kafka.name }}"
+          - "{{ infra.kafka.client_fqdn }}"
+        keep_volumes: false
+        restart_policy: always
+        state: healthy
+    - name: Update DNS with a record for Kafka
+      ansible.builtin.import_role:
+        name: update_dns_record
+      vars:
+        dns_key_name: "{{ infra.dns.admin_key_name }}"
+        dns_key_secret: "{{ infra.dns.admin_key_secret }}"
+        dns_key_algorithm: "{{ infra.dns.key_algorithm }}"
+        dns_server: "{{ infra.dns.ip }}"
+        dns_protocol: "{{ infra.dns.protocol }}"
+        dns_ttl: "{{ infra.dns.ttl | int }}"
+        dns_record: "{{ infra.kafka.client_fqdn }}."
+        dns_value: "{{ infra.kafka.ip }}"
+
+  - name: Create a local registry, if enabled
+    when: infra.registry.provider == 'local'
+    block:
+    - name: Create a directory for the registry
+      ansible.builtin.file:
+        path: "{{ infra.registry.config_path }}"
+        state: directory
+    - name: Issue a TLS certificate for the registry
+      ansible.builtin.import_role:
+        name: issue_tls_certificate
+      vars:
+        pki_config_path: "{{ infra.registry.config_path }}"
+        pki_key_filename: registry.key
+        pki_csr_filename: registry.csr
+        pki_cert_filename: registry.pem
+        pki_common_name: "{{ infra.registry.client_fqdn }}"
+        pki_subject_alt_names:
+        - "DNS:{{ infra.registry.client_fqdn }}"
+        - "DNS:{{ infra.registry.name }}.{{ infra.net.name }}"
+        - "DNS:{{ infra.registry.name }}"
+        - "DNS:localhost"
+        pki_key_type: "{{ infra.pki.key_type }}"
+        pki_key_curve: "{{ infra.pki.key_curve }}"
+        pki_key_size: "{{ infra.pki.key_size }}"
+        pki_ca_path: "{{ infra.pki.ca_path }}"
+        pki_ca_key_path: "{{ infra.pki.ca_key_path }}"
+        pki_cert_validity: "{{ infra.pki.crt_validity }}"
+    - name: Configure the registry
+      ansible.builtin.import_role:
+        name: registry_configuration
+      vars:
+        directory: "{{ infra.registry.config_path }}"
+    - name: Create a volume for the registry
+      community.docker.docker_volume:
+        name: "{{ infra.registry.volume_name }}"
+        state: present
+    - name: Start the registry
+      community.docker.docker_container:
+        name: "{{ infra.registry.name }}"
+        image: "{{ infra.registry.image }}"
+        mounts:
+        - source: "{{ infra.registry.volume_name }}"
+          target: /data
+        - source: "{{ infra.registry.config_path }}/config.json"
+          target: /etc/zot/config.json
+          read_only: true
+          type: bind
+        - source: "{{ infra.registry.config_path }}/registry.key"
+          target: /etc/zot/registry.key
+          read_only: true
+          type: bind
+        - source: "{{ infra.registry.config_path }}/registry.pem"
+          target: /etc/zot/registry.pem
+          read_only: true
+          type: bind
+        ports:
+        - "{{ infra.registry.ip }}:{{ infra.registry.port | int }}:5000/tcp"
+        networks:
+        - name: "{{ infra.net.name }}"
+          aliases:
+          - "{{ infra.registry.name }}"
+          - "{{ infra.registry.client_fqdn }}"
+        keep_volumes: false
+        restart_policy: always
+        state: healthy
+    - name: Update DNS with a record for the registry
+      ansible.builtin.import_role:
+        name: update_dns_record
+      vars:
+        dns_key_name: "{{ infra.dns.admin_key_name }}"
+        dns_key_secret: "{{ infra.dns.admin_key_secret }}"
+        dns_key_algorithm: "{{ infra.dns.key_algorithm }}"
+        dns_server: "{{ infra.dns.ip }}"
+        dns_protocol: "{{ infra.dns.protocol }}"
+        dns_ttl: "{{ infra.dns.ttl | int }}"
+        dns_record: "{{ infra.registry.client_fqdn }}."
+        dns_value: "{{ infra.registry.ip }}"
+
+  - name: Template the cloud-provider-kind configuration
+    ansible.builtin.import_role:
+      name: cloud_provider_kind_configuration
+    vars:
+      cloud_provider_kind_url: "{{ host.tool.cloud_provider_kind.url }}"
+      cloud_provider_kind_dir: "{{ host.tool.cloud_provider_kind.config_path }}"
+
+  - name: Preheat k8s yaml files for later
+    block:
+      - name: Create a directory for preheated files
+        ansible.builtin.file:
+          path: "{{ preheat_path }}"
+          state: directory
+      - name: Preheat the ServiceMonitor CRD
+        ansible.builtin.get_url:
+          url: "{{ stack.prometheus.service_monitor_crd }}"
+          dest: "{{ preheat_path }}/servicemonitor-crd.yaml"
+      - name: Preheat the PodMonitor CRD
+        ansible.builtin.get_url:
+          url: "{{ stack.prometheus.pod_monitor_crd }}"
+          dest: "{{ preheat_path }}/podmonitor-crd.yaml"
+      - name: Preheat the Kubernetes Gateway CRDs
+        ansible.builtin.get_url:
+          url: "{{ cluster.edge.gateway_api_crds }}"
+          dest: "{{ preheat_path }}/gateway-api-crds.yaml"
+      - name: Preheat the CRD for cert-manager PKI
+        ansible.builtin.get_url:
+          url: "{{ cluster.pki.crd }}"
+          dest: "{{ preheat_path }}/cert-manager-crds.yaml"
+      - name: Preheat the KeyCloak Operator CRDs
+        ansible.builtin.get_url:
+          url: "https://raw.githubusercontent.com/keycloak/keycloak-k8s-resources/{{ stack.keycloak.operator_version }}/kubernetes/{{ item }}"
+          dest: "{{ preheat_path }}/{{ item }}"
+        loop:
+          - keycloaks.k8s.keycloak.org-v1.yml
+          - keycloakrealmimports.k8s.keycloak.org-v1.yml
+
+# If you used a local DNS server, then you must now configure your host to point to 127.0.0.1:53
+# You must also trust the CA that was generated for you using security add-certificates ~/.kube-eng/pki/ca.pem

@@ -54,29 +54,29 @@ class ActionsModal(ModalScreen[str]):
 
     def compose(self) -> ComposeResult:
         with Container(id='actions-container'):
-            yield Static("Available Actions", id='actions-title')
+            yield Static('Available Actions', id='actions-title')
             yield OptionList(
-                Option("Host Apply", id="host-apply"),
-                Option("Cluster Apply", id="cluster-apply"),
-                Option("Cluster Destroy", id="cluster-destroy"),
-                Option("Stack Apply", id="stack-apply"),
-                id="actions-list"
+                Option('Host Apply', id='host-apply'),
+                Option('Cluster Apply', id='cluster-apply'),
+                Option('Cluster Destroy', id='cluster-destroy'),
+                Option('Stack Apply', id='stack-apply'),
+                id='actions-list',
             )
-            yield Button("Cancel", id="actions-cancel", variant="error")
+            yield Button('Cancel', id='actions-cancel', variant='error')
 
-    @on(OptionList.OptionSelected, "#actions-list")
+    @on(OptionList.OptionSelected, '#actions-list')
     def on_option_selected(self, event: OptionList.OptionSelected) -> None:
         """Handle action selection"""
         if event.option_id:
             self.dismiss(event.option_id)
 
-    @on(Button.Pressed, "#actions-cancel")
+    @on(Button.Pressed, '#actions-cancel')
     def on_cancel_pressed(self) -> None:
         """Handle cancel button press"""
         self.dismiss()
 
     def on_mount(self) -> None:
-        self.query_one("#actions-list").focus()
+        self.query_one('#actions-list').focus()
 
     def action_close(self) -> None:
         self.dismiss()

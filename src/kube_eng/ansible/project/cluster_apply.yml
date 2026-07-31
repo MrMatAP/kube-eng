@@ -155,7 +155,7 @@
         worker_nodes: "{{ cluster.worker_nodes | int }}"
         cluster_name: "{{ cluster.name }}"
         directory: "{{ host.tool.kind.config_path }}"
-        truststore_path: "{{ host.pki.ca_truststore_path }}"
+        truststore_path: "{{ infra.pki.ca_truststore_path }}"
         airgap_registry_url: "{{ cluster.registry.https_url }}"
         pod_subnet_cidr: "{{ cluster.pod_subnet_cidr }}"
         service_subnet_cidr: "{{ cluster.service_subnet_cidr }}"
@@ -454,8 +454,8 @@
             name: cluster-ca
             namespace: "{{ cluster.pki.ns }}"
           data:
-            tls.crt: "{{ lookup('ansible.builtin.file', host.pki.ca_path) | b64encode }}"
-            tls.key: "{{ lookup('ansible.builtin.file', host.pki.ca_key_path) | b64encode }}"
+            tls.crt: "{{ lookup('ansible.builtin.file', infra.pki.ca_path) | b64encode }}"
+            tls.key: "{{ lookup('ansible.builtin.file', infra.pki.ca_key_path) | b64encode }}"
     - name: Declare the local CA as an issuer
       kubernetes.core.k8s:
         state: present

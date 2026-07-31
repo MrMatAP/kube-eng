@@ -71,55 +71,6 @@ class ClusterEdgeConfig(RootConfigAware):
                 raise ValueError(f'Unknown edge kind: {self.kind}')
 
 
-class ClusterOIDCConfig(RootConfigAware):
-    username_claim: str = Field(default='preferred_username')
-    groups_claim: str = Field(default='groups')
-
-    @computed_field
-    @property
-    def issuer_url(self) -> str:
-        """
-        Computed IDP issuer URL for the cluster
-        Returns:
-            Computed IDP issuer URL for the cluster
-        """
-        return f'https://{self._root_config.host.idp.name}.{self._root_config.host.dns.zone}:{self._root_config.host.idp.host_port}/realms/master'
-
-
-class ClusterDNSConfig(RootConfigAware):
-    server: str = Field(
-        default='127.0.0.1',
-        description='DNS server IP address. This should be 127.0.0.1 for local DNS',
-    )
-    key_name: str = Field(
-        default='update-key',
-        description='Name of the key to sign dynamic DNS updates with',
-    )
-    key_algorithm: str = Field(
-        default='hmac-sha256',
-        description='Algorithm to use for signing dynamic DNS updates',
-    )
-    key_secret: str = Field(
-        default='',
-        description='Secret containing the key to sign dynamic DNS updates with. If empty, defaults to the admin password',
-    )
-    protocol: str = Field(
-        default='tcp', description='DNS server protocol for DNS updates'
-    )
-    ttl: int = Field(default=1800, description='Time to live (TTL) for DNS records')
-
-
-class ClusterRegistryConfig(RootConfigAware):
-    url: str = Field(
-        default='', description='URL of the registry to use for images and Helm charts'
-    )
-
-    @computed_field
-    @property
-    def https_url(self) -> str:
-        return self.url.replace('oci', 'https')
-
-
 class ClusterConfig(RootConfigAware):
     name: str = Field(
         description='Name of the cluster', default_factory=socket.gethostname
@@ -133,12 +84,9 @@ class ClusterConfig(RootConfigAware):
     control_plane_nodes: int = Field(default=1)
     worker_nodes: int = Field(default=3)
 
-    dns: ClusterDNSConfig = Field(default_factory=ClusterDNSConfig)
-    registry: ClusterRegistryConfig = Field(default_factory=ClusterRegistryConfig)
     cni: ClusterCNIConfig = Field(default_factory=ClusterCNIConfig)
     mesh: ClusterMeshConfig = Field(default_factory=ClusterMeshConfig)
     pki: ClusterPKIConfig = Field(default_factory=ClusterPKIConfig)
-    oidc: ClusterOIDCConfig = Field(default_factory=ClusterOIDCConfig)
     edge: ClusterEdgeConfig = Field(default_factory=ClusterEdgeConfig)
 
     def model_post_init(self, context: Any, /) -> None:

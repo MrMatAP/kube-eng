@@ -8,7 +8,8 @@ from pydantic import BaseModel
 
 from kube_eng.config import RootConfig, RootConfigAware
 
-def recursive_config_assertion(config: RootConfig, base: RootConfigAware)-> bool:
+
+def recursive_config_assertion(config: RootConfig, base: RootConfigAware) -> bool:
     """
     A little utility function to recurse down the entire configuration hierarchy
     and assert that _root_config as a reference back to the root configuration instance is set.
@@ -24,8 +25,11 @@ def recursive_config_assertion(config: RootConfig, base: RootConfigAware)-> bool
     """
     for attr in dict(base).values():
         if issubclass(type(attr), BaseModel):
-            assert attr._root_config == config, f'{base.__class__.__name__}.{attr.__class__.__name__} is not configured'
+            assert attr._root_config == config, (
+                f'{base.__class__.__name__}.{attr.__class__.__name__} is not configured'
+            )
     return True
+
 
 def test_root_config_propagates_when_loaded(tmp_path: pathlib.Path):
     """
@@ -40,6 +44,7 @@ def test_root_config_propagates_when_loaded(tmp_path: pathlib.Path):
     for attr in dict(config).values():
         if issubclass(type(attr), BaseModel):
             assert recursive_config_assertion(config, attr)
+
 
 def test_root_config_propagates_when_initialized(tmp_path: pathlib.Path):
     """

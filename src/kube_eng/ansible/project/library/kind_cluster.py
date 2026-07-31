@@ -87,8 +87,7 @@ def run_module():
     tool_kind = pathlib.Path(module.params['tool_kind']).resolve(strict=True)
 
     rc, out, err = module.run_command(
-        check_rc=True,
-        args=[tool_kind, 'get', 'clusters']
+        check_rc=True, args=[tool_kind, 'get', 'clusters']
     )
     if rc != 0:
         result['msg'] = 'Failed to get clusters'

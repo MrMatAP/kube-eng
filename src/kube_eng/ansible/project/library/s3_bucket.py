@@ -98,14 +98,16 @@ def run_module():
         module.exit_json(**result)
 
     try:
-        s3 = boto3.client('s3',
-                           endpoint_url=module.params['s3_endpoint'],
-                           use_ssl=True,
-                           verify=module.params['truststore_path'],
-                           aws_access_key_id=module.params['admin_access_key'],
-                           aws_secret_access_key=module.params['admin_secret_key'],
-                           config=botocore.client.Config(signature_version='s3v4'),
-                           region_name='us-east-1')
+        s3 = boto3.client(
+            's3',
+            endpoint_url=module.params['s3_endpoint'],
+            use_ssl=True,
+            verify=module.params['truststore_path'],
+            aws_access_key_id=module.params['admin_access_key'],
+            aws_secret_access_key=module.params['admin_secret_key'],
+            config=botocore.client.Config(signature_version='s3v4'),
+            region_name='us-east-1',
+        )
         if module.params['state'] == 'present':
             s3.create_bucket(Bucket=module.params['bucket_name'])
             result['msg'] = 'Bucket created'
@@ -114,18 +116,21 @@ def run_module():
             result['msg'] = 'Bucket deleted'
     except botocore.exceptions.ClientError as err:
         result['changed'] = False
-        code = err.response.get("Error", {}).get("Code", "Unknown")
+        code = err.response.get('Error', {}).get('Code', 'Unknown')
         if module.params['state'] == 'present' and code == 'BucketAlreadyExists':
             result['msg'] = 'Bucket is present'
             result['changed'] = False
             module.exit_json(**result)
-        status_code = err.response.get("ResponseMetadata", {}).get("HTTPStatusCode", "Unknown")
-        msg = err.response.get("Error", {}).get("Message", "An unknown error occurred")
+        status_code = err.response.get('ResponseMetadata', {}).get(
+            'HTTPStatusCode', 'Unknown'
+        )
+        msg = err.response.get('Error', {}).get('Message', 'An unknown error occurred')
         result['msg'] = f'[{status_code}] - {msg}'
         module.fail_json(**result)
 
     result['changed'] = True
     module.exit_json(**result)
+
 
 def main():
     run_module()

@@ -9,11 +9,11 @@ import yaml
 from pydantic import BaseModel, Field, computed_field
 
 from kube_eng import __version__
-from .base import RootConfigAware
 
+from .base import RootConfigAware
 from .cluster_config import ClusterConfig
 from .host_config import HostConfig
-from .infrastructure_config import InfrastructureConfig
+from .infra_config import InfraConfig
 from .stack_config import StackConfig
 
 
@@ -24,7 +24,7 @@ class RootConfig(BaseModel):
 
     config_path: pathlib.Path = Field(description='Path to the configuration directory')
     admin_password: str = Field(
-        default_factory=secrets.token_urlsafe,
+        default_factory=lambda: secrets.token_urlsafe(16),
         description='Admin password for the cluster and its services',
     )
     user_id: str = Field(
@@ -34,14 +34,14 @@ class RootConfig(BaseModel):
     host: HostConfig = Field(
         default_factory=HostConfig, description='Host configuration'
     )
+    infra: InfraConfig = Field(
+        default_factory=InfraConfig, description='Infrastructure configuration'
+    )
     cluster: ClusterConfig = Field(
         default_factory=ClusterConfig, description='Cluster configuration'
     )
     stack: StackConfig = Field(
         default_factory=StackConfig, description='Stack configuration'
-    )
-    infrastructure: InfrastructureConfig = Field(
-        default_factory=InfrastructureConfig, description='Infrastructure configuration'
     )
 
     @computed_field
@@ -92,7 +92,10 @@ class RootConfig(BaseModel):
             Nothing
         """
         self.config_path.mkdir(parents=True, exist_ok=True)
-        yaml.dump(self.model_dump(mode='json'), self.config_file_path.open('w'))
+        yaml.dump(self.model_dump(mode='json',
+                                  exclude_none=True,
+                                  exclude_computed_fields=True),
+                  self.config_file_path.open('w'))
 
     @classmethod
     def load(cls, config_path: pathlib.Path) -> 'RootConfig':
@@ -130,30 +133,30 @@ class RootConfig(BaseModel):
 
         # If we are to use the local default DNS server and have not been
         # given a key_secret, we default to the base64-encoded admin password
-        if self.host.dns.enabled and self.cluster.dns.key_secret == '':
-            self.cluster.dns.key_secret = base64.b64encode(
-                bytes(self.admin_password, encoding='utf-8')
-            ).decode('utf-8')
-
-        # Populate the cluster Helm registry if not provided
-        if self.cluster.registry.url == '' and self.host.registry.enabled:
-            self.cluster.registry.url = f'oci://{self.host.registry.name}.{self.host.dns.zone}:{self.host.registry.host_port}/'
-
-        # Populate the IdP database password if not provided
-        if self.host.idp.enabled and self.host.idp.db_password == '':
-            self.host.idp.db_password = self.admin_password
-
-        # Local infrastructure credentials default to the admin password
-        infra = self.infrastructure
-        if (
-            infra.postgresql.provider == 'local'
-            and infra.postgresql.admin_password == ''
-        ):
-            infra.postgresql.admin_password = self.admin_password
-        if infra.idp.provider == 'local':
-            if infra.idp.admin_password == '':
-                infra.idp.admin_password = self.admin_password
-            if infra.idp.db_password == '':
-                infra.idp.db_password = self.admin_password
-        if infra.s3.provider == 'local' and infra.s3.secret_key == '':
-            infra.s3.secret_key = self.admin_password
+        # if self.infra.dns.enabled and self.cluster.dns.key_secret == '':
+        #     self.cluster.dns.key_secret = base64.b64encode(
+        #         bytes(self.admin_password, encoding='utf-8')
+        #     ).decode('utf-8')
+        #
+        # # Populate the cluster Helm registry if not provided
+        # if self.cluster.registry.url == '' and self.host.registry.enabled:
+        #     self.cluster.registry.url = f'oci://{self.host.registry.name}.{self.host.dns.zone}:{self.host.registry.host_port}/'
+        #
+        # # Populate the IdP database password if not provided
+        # if self.host.idp.enabled and self.host.idp.db_password == '':
+        #     self.host.idp.db_password = self.admin_password
+        #
+        # # Local infrastructure credentials default to the admin password
+        # infra = self.infra
+        # if (
+        #     infra.pg.provider == 'local'
+        #     and infra.pg.admin_password == ''
+        # ):
+        #     infra.pg.admin_password = self.admin_password
+        # if infra.idp.provider == 'local':
+        #     if infra.idp.admin_password == '':
+        #         infra.idp.admin_password = self.admin_password
+        #     if infra.idp.db_password == '':
+        #         infra.idp.db_password = self.admin_password
+        # if infra.s3.provider == 'local' and infra.s3.secret_key == '':
+        #     infra.s3.secret_key = self.admin_password

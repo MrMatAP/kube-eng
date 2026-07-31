@@ -14,22 +14,22 @@ from kube_eng import __ansible_path__
 from kube_eng.config import RootConfig
 
 cmd_to_playbook = {
-    'host-apply': 'host_apply.yml',
+    'infra-apply': 'infra_apply.yml',
     'cluster-apply': 'cluster_apply.yml',
     'cluster-destroy': 'cluster_destroy.yml',
     'stack-apply': 'stack_apply.yml',
-
     'helm-repackage': 'helm_repackage.yml',
     'dns-update': 'dns_update.yml',
 }
 
+
 class AnsibleStatusEnum(enum.StrEnum):
-    ok = str(rich.emoji.Emoji("ok_button"))
-    unchanged = str(rich.emoji.Emoji("pause_button"))
-    running = str(rich.emoji.Emoji("repeat_button"))
-    failed = str(rich.emoji.Emoji("sos_button"))
-    unknown = str(rich.emoji.Emoji("question_mark"))
-    empty = str(rich.emoji.Emoji("new_button"))
+    ok = str(rich.emoji.Emoji('ok_button'))
+    unchanged = str(rich.emoji.Emoji('pause_button'))
+    running = str(rich.emoji.Emoji('repeat_button'))
+    failed = str(rich.emoji.Emoji('sos_button'))
+    unknown = str(rich.emoji.Emoji('question_mark'))
+    empty = str(rich.emoji.Emoji('new_button'))
 
 
 @dataclasses.dataclass
@@ -48,11 +48,12 @@ class AnsibleEvent:
 
 
 class AnsibleExecution:
-
-    def __init__(self,
-                 config: RootConfig,
-                 ui_event_callback: collections.abc.Callable[[AnsibleEvent], None],
-                 verbose: bool = False):
+    def __init__(
+        self,
+        config: RootConfig,
+        ui_event_callback: collections.abc.Callable[[AnsibleEvent], None],
+        verbose: bool = False,
+    ):
         self._config = config
         self._ui_event_callback = ui_event_callback
         self._verbose = verbose
@@ -69,7 +70,7 @@ class AnsibleExecution:
             extravars = self._config.model_dump(mode='json')
             if overrides is not None:
                 extravars.update(overrides)
-            
+
             self._config.ansible_artifacts_path.mkdir(parents=True, exist_ok=True)
             t, r = ansible_runner.run_async(
                 ident=f'{playbook}-{uuid.uuid4()}',
@@ -77,7 +78,7 @@ class AnsibleExecution:
                 playbook=playbook,
                 envvars={
                     'ANSIBLE_PYTHON_INTERPRETER': sys.executable,
-                    'SSL_CERT_FILE': self._config.host.pki.ca_truststore_path
+                    'SSL_CERT_FILE': self._config.infra.pki.ca_truststore_path,
                 },
                 extravars=extravars,
                 suppress_env_files=True,
@@ -91,18 +92,23 @@ class AnsibleExecution:
                 cancel_callback=self.ansible_cancel_callback,
                 finished_callback=self.ansible_finished_callback,
                 status_handler=self.ansible_status_handler,
-                artifacts_handler=self.ansible_artifacts_handler)
+                artifacts_handler=self.ansible_artifacts_handler,
+            )
             await asyncio.to_thread(t.join)
         except OSError as oe:
-            print(f'Failed to create a directory for artefacts of the current Ansible execution: {oe}')
+            print(
+                f'Failed to create a directory for artefacts of the current Ansible execution: {oe}'
+            )
         except Exception as e:
             print(e)
 
     def ansible_event_handler(self, status: typing.Dict) -> bool:
-        ev = AnsibleEvent(uuid=status.get('uuid', 'Unknown'),
-                          counter=status.get('counter', 0),
-                          event=status.get('event', 'Unknown'),
-                          verbose=self._verbose)
+        ev = AnsibleEvent(
+            uuid=status.get('uuid', 'Unknown'),
+            counter=status.get('counter', 0),
+            event=status.get('event', 'Unknown'),
+            verbose=self._verbose,
+        )
         event_data = status.get('event_data', {})
         match ev.event:
             case 'playbook_on_start':
@@ -114,7 +120,7 @@ class AnsibleExecution:
                 ev.status = AnsibleStatusEnum.empty
                 ev.msg = 'Started play'
             case 'playbook_on_task_start':
-                ev.task = event_data.get("name")
+                ev.task = event_data.get('name')
                 ev.status = AnsibleStatusEnum.running
                 ev.msg = 'Started task'
             case 'runner_on_start':
@@ -136,7 +142,9 @@ class AnsibleExecution:
                 ev.uuid = event_data.get('task_uuid', ev.uuid)
                 ev.task = event_data.get('task', 'Unknown')
                 ev.changed = event_data.get('changed', False)
-                ev.status = AnsibleStatusEnum.ok if ev.changed else AnsibleStatusEnum.unchanged
+                ev.status = (
+                    AnsibleStatusEnum.ok if ev.changed else AnsibleStatusEnum.unchanged
+                )
                 ev.warnings = event_data.get('res', {}).get('warnings', [])
                 ev.msg = event_data.get('res', {}).get('msg', '')
                 ev.stdout = event_data.get('res', {}).get('stdout', '')
@@ -149,7 +157,14 @@ class AnsibleExecution:
                 ev.status = AnsibleStatusEnum.failed
                 ev.stdout = status.get('stdout', '')
 
-            case 'playbook_on_stats' | 'playbook_on_include' | 'verbose' | 'runner_item_on_ok' | 'runner_on_skipped' | 'deprecated':
+            case (
+                'playbook_on_stats'
+                | 'playbook_on_include'
+                | 'verbose'
+                | 'runner_item_on_ok'
+                | 'runner_on_skipped'
+                | 'deprecated'
+            ):
                 # We do not capture these events
                 return True
             case _:
@@ -173,20 +188,24 @@ class AnsibleExecution:
             runner (ansible_runner.Runner): The Ansible runner instance that completed the execution.
         """
         if runner.status == 'failed':
-            ev = AnsibleEvent(uuid='0',
-                              counter=0,
-                              event='playbook_failed',
-                              task='Playbook failed',
-                              status=AnsibleStatusEnum.failed,
-                              verbose=self._verbose)
+            ev = AnsibleEvent(
+                uuid='0',
+                counter=0,
+                event='playbook_failed',
+                task='Playbook failed',
+                status=AnsibleStatusEnum.failed,
+                verbose=self._verbose,
+            )
             ev.stdout = runner.stdout.read()
             ev.stderr = runner.stderr.read()
             self._ui_event_callback(ev)
 
-    def ansible_status_handler(self, status_data: typing.Dict, runner_config: ansible_runner.config.runner.RunnerConfig) -> None:
+    def ansible_status_handler(
+        self,
+        status_data: typing.Dict,
+        runner_config: ansible_runner.config.runner.RunnerConfig,
+    ) -> None:
         pass
 
     def ansible_artifacts_handler(self, artifacts_file: str) -> None:
         pass
-
-

@@ -23,6 +23,7 @@ class FormLine(HorizontalGroup):
     """
     Horizontal container for a single form field with its label.
     """
+
     DEFAULT_CLASSES = 'form-line'
 
 
@@ -30,6 +31,7 @@ class FormActions(HorizontalGroup):
     """
     Container for form action buttons (e.g., Submit, Cancel).
     """
+
     DEFAULT_CLASSES = 'form-actions'
 
 
