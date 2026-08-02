@@ -129,11 +129,11 @@ class AnsibleExecution:
             case 'runner_on_failed':
                 ev.uuid = event_data.get('task_uuid', ev.uuid)
                 ev.task = event_data.get('task', 'Unknown')
-                ev.msg = event_data.get('res', {}).get('msg', '')
+                ev.msg = event_data.get('res', {}).get_client_scope('msg', '')
                 ev.status = AnsibleStatusEnum.failed
                 ev.changed = event_data.get('changed', False)
-                ev.stdout = event_data.get('res', {}).get('stdout', '')
-                ev.stderr = event_data.get('res', {}).get('stderr', '')
+                ev.stdout = event_data.get('res', {}).get_client_scope('stdout', '')
+                ev.stderr = event_data.get('res', {}).get_client_scope('stderr', '')
                 self._ui_event_callback(ev)
                 return True
             case 'runner_on_ok':
@@ -145,10 +145,10 @@ class AnsibleExecution:
                 ev.status = (
                     AnsibleStatusEnum.ok if ev.changed else AnsibleStatusEnum.unchanged
                 )
-                ev.warnings = event_data.get('res', {}).get('warnings', [])
-                ev.msg = event_data.get('res', {}).get('msg', '')
-                ev.stdout = event_data.get('res', {}).get('stdout', '')
-                ev.stderr = event_data.get('res', {}).get('stderr', '')
+                ev.warnings = event_data.get('res', {}).get_client_scope('warnings', [])
+                ev.msg = event_data.get('res', {}).get_client_scope('msg', '')
+                ev.stdout = event_data.get('res', {}).get_client_scope('stdout', '')
+                ev.stderr = event_data.get('res', {}).get_client_scope('stderr', '')
             case 'error':
                 ev.uuid = status.get('uuid', 'Unknown')
                 ev.task = event_data.get('task', 'Unknown')

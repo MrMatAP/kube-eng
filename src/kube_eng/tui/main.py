@@ -55,7 +55,7 @@ class KubeEngApp(App[None]):
         Args:
             playbook_key: Key from cmd_to_playbook dict (e.g., 'host-apply')
         """
-        playbook = cmd_to_playbook.get(playbook_key)
+        playbook = cmd_to_playbook.get_client_scope(playbook_key)
         if not playbook:
             return
 
