@@ -1,11 +1,12 @@
 import abc
 import pathlib
-import typing
 import secrets
+import typing
 
-from pydantic import Field, computed_field, IPvAnyAddress, AnyHttpUrl
+from pydantic import AnyHttpUrl, Field, IPvAnyAddress, computed_field
 
 from .base import RootConfigAware
+
 
 class KafkaConfig(RootConfigAware, abc.ABC):
     """Common configuration for Kafka"""
@@ -29,7 +30,6 @@ class KafkaConfig(RootConfigAware, abc.ABC):
         Returns:
             A FQDN
         """
-        pass
 
 class LocalKafkaConfig(KafkaConfig):
     """Local Kafka server hosted in a container on this host"""

@@ -2,14 +2,14 @@
 Common TUI widgets for headers, body, and logging.
 """
 
-from typing_extensions import Literal
+from typing import Literal
 
 from rich.text import Text
 from textual import on
 from textual.app import ComposeResult
 from textual.containers import Horizontal, Vertical
 from textual.events import Resize
-from textual.widgets import Label, DataTable
+from textual.widgets import DataTable, Label
 from textual.widgets._data_table import CursorType
 
 from kube_eng import __version__
@@ -31,7 +31,6 @@ class AppBody(Vertical):
     Main application body container
     """
 
-    pass
 
 
 class TUILog(DataTable):
@@ -88,7 +87,7 @@ class TUILog(DataTable):
 
     @on(Resize)
     def resize(self, event: Resize):
-        log_column = list(self.columns.values())[0]
+        log_column = next(iter(self.columns.values())[0])
         log_column.auto_width = False
         log_column.width = event.size.width - 6 - 6
         self.refresh()

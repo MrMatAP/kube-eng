@@ -2,9 +2,9 @@ import pathlib
 
 from pydantic import Field, computed_field
 
-from kube_eng import __version__, __helm_chart_path__
+from kube_eng import __helm_chart_path__, __version__
+
 from .base import RootConfigAware
-from .infra_pki_config import InfraPKIConfig
 
 
 class HostToolDockerConfig(RootConfigAware):

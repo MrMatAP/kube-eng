@@ -1,14 +1,14 @@
 from pydantic import Field
 
 from .base import RootConfigAware
+from .infra_dns_config import InfraDNSConfig, LocalDNSConfig
+from .infra_idp_config import InfraIdPConfig, LocalIdPConfig
+from .infra_kafka_config import InfraKafkaConfig, LocalKafkaConfig
 from .infra_net_config import InfraNetConfig
+from .infra_pg_config import InfraPGConfig, LocalPGConfig
 from .infra_pki_config import InfraPKIConfig
-from .infra_dns_config import LocalDNSConfig, InfraDNSConfig
-from .infra_idp_config import LocalIdPConfig, InfraIdPConfig
-from .infra_kafka_config import LocalKafkaConfig, InfraKafkaConfig
-from .infra_pg_config import LocalPGConfig, InfraPGConfig
-from .infra_registry_config import LocalRegistryConfig, InfraRegistryConfig
-from .infra_s3_config import LocalS3Config, InfraS3Config
+from .infra_registry_config import InfraRegistryConfig, LocalRegistryConfig
+from .infra_s3_config import InfraS3Config, LocalS3Config
 
 
 class InfraConfig(RootConfigAware):

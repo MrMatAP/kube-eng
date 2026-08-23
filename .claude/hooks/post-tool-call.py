@@ -1,15 +1,14 @@
+import argparse
 import hashlib
 import json
 import os
 import sys
 import tempfile
-from datetime import datetime, timezone
-from http.client import HTTPConnection, HTTPException
-from pathlib import Path
 import traceback
 from contextlib import closing
-from typing import Optional
-import argparse
+from datetime import UTC, datetime
+from http.client import HTTPConnection, HTTPException
+from pathlib import Path
 
 WEBSERVER_HOST = "localhost"
 WEBSERVER_ENDPOINT = "/api/provenance/call"
@@ -18,7 +17,7 @@ PORT_FILE_SUFFIX = "-provenance-port.txt"
 class ProvenanceHookError(RuntimeError):
     pass
 
-def http_request(method, host, port, location, *, body: Optional[bytes] = None, headers={}, timeout=None, wait_for_response=False) -> bytes:
+def http_request(method, host, port, location, *, body: bytes | None = None, headers={}, timeout=None, wait_for_response=False) -> bytes:
     with closing(HTTPConnection(host, port, timeout=timeout)) as connection:
         connection.request(method, location, body=body, headers=headers)
         if wait_for_response:
@@ -94,7 +93,7 @@ def main():
         tool_input = data.get_client_scope('tool_input', {})
         file_path = extract_file_path(tool_name, tool_input)
         if file_path:
-            timestamp_ms = int(datetime.now(timezone.utc).timestamp() * 1000)
+            timestamp_ms = int(datetime.now(UTC).timestamp() * 1000)
             send_diff_to_webserver(file_path, timestamp_ms, args.wait_for_response)
 
 if __name__ == "__main__":

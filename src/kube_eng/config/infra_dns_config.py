@@ -1,11 +1,10 @@
 import abc
-import base64
 import pathlib
 import secrets
 import typing
 from base64 import b64encode
 
-from pydantic import IPvAnyAddress, Field, computed_field
+from pydantic import Field, IPvAnyAddress, computed_field
 
 from .base import RootConfigAware
 

@@ -2,29 +2,29 @@ import pathlib
 
 from textual import on
 from textual.app import ComposeResult
-from textual.containers import VerticalScroll, Horizontal
+from textual.containers import Horizontal, VerticalScroll
 from textual.content import ContentType
 from textual.message import Message
 from textual.widget import Widget
 from textual.widgets import (
-    TabPane,
+    Button,
+    Checkbox,
+    Collapsible,
     Input,
     Label,
-    Checkbox,
-    Button,
     Select,
-    Collapsible,
+    TabPane,
 )
 
 from kube_eng.config import RootConfig
 from kube_eng.config.cluster_config import (
     ClusterCNIKindEnum,
-    ClusterMeshKind,
     ClusterEdgeKindEnum,
+    ClusterMeshKind,
 )
 from kube_eng.config.host_config import HostDNSKindEnum
-from kube_eng.tui.widgets import FormLine, FormActions, ConfigSidebar
 from kube_eng.tui.validators import ExecutablePathInput, PortValidator
+from kube_eng.tui.widgets import ConfigSidebar, FormActions, FormLine
 
 
 class ConfigTab(TabPane):
@@ -400,10 +400,10 @@ class ConfigTab(TabPane):
                 try:
                     field = self.query_one(field_id)
                     field.disabled = not checkbox.value
-                except Exception:
-                    pass
-        except Exception:
-            pass
+                except Exception as e:  # noqa: BLE001
+                    print(e)
+        except Exception as e:  # noqa: BLE001
+            print(e)
 
     @on(Button.Pressed, '#apply_configuration')
     def apply_configuration(self, event: Button.Pressed) -> None:
@@ -876,8 +876,8 @@ class ConfigTab(TabPane):
             self.query_one('#config-scroll', VerticalScroll).scroll_to_widget(
                 target_widget, animate=True
             )
-        except Exception:
-            pass
+        except Exception as e:  # noqa: BLE001
+            print(e)
 
     def compose(self) -> ComposeResult:
         """Build the complete configuration UI"""

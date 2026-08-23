@@ -1,100 +1,38 @@
-#!/usr/bin/python
-
-from keycloak import KeycloakAdmin
-
-__metaclass__ = type
-
-DOCUMENTATION = r"""
----
-module: idp_validate
-short_description: Validate IdP connectivity and entitlements
-description:
-- Validate IdP connectivity
-options:
-    idp_url:
-        description: The IdP URL
-        required: true
-        type: str
-    idp_admin_user:
-        description: The IdP admin user
-        required: true
-        type: str
-    idp_admin_password:
-        description: The IdP admin password
-        required: true
-        type: str
-    idp_realm:
-        description: The IdP realm
-        required: true
-        type: str
-    idp_ca_path:
-        description: Path to the truststore which has signed the IdP certificate
-        required: true
-        type: str
-author:
-- MrMat (@MrMatAP)
-"""
-
-EXAMPLES = r"""
-- name: Validate IdP connectivity and entitlements
-  idp_validate:
-    idp_url: https://idp.nostromo.k8s:8443
-    idp_admin_user: admin
-    idp_admin_password: secret
-    idp_realm: master
-    idp_ca_path: /path/to/truststore.pem
-"""
-
-RETURN = r"""
-status:
-  description: All required entitlements are granted
-  type: bool
-msg:
-  description: Output message
-  type: str
-"""
-
-from ansible.module_utils.basic import AnsibleModule  # noqa: E402
+from ansible.module_utils.basic import AnsibleModule
+from ansible.module_utils.idp_utils import IdPAdmin, IdPException, IdPValidationResult
 
 
 def run_module():
     module_args = {
         'idp_url': {'type': 'str', 'required': True},
-        'idp_admin_user': dict(type='str', required=True),
-        'idp_admin_password': dict(type='str', required=True, no_log=True),
-        'idp_realm': dict(type='str', required=True),
-        'idp_ca_path': dict(type='str', required=True)
+        'idp_admin_user': {'type': 'str', 'required': True},
+        'idp_admin_password': {'type': 'str', 'required': True, 'no_log': True},
+        'idp_realm': {'type': 'str', 'required': True},
+        'idp_ca_path': {'type': 'str', 'required': True}
     }
-    result = dict(status=False, msg='')
     module = AnsibleModule(argument_spec=module_args, supports_check_mode=True)
     if module.check_mode:
-        module.exit_json(**result)
+        module.exit_json()
 
     try:
-        idp_admin = KeycloakAdmin(
-            server_url=module.params['idp_url'],
-            username=module.params['idp_admin_user'],
-            password=module.params['idp_admin_password'],
-            realm_name=module.params['idp_realm'],
-            verify=module.params['idp_ca_path']
+        idp_admin = IdPAdmin(
+            idp_url=module.params['idp_url'],
+            idp_admin_user=module.params['idp_admin_user'],
+            idp_admin_password=module.params['idp_admin_password'],
+            idp_realm=module.params['idp_realm'],
+            idp_ca_path=module.params['idp_ca_path'],
         )
-        user_id = idp_admin.get_user_id(module.params['idp_admin_user'])
-        if user_id is None:
-            result['status'] = False
-            result['msg'] = 'Admin user id cannot be found in the realm'
-            module.fail_json(**result)
-        roles = idp_admin.get_realm_roles_of_user(user_id)
-        if any(filter(lambda r: r['name'] == 'admin', roles)):
-            result['status'] = True
-            result['msg'] = 'Connectivity and entitlements are granted'
-        else:
-            result['status'] = False
-            result['msg'] = 'Admin user lacks sufficient permissions'
-        module.exit_json(**result)
-    except Exception as e:
-        result['status'] = False
-        result['msg'] = str(e) or 'Unknown Error'
-        module.fail_json(**result)
+        result = idp_admin.validate(module.params['idp_admin_user'])
+        module.exit_json(**result.ansible_result())
+    except IdPException as e:
+        # Keep the same shape as a successful IdPValidationResult (in
+        # particular, 'validated') even on failure -- this is retried with
+        # `until: idp_validation.validated`, which needs that key present on
+        # every attempt, not just successful ones. The IdP container (Keycloak)
+        # commonly reports healthy before its admin API is actually queryable,
+        # so the first attempt failing here is the expected, common case.
+        result = IdPValidationResult(changed=False, msg=e.msg, validated=False)
+        module.fail_json(**result.ansible_result())
 
 
 def main():

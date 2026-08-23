@@ -1,25 +1,26 @@
-import typing
-import enum
-import sys
-import pathlib
 import argparse
 import asyncio
-import yaml
+import enum
+import pathlib
+import sys
+import typing
 
-from pydantic import BaseModel
+import pydantic
 import rich.console
+import yaml
+from pydantic import BaseModel
 from rich.padding import Padding
 
-from kube_eng import __version__, __default_config_path__
-from kube_eng.common.ansible_execution import cmd_to_playbook, AnsibleStatusEnum
-from kube_eng.config import RootConfig
+from kube_eng import __default_config_path__, __version__
 from kube_eng.common import AnsibleEvent, AnsibleExecution
+from kube_eng.common.ansible_execution import AnsibleStatusEnum, cmd_to_playbook
+from kube_eng.config import RootConfig, RootConfigAware
 
 console = rich.console.Console()
 
 
 class CLIAnsibleEventLog:
-    _status_display: typing.Dict[AnsibleStatusEnum, str] = {
+    _status_display: dict[AnsibleStatusEnum, str] = {  # noqa: RUF012
         AnsibleStatusEnum.ok: 'green',
         AnsibleStatusEnum.unchanged: 'dim green',
         AnsibleStatusEnum.empty: 'dim blue',
@@ -101,6 +102,22 @@ async def config_get(config: RootConfig, args: argparse.Namespace) -> int:
     return 0
 
 
+def _placeholder_value(annotation: typing.Any) -> str:
+    """
+    An obviously-fake but type-valid value for a required field we have no
+    real data for, e.g. when switching a discriminated union's provider
+    introduces fields the previous provider never needed.
+    Args:
+        annotation (): The field's type annotation
+
+    Returns:
+        A placeholder string that satisfies the annotation
+    """
+    if isinstance(annotation, type) and issubclass(annotation, pydantic.AnyUrl):
+        return 'https://change-me.example.com'
+    return 'change-me.example.com'
+
+
 async def config_set(config: RootConfig, args: argparse.Namespace) -> int:
     """
     Set a configuration value in the configuration hierarchy.
@@ -115,32 +132,94 @@ async def config_set(config: RootConfig, args: argparse.Namespace) -> int:
         console.print('Please specify both a key and a value')
         return 1
     path = args.key.split('.')
-    parent = config
     leaf = path[-1]
+
+    # Track (object, attribute_name) pairs as we walk down so that, if the
+    # leaf turns out to be a discriminator field, we still have a handle on
+    # the ancestor whose field actually declares the discriminated union.
+    ancestors: list[tuple[BaseModel, str]] = []
+    parent = config
     current_path: list[str] = []
     for container in path[:-1]:
         current_path.append(container)
         if not hasattr(parent, container):
             console.print(f'There is no attribute at {".".join(current_path)}')
             return 1
+        ancestors.append((parent, container))
         parent = getattr(parent, container)
     if not hasattr(parent, leaf):
         console.print(f'There is no attribute at {".".join(current_path + [leaf])}')
         return 1
-    if issubclass(type(getattr(parent, leaf)), BaseModel):
+    current_value = getattr(parent, leaf)
+    if issubclass(type(current_value), BaseModel):
         console.print(
             'You cannot set the value of an entire object. Set a path that resolves to an attribute instead.'
         )
         return 1
-    if issubclass(type(getattr(parent, leaf)), enum.Enum):
-        if args.value not in list(type(getattr(parent, leaf))):
+
+    if ancestors:
+        grandparent, field_name = ancestors[-1]
+        field_info = type(grandparent).model_fields.get(field_name)
+        if field_info is not None and field_info.discriminator == leaf:
+            # `leaf` picks which model class a discriminated union (e.g.
+            # infra.dns: LocalDNSConfig | RemoteDNSConfig) actually is.
+            # Mutating it in place would leave an object whose runtime type
+            # no longer matches its own fields (still a LocalDNSConfig with
+            # provider='remote'), which serializes inconsistently and
+            # silently corrupts the saved config. Re-validate the whole
+            # union member from its current values plus the new provider.
+            merged = {
+                **parent.model_dump(mode='json', exclude_computed_fields=True),
+                leaf: args.value,
+            }
+            # The target provider may require fields the current one never
+            # had (e.g. a remote fqdn/URL) and that only the user can supply
+            # a real value for. Rather than blocking the switch entirely,
+            # seed those with an obvious placeholder so it succeeds and the
+            # user can fill in the real value with a follow-up `config set`.
+            target_cls = next(
+                (
+                    cls
+                    for cls in typing.get_args(field_info.annotation)
+                    if cls.model_fields[leaf].default == args.value
+                ),
+                None,
+            )
+            defaulted: list[str] = []
+            if target_cls is not None:
+                for name, target_field in target_cls.model_fields.items():
+                    if name not in merged and target_field.is_required():
+                        merged[name] = _placeholder_value(target_field.annotation)
+                        defaulted.append(name)
+            adapter = pydantic.TypeAdapter(field_info.rebuild_annotation())
+            try:
+                new_value = adapter.validate_python(merged)
+            except pydantic.ValidationError as ve:
+                console.print(f'Cannot set {args.key} to {args.value!r}:\n{ve}')
+                return 1
+            setattr(grandparent, field_name, new_value)
+            if issubclass(type(new_value), RootConfigAware):
+                new_value.propagate_root_config(config)
+            config.save()
+            if defaulted:
+                prefix = '.'.join(path[:-1])
+                defaulted.sort()
+                console.print(
+                    f"Switched {prefix} to '{args.value}'. Placeholder values were "
+                    f'set for: {", ".join(defaulted)} -- update them, e.g. '
+                    f"'kube-eng config set {prefix}.{defaulted[0]} <value>'."
+                )
+            return 0
+
+    if issubclass(type(current_value), enum.Enum):
+        if args.value not in list(type(current_value)):
             console.print(
                 f'The value {args.value} is not a valid option for {args.key}'
             )
             return 1
         else:
-            setattr(parent, leaf, type(getattr(parent, leaf))(args.value))
-    elif isinstance(getattr(parent, leaf), bool):
+            setattr(parent, leaf, type(current_value)(args.value))
+    elif isinstance(current_value, bool):
         setattr(parent, leaf, args.value.lower() == 'true')
     else:
         setattr(parent, leaf, args.value)
@@ -270,7 +349,7 @@ async def main() -> int:
         return await args.func(config, args)
     except KeyboardInterrupt:
         return 0
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         print(e)
     return 1
 

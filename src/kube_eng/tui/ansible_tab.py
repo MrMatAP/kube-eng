@@ -3,11 +3,11 @@ Tab for displaying Ansible playbook execution progress.
 Hidden until a playbook is executed.
 """
 
+from rich.text import Text
 from textual import on
 from textual.app import ComposeResult
 from textual.message import Message
-from textual.widgets import TabPane, Static, RichLog, Button
-from rich.text import Text
+from textual.widgets import Button, RichLog, Static, TabPane
 
 from kube_eng.common import AnsibleEvent, AnsibleStatusEnum
 
@@ -26,7 +26,7 @@ class AnsibleTab(TabPane):
     class NavigateToStatus(Message):
         """Posted when the user presses Ok after execution completes."""
 
-    _status_colors: dict[AnsibleStatusEnum, str] = {
+    _status_colors: dict[AnsibleStatusEnum, str] = {  # noqa: RUF012
         AnsibleStatusEnum.ok: 'green',
         AnsibleStatusEnum.empty: 'dim green',
         AnsibleStatusEnum.running: 'orange',

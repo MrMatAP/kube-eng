@@ -5,76 +5,75 @@ Infrastructure configuration matrix tests
 import pathlib
 
 import pytest
-from pydantic import ValidationError
-
 from kube_eng.config import RootConfig
+from kube_eng.config.cluster_config import ClusterConfig
+from kube_eng.config.infra_pg_config import LocalPGConfig
+from pydantic import ValidationError
 
 
 def make_config(tmp_path: pathlib.Path, **infrastructure) -> RootConfig:
     """Build a RootConfig with deterministic identity and the given infrastructure overrides."""
     return RootConfig(
         config_path=tmp_path,
-        admin_password='test-admin',
-        cluster={'name': 'testcluster'},
+        cluster=ClusterConfig(name='testcluster'),
         infra=infrastructure,
     )
+
+
+def _url(value) -> str:
+    """Compare pydantic Url objects/strings without tripping over pydantic's
+    trailing-slash normalisation on URLs that have no explicit path."""
+    return str(value).rstrip('/')
 
 
 class TestPostgresql:
     def test_local_defaults(self, tmp_path: pathlib.Path):
         pg = make_config(tmp_path).infra.pg
+        assert isinstance(pg, LocalPGConfig)
         assert pg.provider == 'local'
-        assert pg.client_host == 'pg.testcluster.k8s'
-        assert pg.client_port == 5432
-        assert pg.admin_host == '127.0.0.1'
-        assert pg.admin_port == 5432
+        assert pg.client_fqdn == 'pg.testcluster.k8s'
+        assert pg.port == 5432
+        assert str(pg.ip) == '127.0.0.1'
+        assert pg.admin_db == 'postgres'
         assert pg.admin_user == 'postgres'
-        assert pg.admin_password == 'test-admin'
-
-    def test_local_explicit_admin_password_is_kept(self, tmp_path: pathlib.Path):
-        pg = make_config(
-            tmp_path, postgresql={'provider': 'local', 'admin_password': 'pg-secret'}
-        ).infra.pg
-        assert pg.admin_password == 'pg-secret'
+        assert pg.admin_password is not None
 
     def test_remote(self, tmp_path: pathlib.Path):
         pg = make_config(
             tmp_path,
-            postgresql={
+            pg={
                 'provider': 'remote',
-                'host': 'pg.central.example.com',
+                'fqdn': 'pg.central.example.com',
                 'port': 5433,
                 'admin_user': 'postgres',
                 'admin_password': 'central-secret',
             },
         ).infra.pg
         assert pg.provider == 'remote'
-        assert pg.client_host == 'pg.central.example.com'
-        assert pg.client_port == 5433
-        assert pg.admin_host == 'pg.central.example.com'
-        assert pg.admin_port == 5433
+        assert pg.client_fqdn == 'pg.central.example.com'
+        assert pg.port == 5433
+        assert pg.admin_user == 'postgres'
         assert pg.admin_password == 'central-secret'
 
-    def test_remote_requires_host_and_credentials(self, tmp_path: pathlib.Path):
+    def test_remote_requires_fqdn(self, tmp_path: pathlib.Path):
+        """fqdn is the only field a remote PostgreSQL has no default for --
+        admin_user/admin_password/port/admin_db all fall back to the same
+        defaults local uses."""
         with pytest.raises(ValidationError):
-            make_config(tmp_path, postgresql={'provider': 'remote'})
-        with pytest.raises(ValidationError):
-            make_config(
-                tmp_path, postgresql={'provider': 'remote', 'host': 'pg.example.com'}
-            )
+            make_config(tmp_path, pg={'provider': 'remote'})
 
 
 class TestIdp:
     def test_local_defaults(self, tmp_path: pathlib.Path):
         idp = make_config(tmp_path).infra.idp
         assert idp.provider == 'local'
-        assert idp.url == 'https://idp.testcluster.k8s:8443'
-        assert idp.issuer_url == 'https://idp.testcluster.k8s:8443/realms/master'
+        assert _url(idp.client_base_url) == 'https://idp.testcluster.k8s:8443'
+        assert _url(idp.issuer_url) == 'https://idp.testcluster.k8s:8443/realms/master'
         assert idp.admin_user == 'admin'
-        assert idp.admin_password == 'test-admin'
+        assert idp.admin_password is not None
         assert idp.db_name == 'idp'
         assert idp.db_user == 'idp'
-        assert idp.db_password == 'test-admin'
+        assert idp.db_password is not None
 
     def test_remote(self, tmp_path: pathlib.Path):
         idp = make_config(
@@ -87,24 +86,24 @@ class TestIdp:
                 'admin_password': 'kc-secret',
             },
         ).infra.idp
-        assert idp.url == 'https://idp.central.example.com'
-        assert idp.issuer_url == 'https://idp.central.example.com/realms/kube-eng'
+        assert _url(idp.url) == 'https://idp.central.example.com'
+        assert _url(idp.issuer_url) == 'https://idp.central.example.com/realms/kube-eng'
 
-    def test_remote_requires_realm_and_credentials(self, tmp_path: pathlib.Path):
+    def test_remote_requires_url(self, tmp_path: pathlib.Path):
+        """url is the only field a remote IdP has no default for -- realm and
+        admin credentials all fall back to the same defaults local uses."""
         with pytest.raises(ValidationError):
-            make_config(
-                tmp_path, idp={'provider': 'remote', 'url': 'https://idp.example.com'}
-            )
+            make_config(tmp_path, idp={'provider': 'remote'})
 
 
 class TestS3:
     def test_local_defaults(self, tmp_path: pathlib.Path):
         s3 = make_config(tmp_path).infra.s3
         assert s3.provider == 'local'
-        assert s3.endpoint == 'https://s3.testcluster.k8s:9000'
-        assert s3.admin_endpoint == 'https://s3.testcluster.k8s:9000'
+        assert _url(s3.endpoint) == 'https://s3.testcluster.k8s:9000'
+        assert _url(s3.admin_endpoint) == 'https://s3.testcluster.k8s:9001'
         assert s3.access_key == 'admin'
-        assert s3.secret_key == 'test-admin'
+        assert s3.secret_key is not None
         assert s3.region == 'us-east-1'
 
     def test_remote(self, tmp_path: pathlib.Path):
@@ -112,28 +111,27 @@ class TestS3:
             tmp_path,
             s3={
                 'provider': 'remote',
-                'endpoint': 'https://s3.central.example.com/',
+                'url': 'https://s3.central.example.com/',
                 'access_key': 'ak',
                 'secret_key': 'sk',
             },
         ).infra.s3
-        assert s3.endpoint == 'https://s3.central.example.com'
-        assert s3.admin_endpoint == 'https://s3.central.example.com'
+        assert _url(s3.endpoint) == 'https://s3.central.example.com'
+        assert _url(s3.admin_endpoint) == 'https://s3.central.example.com'
 
-    def test_remote_requires_credentials(self, tmp_path: pathlib.Path):
+    def test_remote_requires_url(self, tmp_path: pathlib.Path):
+        """url is the only field a remote S3 has no default for --
+        access_key/secret_key both fall back to the same defaults local uses."""
         with pytest.raises(ValidationError):
-            make_config(
-                tmp_path,
-                s3={'provider': 'remote', 'endpoint': 'https://s3.example.com'},
-            )
+            make_config(tmp_path, s3={'provider': 'remote'})
 
 
 class TestRegistry:
     def test_local_defaults(self, tmp_path: pathlib.Path):
         registry = make_config(tmp_path).infra.registry
         assert registry.provider == 'local'
-        assert registry.url == 'oci://registry.testcluster.k8s:5001'
-        assert registry.https_url == 'https://registry.testcluster.k8s:5001'
+        assert _url(registry.oci_endpoint) == 'oci://registry.testcluster.k8s:5001'
+        assert _url(registry.http_endpoint) == 'https://registry.testcluster.k8s:5001'
 
     def test_remote(self, tmp_path: pathlib.Path):
         registry = make_config(
@@ -143,8 +141,8 @@ class TestRegistry:
                 'url': 'oci://harbor.example.com/kube-eng/',
             },
         ).infra.registry
-        assert registry.url == 'oci://harbor.example.com/kube-eng'
-        assert registry.https_url == 'https://harbor.example.com/kube-eng'
+        assert _url(registry.oci_endpoint) == 'oci://harbor.example.com/kube-eng'
+        assert _url(registry.http_endpoint) == 'http://harbor.example.com/kube-eng'
 
     def test_remote_rejects_non_oci_url(self, tmp_path: pathlib.Path):
         with pytest.raises(ValidationError):

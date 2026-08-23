@@ -4,9 +4,8 @@ Configuration tests
 
 import pathlib
 
-from pydantic import BaseModel
-
 from kube_eng.config import RootConfig, RootConfigAware
+from pydantic import BaseModel
 
 
 def recursive_config_assertion(config: RootConfig, base: RootConfigAware) -> bool:

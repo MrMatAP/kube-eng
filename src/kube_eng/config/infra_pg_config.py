@@ -1,8 +1,8 @@
 import abc
-import typing
 import secrets
+import typing
 
-from pydantic import IPvAnyAddress, Field, computed_field, PostgresDsn
+from pydantic import Field, IPvAnyAddress, PostgresDsn, computed_field
 
 from .base import RootConfigAware
 
@@ -30,7 +30,6 @@ class PGConfig(RootConfigAware, abc.ABC):
         Returns:
             A fully qualified domain name
         """
-        pass
 
     @computed_field(description='A PostgreSQL DSN')
     @property

@@ -1,9 +1,6 @@
 #!/usr/bin/python
 
-from __future__ import absolute_import, division, print_function
 import pathlib
-
-__metaclass__ = type
 
 DOCUMENTATION = r"""
 ---
@@ -76,7 +73,7 @@ msg:
   type: str
 """
 
-from ansible.module_utils.basic import AnsibleModule  # noqa: E402
+from ansible.module_utils.basic import AnsibleModule
 
 
 def run_module():

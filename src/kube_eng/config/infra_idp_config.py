@@ -1,14 +1,16 @@
 import abc
 import pathlib
-import typing
 import secrets
+import typing
 
-from pydantic import Field, computed_field, AnyHttpUrl, IPvAnyAddress
+from pydantic import AnyHttpUrl, Field, IPvAnyAddress, computed_field
 
 from .base import RootConfigAware
 
+
 class IdPConfig(RootConfigAware, abc.ABC):
     """Common IdP Configuration"""
+
     realm: str = Field(default='master', description='Realm to register clients in')
     admin_user: str = Field(default='admin', description='IdP administrative user')
     admin_password: str = Field(
@@ -30,7 +32,6 @@ class IdPConfig(RootConfigAware, abc.ABC):
         Returns:
             A fully qualified domain name
         """
-        pass
 
     @computed_field(description='The base URL of the IdP')
     @property
@@ -41,7 +42,6 @@ class IdPConfig(RootConfigAware, abc.ABC):
         Returns:
             A URL
         """
-        pass
 
     @computed_field(description='The IdP issuer URL')
     @property
@@ -52,7 +52,7 @@ class IdPConfig(RootConfigAware, abc.ABC):
         Returns:
             A URL
         """
-        pass
+
 
 class LocalIdPConfig(IdPConfig):
     """IdP provisioned locally as a Docker container."""
@@ -66,9 +66,7 @@ class LocalIdPConfig(IdPConfig):
         default_factory=lambda: IPvAnyAddress('127.0.0.1'),
         description='Exposed IP address of the local IdP',
     )
-    port: int = Field(
-        default=8443, description='Exposed port of the local IdP'
-    )
+    port: int = Field(default=8443, description='Exposed port of the local IdP')
     db_host: str = Field(default='pg', description='Host of the IdP database')
     db_port: int = Field(default=5432, description='Port of the IdP database')
     db_name: str = Field(default='idp', description='Name of the IdP database')
@@ -102,7 +100,8 @@ class LocalIdPConfig(IdPConfig):
     @computed_field(description='The IdP issuer URL')
     @property
     def issuer_url(self) -> AnyHttpUrl:
-        return AnyHttpUrl(f'{self.client_base_url}/realms/{self.realm}')
+        base = str(self.client_base_url).rstrip('/')
+        return AnyHttpUrl(f'{base}/realms/{self.realm}')
 
 
 class RemoteIdPConfig(IdPConfig):
@@ -128,7 +127,8 @@ class RemoteIdPConfig(IdPConfig):
     @computed_field(description='The IdP issuer URL')
     @property
     def issuer_url(self) -> AnyHttpUrl:
-        return AnyHttpUrl(f'{self.url}/realms/{self.realm}')
+        base = str(self.url).rstrip('/')
+        return AnyHttpUrl(f'{base}/realms/{self.realm}')
 
 
 InfraIdPConfig = typing.Annotated[

@@ -2,9 +2,19 @@ import abc
 import pathlib
 import typing
 
-from pydantic import Field, computed_field, AnyUrl, AnyHttpUrl, IPvAnyAddress
+from pydantic import (
+    AnyHttpUrl,
+    AnyUrl,
+    Field,
+    IPvAnyAddress,
+    UrlConstraints,
+    computed_field,
+)
 
 from .base import RootConfigAware
+
+OciUrl = typing.Annotated[AnyUrl, UrlConstraints(allowed_schemes=['oci'])]
+
 
 class RegistryConfig(RootConfigAware, abc.ABC):
     """Common registry configuration"""
@@ -25,7 +35,6 @@ class RegistryConfig(RootConfigAware, abc.ABC):
         Returns:
             An OCI URL
         """
-        pass
 
     @computed_field(description='HTTP endpoint of the registry')
     @property
@@ -36,7 +45,7 @@ class RegistryConfig(RootConfigAware, abc.ABC):
         Returns:
             An HTTP URL
         """
-        pass
+
 
 class LocalRegistryConfig(RegistryConfig):
     """OCI registry provisioned locally as a Docker container."""
@@ -60,7 +69,9 @@ class LocalRegistryConfig(RegistryConfig):
         default=5001, description='Port to expose the registry on the host'
     )
 
-    @computed_field(description='Local directory path to store registry configuration in')
+    @computed_field(
+        description='Local directory path to store registry configuration in'
+    )
     @property
     def config_path(self) -> pathlib.Path:
         """Directory to store registry configuration in."""
@@ -88,7 +99,7 @@ class RemoteRegistryConfig(RegistryConfig):
     """
 
     provider: typing.Literal['remote'] = 'remote'
-    url: AnyUrl = Field(
+    url: OciUrl = Field(
         description='URL of the registry, e.g. oci://harbor.example.com/kube-eng'
     )
 
@@ -97,24 +108,31 @@ class RemoteRegistryConfig(RegistryConfig):
     def oci_endpoint(self) -> AnyUrl:
         if self.url.host is None:
             raise ValueError('Missing host in URL')
-        return AnyUrl.build(scheme='oci',
-                            host=self.url.host or '',
-                            port=self.url.port,
-                            path=self.url.path,
-                            query=self.url.query,
-                            fragment=self.url.fragment)
+        # AnyUrl.build() inserts its own separator before path, so a path
+        # that already carries its own leading slash (as .path always does)
+        # would otherwise produce a double slash after the host.
+        return AnyUrl.build(
+            scheme='oci',
+            host=self.url.host or '',
+            port=self.url.port,
+            path=(self.url.path or '').lstrip('/'),
+            query=self.url.query,
+            fragment=self.url.fragment,
+        )
 
     @computed_field(description='HTTP endpoint of the registry')
     @property
     def http_endpoint(self) -> AnyHttpUrl:
         if self.url.host is None:
             raise ValueError('Missing host in URL')
-        return AnyHttpUrl.build(scheme='http',
-                                host=self.url.host or '',
-                                port=self.url.port,
-                                path=self.url.path,
-                                query=self.url.query,
-                                fragment=self.url.fragment)
+        return AnyHttpUrl.build(
+            scheme='http',
+            host=self.url.host or '',
+            port=self.url.port,
+            path=(self.url.path or '').lstrip('/'),
+            query=self.url.query,
+            fragment=self.url.fragment,
+        )
 
 
 InfraRegistryConfig = typing.Annotated[

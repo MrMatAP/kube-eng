@@ -4,7 +4,7 @@ Input validators for TUI forms.
 
 import pathlib
 
-from textual.validation import Validator, ValidationResult
+from textual.validation import ValidationResult, Validator
 from textual.widgets import Input
 
 

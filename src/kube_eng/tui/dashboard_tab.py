@@ -1,13 +1,13 @@
 from textual.app import ComposeResult
 from textual.containers import Horizontal
 from textual.screen import Screen
-from textual.widgets import Header, Static, Footer
+from textual.widgets import Footer, Header, Static
 
 from kube_eng import __version__
 
 
 class DashboardScreen(Screen):
-    BINDINGS = [('ctrl+q', 'quit', 'Quit')]
+    BINDINGS = [('ctrl+q', 'quit', 'Quit')]  # noqa: RUF012
 
     def compose(self) -> ComposeResult:
         yield Header()

@@ -1,6 +1,6 @@
+import argparse
 import pathlib
 import sys
-import argparse
 
 from textual.app import App, ComposeResult
 from textual.widgets import (
@@ -10,21 +10,21 @@ from textual.widgets import (
 )
 from textual.worker import Worker
 
-from kube_eng import __version__, __default_config_path__
-from kube_eng.config import RootConfig
+from kube_eng import __default_config_path__, __version__
 from kube_eng.common import AnsibleEvent, AnsibleExecution
 from kube_eng.common.ansible_execution import cmd_to_playbook
+from kube_eng.config import RootConfig
 from kube_eng.tui.ansible_tab import AnsibleTab
 from kube_eng.tui.config_tab import ConfigTab
 from kube_eng.tui.status_tab import StatusTab
-from kube_eng.tui.widgets import AppHeader, AppBody, ActionsModal
+from kube_eng.tui.widgets import ActionsModal, AppBody, AppHeader
 
 _NON_ANSIBLE_TABS = ('config-tab', 'status-tab')
 
 
 class KubeEngApp(App[None]):
     CSS_PATH = 'tui.tcss'
-    BINDINGS = [
+    BINDINGS = [  # noqa: RUF012
         ('ctrl+q', 'quit', 'Quit'),
         ('ctrl+a', 'show_actions', 'Actions'),
         ('ctrl+r', 'helm_repackage', 'Repackage'),
@@ -55,7 +55,7 @@ class KubeEngApp(App[None]):
         Args:
             playbook_key: Key from cmd_to_playbook dict (e.g., 'host-apply')
         """
-        playbook = cmd_to_playbook.get_client_scope(playbook_key)
+        playbook = cmd_to_playbook.get(playbook_key)
         if not playbook:
             return
 
@@ -75,7 +75,7 @@ class KubeEngApp(App[None]):
             self._current_execution = AnsibleExecution(self._config, ansible_callback)
             await self._current_execution.execute(playbook=playbook)
             ansible_tab.on_execution_complete(True)
-        except Exception:
+        except Exception:  # noqa: BLE001
             ansible_tab.on_execution_complete(False)
         finally:
             self._executing = False
@@ -122,11 +122,10 @@ class KubeEngApp(App[None]):
 
     def compose(self) -> ComposeResult:
         yield AppHeader()
-        with AppBody():
-            with TabbedContent(id='tabs'):
-                yield ConfigTab('Configuration', config=self._config, id='config-tab')
-                yield StatusTab('Status', id='status-tab')
-                yield AnsibleTab('Ansible', id='ansible-tab')
+        with AppBody(), TabbedContent(id='tabs'):
+            yield ConfigTab('Configuration', config=self._config, id='config-tab')
+            yield StatusTab('Status', id='status-tab')
+            yield AnsibleTab('Ansible', id='ansible-tab')
         yield Footer(show_command_palette=False)
 
 

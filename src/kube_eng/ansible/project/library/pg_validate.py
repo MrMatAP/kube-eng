@@ -1,67 +1,30 @@
-#!/usr/bin/python
+from ansible.module_utils.basic import AnsibleModule
+from ansible.module_utils.pg_utils import PGAdmin, PGException, PGValidationResult
 
-import psycopg2
-
-__metaclass__ = type
-
-DOCUMENTATION = r"""
----
-module: pg_validate
-short_description: Validate PostgreSQL connectivity
-description:
-- Validate PostgreSQL connectivity
-options:
-    pg_admin_dsn:
-        description: The PostgreSQL Admin DSN
-author:
-- MrMat (@MrMatAP)
-"""
-
-EXAMPLES = r"""
-- name: Validate PostgreSQL connectivity
-  pg_validate:
-    admin_dsn: postgresql://...
-"""
-
-RETURN = r"""
-status:
-  description: All required entitlements are granted
-  type: bool
-msg:
-  description: Output message
-  type: str
-"""
-
-from ansible.module_utils.basic import AnsibleModule  # noqa: E402
 
 def run_module():
-    module_args = dict(
-        admin_dsn=dict(type='str', required=True)
-    )
-    result = dict(status=False, msg='')
+    module_args = {
+        'admin_dsn': {'type': 'str', 'required': True, 'no_log': True},
+    }
     module = AnsibleModule(argument_spec=module_args, supports_check_mode=True)
     if module.check_mode:
-        module.exit_json(**result)
+        module.exit_json()
 
     try:
-        with psycopg2.connect(dsn=module.params['admin_dsn']) as conn:
-            with conn.cursor() as cur:
-                cur.execute('SELECT rolcreaterole, rolcreatedb FROM pg_roles where rolname = current_user;')
-                entitlements = cur.fetchone()
-                if entitlements is not None and all(entitlements):
-                    result['status'] = True
-                    result['msg'] = 'Connectivity and entitlements are granted'
-                else:
-                    result['status'] = False
-                    result['msg'] = 'Missing connectivity or entitlements'
-        module.exit_json(**result)
-    except psycopg2.Error as e:
-        result['status'] = False
-        result['msg'] = e.pgerror or 'Unknown Error'
-        module.fail_json(**result)
+        pg_admin = PGAdmin(admin_dsn=module.params['admin_dsn'])
+        result = pg_admin.validate()
+        module.exit_json(**result.ansible_result())
+    except PGException as e:
+        # Keep the same shape as a successful PGValidationResult (in
+        # particular, 'validated') even on failure, in case this is ever
+        # retried with `until: <result>.validated` the way idp_validate is.
+        result = PGValidationResult(changed=False, msg=e.msg, validated=False)
+        module.fail_json(**result.ansible_result())
+
 
 def main():
     run_module()
+
 
 if __name__ == '__main__':
     main()

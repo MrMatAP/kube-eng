@@ -1,9 +1,8 @@
-import sys
 import asyncio
+import collections.abc
 import dataclasses
 import enum
-import typing
-import collections.abc
+import sys
 import uuid
 
 import ansible_runner
@@ -72,7 +71,7 @@ class AnsibleExecution:
                 extravars.update(overrides)
 
             self._config.ansible_artifacts_path.mkdir(parents=True, exist_ok=True)
-            t, r = ansible_runner.run_async(
+            t, _ = ansible_runner.run_async(
                 ident=f'{playbook}-{uuid.uuid4()}',
                 private_data_dir=__ansible_path__,
                 playbook=playbook,
@@ -99,10 +98,10 @@ class AnsibleExecution:
             print(
                 f'Failed to create a directory for artefacts of the current Ansible execution: {oe}'
             )
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             print(e)
 
-    def ansible_event_handler(self, status: typing.Dict) -> bool:
+    def ansible_event_handler(self, status: dict) -> bool:
         ev = AnsibleEvent(
             uuid=status.get('uuid', 'Unknown'),
             counter=status.get('counter', 0),
@@ -129,11 +128,11 @@ class AnsibleExecution:
             case 'runner_on_failed':
                 ev.uuid = event_data.get('task_uuid', ev.uuid)
                 ev.task = event_data.get('task', 'Unknown')
-                ev.msg = event_data.get('res', {}).get_client_scope('msg', '')
+                ev.msg = event_data.get('res', {}).get('msg', '')
                 ev.status = AnsibleStatusEnum.failed
                 ev.changed = event_data.get('changed', False)
-                ev.stdout = event_data.get('res', {}).get_client_scope('stdout', '')
-                ev.stderr = event_data.get('res', {}).get_client_scope('stderr', '')
+                ev.stdout = event_data.get('res', {}).get('stdout', '')
+                ev.stderr = event_data.get('res', {}).get('stderr', '')
                 self._ui_event_callback(ev)
                 return True
             case 'runner_on_ok':
@@ -145,10 +144,10 @@ class AnsibleExecution:
                 ev.status = (
                     AnsibleStatusEnum.ok if ev.changed else AnsibleStatusEnum.unchanged
                 )
-                ev.warnings = event_data.get('res', {}).get_client_scope('warnings', [])
-                ev.msg = event_data.get('res', {}).get_client_scope('msg', '')
-                ev.stdout = event_data.get('res', {}).get_client_scope('stdout', '')
-                ev.stderr = event_data.get('res', {}).get_client_scope('stderr', '')
+                ev.warnings = event_data.get('res', {}).get('warnings', [])
+                ev.msg = event_data.get('res', {}).get('msg', '')
+                ev.stdout = event_data.get('res', {}).get('stdout', '')
+                ev.stderr = event_data.get('res', {}).get('stderr', '')
             case 'error':
                 ev.uuid = status.get('uuid', 'Unknown')
                 ev.task = event_data.get('task', 'Unknown')
@@ -202,7 +201,7 @@ class AnsibleExecution:
 
     def ansible_status_handler(
         self,
-        status_data: typing.Dict,
+        status_data: dict,
         runner_config: ansible_runner.config.runner.RunnerConfig,
     ) -> None:
         pass

@@ -133,3 +133,13 @@ Wrapper charts for: cert-manager, cilium (CNI), edge (Traefik/Istio gateway), gr
 - All config sub-models must extend `RootConfigAware` so the root back-reference propagates
 - Prefer `import x.y` over `from x import y` unless the module to be imported is in this python package
 - Imports from the standard Python library must come before imports from dependency packages. Imports from this python package must come last.
+
+## Agent skills
+
+### Issue tracker
+
+Issues live in GitHub Issues (`MrMatAP/kube-eng`), using the `gh` CLI. See `docs/agents/issue-tracker.md`.
+
+### Domain docs
+
+Single-context: `CONTEXT.md` + `docs/adr/` at the repo root. See `docs/agents/domain.md`.

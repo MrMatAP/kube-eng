@@ -1,5 +1,5 @@
-import pathlib
 import importlib.metadata
+import pathlib
 
 try:
     __version__ = importlib.metadata.version('kube-eng')

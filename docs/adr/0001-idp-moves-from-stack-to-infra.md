@@ -1,0 +1,3 @@
+# IdP moves from stack.keycloak to infra.idp
+
+The IdP (Keycloak) was previously modelled as a Stack app (`stack.keycloak`), alongside the other observability tools deployed onto the cluster. We're moving it to `infra.idp` instead. Other Infra services (e.g. S3) authenticate against the IdP, making it a dependency the Cluster and Stack need available *before* they're provisioned — not a workload deployed onto an already-running cluster. Modelling it as Infra also lets it follow the same Local/Remote Provider pattern as DNS, PostgreSQL, S3, the registry, and Kafka, rather than being a one-off case. `stack.keycloak` is being retired as part of this change.

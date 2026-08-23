@@ -1,11 +1,9 @@
-import base64
-import pathlib
 import getpass
+import pathlib
 import secrets
 from typing import Any
 
 import yaml
-
 from pydantic import BaseModel, Field, computed_field
 
 from kube_eng import __version__
@@ -98,7 +96,7 @@ class RootConfig(BaseModel):
                   self.config_file_path.open('w'))
 
     @classmethod
-    def load(cls, config_path: pathlib.Path) -> 'RootConfig':
+    def load(cls, config_path: pathlib.Path) -> RootConfig:
         """
         Load the configuration from disk.
         Args:

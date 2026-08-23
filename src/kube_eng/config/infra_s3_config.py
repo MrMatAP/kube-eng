@@ -5,7 +5,7 @@ import typing
 
 from pydantic import AnyHttpUrl, Field, IPvAnyAddress, computed_field
 
-from .base import RootConfigAware
+from .base import IdPClientRole, RootConfigAware
 
 
 class S3Config(RootConfigAware, abc.ABC):
@@ -28,6 +28,25 @@ class S3Config(RootConfigAware, abc.ABC):
     def client_id(self) -> str:
         return f's3-{self._root_config.cluster.name}'
 
+    @computed_field(description='S3 Client Name')
+    @property
+    def client_name(self) -> str:
+        return f'S3 :: {self._root_config.cluster.name }'
+
+    @computed_field(description='S3 Client description')
+    @property
+    def client_description(self) -> str:
+        return f'S3 instance on {self._root_config.cluster.name}'
+
+    @computed_field(description='S3 Roles')
+    @property
+    def client_roles(self) -> list[IdPClientRole]:
+        return [
+            IdPClientRole(name='kube-eng-s3-admin', description='Kube Eng :: S3 :: Admin'),
+            IdPClientRole(name='kube-eng-s3-contributor', description='Kube Eng :: S3 :: Contributor'),
+            IdPClientRole(name='kube-eng-s3-viewer', description='Kube Eng :: S3 :: Viewer')
+        ]
+
     @computed_field(description='Client FQDN of the S3 service')
     @property
     def client_fqdn(self) -> str:
@@ -44,7 +63,6 @@ class S3Config(RootConfigAware, abc.ABC):
         Returns:
             A HTTP URL
         """
-        pass
     
     @abc.abstractmethod
     @computed_field(description='Admin endpoint of the S3 service')
@@ -55,7 +73,6 @@ class S3Config(RootConfigAware, abc.ABC):
         Returns:
             A HTTP URL
         """
-        pass
 
 class LocalS3Config(S3Config):
     """S3-compatible storage provisioned locally as a Docker container."""
@@ -89,6 +106,15 @@ class LocalS3Config(S3Config):
             f'https://{self.name}.{self._root_config.infra.dns.domain}:{self.console_port}'
         )
 
+    @computed_field(description='Client endpoint of the S3 service')
+    @property
+    def client_endpoint(self) -> AnyHttpUrl:
+        return self.endpoint
+
+    @computed_field(description='Callback URL for OIDC')
+    @property
+    def callback_url(self) -> AnyHttpUrl:
+        return AnyHttpUrl(f'https://{self.name}.{self._root_config.infra.dns.domain}:{self.console_port}/rustfs/admin/v3/oidc/callback/default')
 
 class RemoteS3Config(S3Config):
     """Central S3-compatible storage hosted elsewhere."""

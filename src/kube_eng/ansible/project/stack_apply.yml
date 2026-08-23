@@ -298,10 +298,11 @@
     block:
     - name: Create the loki S3 buckets
       s3_bucket:
-        admin_access_key: admin
-        admin_secret_key: "{{ admin_password }}"
-        s3_endpoint: "https://{{ host.s3.name }}.{{ host.dns.zone }}:{{ host.s3.port }}"
-        truststore_path: "{{ infra.pki.ca_truststore_path }}"
+        s3_endpoint: "{{ infra.s3.endpoint }}"
+        s3_access_key: "{{ infra.s3.access_key }}"
+        s3_secret_key: "{{ infra.s3.secret_key }}"
+        s3_region: "{{ infra.s3.region }}"
+        s3_ca_path: "{{ infra.pki.ca_truststore_path }}"
         bucket_name: "{{ item }}"
         state: present
       loop:
@@ -366,10 +367,11 @@
     block:
     - name: Create the Tempo S3 buckets
       s3_bucket:
-        admin_access_key: admin
-        admin_secret_key: "{{ admin_password }}"
-        s3_endpoint: "https://{{ host.s3.name }}.{{ host.dns.zone }}:{{ host.s3.port }}"
-        truststore_path: "{{ infra.pki.ca_truststore_path }}"
+        s3_endpoint: "{{ infra.s3.endpoint }}"
+        s3_access_key: "{{ infra.s3.access_key }}"
+        s3_secret_key: "{{ infra.s3.secret_key }}"
+        s3_region: "{{ infra.s3.region }}"
+        s3_ca_path: "{{ infra.pki.ca_truststore_path }}"
         bucket_name: tempo-traces
         state: present
     - name: Create and label the Tempo namespace

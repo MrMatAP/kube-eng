@@ -1,8 +1,8 @@
-import typing
 
-from pydantic import Field, IPvAnyNetwork
+from pydantic import Field
 
 from .base import RootConfigAware
+
 
 class InfraNetConfig(RootConfigAware):
     """Network Configuration"""

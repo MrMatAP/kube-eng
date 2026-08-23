@@ -1,186 +1,96 @@
-from typing import Annotated, Any
-
-import keycloak.exceptions
-import pydantic
 from ansible.module_utils.basic import AnsibleModule
-from keycloak import KeycloakAdmin
+from ansible.module_utils.idp_utils import IdPAdmin, IdPClientCreateResult, IdPException
 
-
-class IdPProtocolMapper(pydantic.BaseModel):
-    model_config = pydantic.ConfigDict(extra='ignore',
-                                       serialize_by_alias=True,
-                                       validate_by_name=True)
-
-    id: str | None = None
-    name: str = 'client-roles'
-    protocol: str = 'openid-connect'
-    protocol_mapper: Annotated[str, pydantic.Field(alias='protocolMapper')] = (
-        'oidc-usernodel-client-role-mapper'
-    )
-    consent_required: Annotated[
-        bool | None, pydantic.Field(alias='consentRequired')
-    ] = None
-    consent_text: Annotated[str | None, pydantic.Field(alias='consentText')] = None
-    config: dict[str, Any] | None = None
-
-    def model_dump(self, **kwargs):
-        kwargs.setdefault('exclude_none', True)
-        return super().model_dump(**kwargs)
-
-    def model_dump_json(self, **kwargs):
-        kwargs.setdefault('exclude_none', True)
-        return super().model_dump_json(**kwargs)
-
-
-
-class IdPClientScope(pydantic.BaseModel):
-    id: str | None = None
-    name: str
-    description: str | None = None
-    protocol: str = 'openid-connect'
-    attributes: dict[str, Any] | None = None
-    protocol_mappers: Annotated[
-        list[IdPProtocolMapper] | None,
-        pydantic.Field(
-            serialization_alias='protocolMappers', validation_alias='protocolMappers'
-        ),
-    ] = None
-
-
-class IdPClient(pydantic.BaseModel):
-    model_config = pydantic.ConfigDict(extra='ignore',
-                                       serialize_by_alias=True,
-                                       validate_by_name=True)
-
-    id: str | None = None
-    client_id: Annotated[str, pydantic.Field(alias='clientId')]
-    name: str
-    description: str | None = None
-    root_url: Annotated[pydantic.AnyHttpUrl | None, pydantic.Field(alias='rootUrl')] = None
-    admin_url: Annotated[pydantic.AnyHttpUrl | None, pydantic.Field(alias='adminUrl')] = None
-    base_url: Annotated[pydantic.AnyHttpUrl | None, pydantic.Field(alias='baseUrl')] = None
-    redirect_uris: Annotated[
-        list[pydantic.AnyHttpUrl] | None, pydantic.Field(alias='redirectUris')
-    ] = None
-    web_origins: Annotated[
-        list[pydantic.AnyHttpUrl] | None, pydantic.Field(alias='webOrigins')
-    ] = None
-    enabled: bool = True
-    always_display_in_console: Annotated[
-        bool, pydantic.Field(alias='alwaysDisplayInConsole')
-    ] = True
-    secret: pydantic.SecretStr | None = None
-    standard_flow_enabled: Annotated[
-        bool, pydantic.Field(alias='standardFlowEnabled')
-    ] = True
-    implicit_flow_enabled: Annotated[
-        bool, pydantic.Field(alias='implicitFlowEnabled')
-    ] = False
-    direct_access_grants_enabled: Annotated[
-        bool, pydantic.Field(alias='directAccessGrantsEnabled')
-    ] = False
-    service_accounts_enabled: Annotated[
-        bool, pydantic.Field(alias='serviceAccountsEnabled')
-    ] = True
-    public_client: Annotated[bool, pydantic.Field(alias='publicClient')] = False
-    front_channel_logout: Annotated[
-        bool, pydantic.Field(alias='frontchannelLogout')
-    ] = True
-    protocol: str = 'openid-connect'
-    attributes: dict[str, Any] | None = None
-    protocol_mappers: Annotated[
-        list[IdPProtocolMapper], pydantic.Field(alias='protocolMappers')
-    ]
-
-    def model_dump(self, **kwargs):
-        kwargs.setdefault('exclude_none', True)
-        return super().model_dump(**kwargs)
-
-    def model_dump_json(self, **kwargs):
-        kwargs.setdefault('exclude_none', True)
-        return super().model_dump_json(**kwargs)
-
-
-
-class IdPException(Exception):
-
-    def __init__(self, code: int = 500, msg: str = 'Unknown'):
-        self._code = code
-        self._msg = msg
-
-    @property
-    def code(self) -> int:
-        return self._code
-
-    @property
-    def msg(self) -> str:
-        return self._msg
-
-    def __repr__(self) -> str:
-        return f'{self.__class__.__name__}(code={self.code}, msg={self.msg})'
-
-    def __str__(self) -> str:
-        return f'[{self.code}] {self.msg}'
-
-class IdP:
-    
-    def __init__(self,
-                 idp_url: str,
-                 idp_admin_user: str,
-                 idp_admin_password: str,
-                 idp_realm: str,
-                 idp_ca_path: str):
-        self._idp_admin = KeycloakAdmin(server_url=idp_url,
-                                        username=idp_admin_user,
-                                        password=idp_admin_password,
-                                        realm_name=idp_realm,
-                                        verify=idp_ca_path)
-
-    def get_client(self, name: str) -> IdPClient:
-        try:
-            raw_client_id = self._idp_admin.get_client_id(name)
-            if raw_client_id is None:
-                raise IdPException(code=400, msg=f'{name} is not a known client_id')
-            raw_client = self._idp_admin.get_client(raw_client_id)
-            client = IdPClient.model_validate(raw_client)
-            return client
-        except pydantic.ValidationError as ve:
-            raise IdPException from ve
-
-    def create_client(self, client: IdPClient):
-        try:
-            raw_client = client.model_dump(mode='python')
-            self._idp_admin.create_client(raw_client)
-        except keycloak.exceptions.KeycloakError as ke:
-            raise IdPException from ke
+_UNSET_ = '--UNSET--'
 
 
 def run_module():
-    result = dict(changed=False, msg='')
-    module_args = dict(
-        idp_url=dict(type='str', required=True),
-        idp_admin_user=dict(type='str', required=True),
-        idp_admin_password=dict(type='str', required=True, no_log=True),
-        idp_realm=dict(type='str', required=True),
-        idp_ca_path=dict(type='str', required=True),
-        name=dict(type='str', required=True),
-        description=dict(type='str', required=True),
-        client_id=dict(type='str', required=True)
-    )
+    module_args = {
+        'idp_url': {'type': 'str', 'required': True},
+        'idp_admin_user': {'type': 'str', 'required': True},
+        'idp_admin_password': {'type': 'str', 'required': True, 'no_log': True},
+        'idp_realm': {'type': 'str', 'required': True},
+        'idp_ca_path': {'type': 'str', 'required': True},
+        'client_id': {'type': 'str', 'required': True},
+        'name': {'type': 'str', 'required': False, 'default': _UNSET_},
+        'description': {'type': 'str', 'required': False, 'default': _UNSET_},
+        'root_url': {'type': 'str', 'required': False, 'default': _UNSET_},
+        'callback_url': {'type': 'str', 'required': False, 'default': None},
+        'roles': {'type': 'list', 'elements': 'dict', 'required': False},
+        'state': {
+            'type': 'str',
+            'required': False,
+            'default': 'present',
+            'choices': ['present', 'absent'],
+        },
+    }
     module = AnsibleModule(argument_spec=module_args, supports_check_mode=True)
-
     if module.check_mode:
-        module.exit_json(**result)
+        module.exit_json()
+
     try:
-        idp_clientscope = IdP(idp_url=module.params['idp_url'],
-                              idp_admin_user=module.params['idp_admin_uer'],
-                              idp_admin_password=module.params['idp_admin_password'],
-                              idp_realm=module.params['idp_realm'],
-                              idp_ca_path=module.params['idp_ca_path'])
-        idp_clientscope.create(name=module.params['name'], description=module.params['description'])
-        module.exit_json(**result)
-    except Exception as e:
-        module.fail_json(msg='An exception occurred', exception=e)
+        if module.params['state'] == 'present' and any(
+            [
+                module.params['name'] == _UNSET_,
+                module.params['description'] == _UNSET_,
+                module.params['root_url'] == _UNSET_,
+            ]
+        ):
+            module.fail_json(
+                msg='Creating an IdP client requires setting name, description and root_url'
+            )
+
+        idp_admin = IdPAdmin(
+            idp_url=module.params['idp_url'],
+            idp_admin_user=module.params['idp_admin_user'],
+            idp_admin_password=module.params['idp_admin_password'],
+            idp_realm=module.params['idp_realm'],
+            idp_ca_path=module.params['idp_ca_path'],
+        )
+        if module.params['state'] == 'present':
+            already_existed = idp_admin.client_exists(module.params['client_id'])
+            client = IdPAdmin.client_template(
+                client_id=module.params['client_id'],
+                name=module.params['name'],
+                root_url=module.params['root_url'],
+                description=module.params['description'],
+                callback_url=module.params['callback_url'],
+            )
+            created_client = idp_admin.client_create(client)
+            for role in module.params['roles'] or []:
+                idp_admin.client_role_create(
+                    created_client, role=role['name'], description=role['description']
+                )
+            client_secret = (
+                created_client.secret.get_secret_value()
+                if created_client.secret is not None
+                else None
+            )
+            # client_secret is returned for the playbook to consume (e.g. to
+            # configure a downstream service), so it must NOT be added to
+            # module.no_log_values -- that scrubs matching values from this
+            # module's own JSON result too, corrupting the very value the
+            # caller registered this task to obtain. Mark the task itself
+            # `no_log: true` in the playbook instead to keep it out of the
+            # console/log.
+            result = IdPClientCreateResult(
+                changed=not already_existed,
+                msg='Client already exists' if already_existed else 'Created client',
+                client_id=created_client.client_id,
+                client_secret=client_secret,
+            )
+            module.exit_json(**result.ansible_result())
+        else:
+            already_existed = idp_admin.client_exists(module.params['client_id'])
+            idp_admin.client_remove(module.params['client_id'])
+            result = IdPClientCreateResult(
+                changed=already_existed,
+                msg='Removed client' if already_existed else 'Client already absent',
+                client_id=module.params['client_id'],
+            )
+            module.exit_json(**result.ansible_result())
+    except IdPException as e:
+        module.fail_json(**e.ansible_result())
 
 
 def main():

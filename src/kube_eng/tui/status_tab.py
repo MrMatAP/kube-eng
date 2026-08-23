@@ -4,7 +4,7 @@ Status tab showing the current system status.
 
 from textual.app import ComposeResult
 from textual.containers import Center, Middle
-from textual.widgets import TabPane, Static
+from textual.widgets import Static, TabPane
 
 
 class StatusTab(TabPane):
@@ -15,8 +15,7 @@ class StatusTab(TabPane):
     DEFAULT_CLASSES = 'status-tab'
 
     def compose(self) -> ComposeResult:
-        with Center():
-            with Middle():
-                yield Static(
-                    'System Status\n\n[ Coming Soon ]', classes='status-placeholder'
-                )
+        with Center(), Middle():
+            yield Static(
+                'System Status\n\n[ Coming Soon ]', classes='status-placeholder'
+            )
