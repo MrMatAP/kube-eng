@@ -59,6 +59,21 @@ class RegistryConfig(RootConfigAware, abc.ABC):
             An HTTP URL
         """
 
+    @computed_field(
+        description='HTTP endpoint used by containers on the shared Docker '
+        'network (the kind nodes)'
+    )
+    @property
+    @abc.abstractmethod
+    def cluster_endpoint(self) -> AnyHttpUrl:
+        """
+        HTTP URL the kind nodes' containerd uses for the registry mirror.
+        For a local registry this reaches the container directly on the
+        shared network -- a different port from the host-published one.
+        Returns:
+            An HTTP URL
+        """
+
 
 class LocalRegistryConfig(RegistryConfig):
     """OCI registry provisioned locally as a Docker container."""
@@ -80,6 +95,11 @@ class LocalRegistryConfig(RegistryConfig):
     )
     port: int = Field(
         default=5001, description='Port to expose the registry on the host'
+    )
+    container_port: int = Field(
+        default=5000,
+        description='Port the registry listens on inside its container '
+        '(what other containers on the shared network connect to)',
     )
     admin_password: str = Field(
         default_factory=lambda: secrets.token_urlsafe(16),
@@ -107,6 +127,18 @@ class LocalRegistryConfig(RegistryConfig):
         return AnyHttpUrl(
             f'https://{self.name}.{self._root_config.infra.dns.domain}:{self.port}'
         )
+
+    @computed_field(
+        description='HTTP endpoint used by containers on the shared Docker '
+        'network (the kind nodes)'
+    )
+    @property
+    def cluster_endpoint(self) -> AnyHttpUrl:
+        # The kind nodes share the Docker network with this container and
+        # resolve its FQDN alias to the container IP, so they reach it on the
+        # in-container port, not the host-published one.
+        domain = self._root_config.infra.dns.domain
+        return AnyHttpUrl(f'https://{self.name}.{domain}:{self.container_port}')
 
     @computed_field(description='Registry client Id')
     @property
@@ -183,6 +215,15 @@ class RemoteRegistryConfig(RegistryConfig):
             query=self.url.query,
             fragment=self.url.fragment,
         )
+
+    @computed_field(
+        description='HTTP endpoint used by containers on the shared Docker '
+        'network (the kind nodes)'
+    )
+    @property
+    def cluster_endpoint(self) -> AnyHttpUrl:
+        # A remote registry is off-host; everyone reaches it the same way.
+        return self.http_endpoint
 
 
 InfraRegistryConfig = typing.Annotated[

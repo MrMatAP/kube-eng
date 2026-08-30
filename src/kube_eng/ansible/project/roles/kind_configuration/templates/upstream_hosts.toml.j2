@@ -3,3 +3,10 @@ server = "{{ airgap_registry_url }}"
 [host."{{ airgap_registry_url }}"]
   capabilities = ["pull", "resolve"]
   ca = "/usr/local/share/ca-certificates/kube-eng/ca.crt"
+{% if airgap_registry_auth | default('') %}
+  # Static Basic credential -- containerd 2.x has no registry.configs.auth, so
+  # the node's pull identity for the mirror lives here (verified: containerd
+  # sends this header proactively; zot accepts Basic on the resource directly).
+  [host."{{ airgap_registry_url }}".header]
+    Authorization = "Basic {{ airgap_registry_auth }}"
+{% endif %}

@@ -43,7 +43,7 @@ The machine identity Keycloak issues for a `client_credentials` grant against a 
 _Note_: not used for Registry pushes — see Push Account.
 
 **Push Account** (`infra.registry`):
-The single htpasswd credential (`admin_username`, default `kube-eng`, + `admin_password`) `helm_publish` authenticates as to push charts to the Registry. A static credential rather than a Service Account token because zot can't run bearer auth and browser SSO at once (ADR-0004). For a Local registry the password is generated; for a Remote one it's supplied (typically an LDAP bind).
+The single htpasswd credential (`admin_username`, default `kube-eng`, + `admin_password`) for all non-interactive Registry access: `helm_publish` pushes charts as it, `infra-apply` logs the host Docker CLI in as it, and every kind node's containerd `hosts.toml` carries it as a static `Authorization` header for mirror pulls (containerd 2.x has no separate auth config). A static credential rather than a Service Account token because zot can't run bearer auth and browser SSO at once (ADR-0004). For a Local registry the password is generated; for a Remote one it's supplied (typically an LDAP bind) and the host is assumed already authenticated.
 
 **Domain**:
 The DNS suffix in which Infra service records are registered: `{cluster.name}.{dns.zone}`. Every Local Infra service's `client_fqdn` is `{service.name}.{domain}`.

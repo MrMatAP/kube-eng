@@ -13,12 +13,14 @@ Role Variables
 
 | Variable              | Type | Required | Default            | Description                                                              |
 |-----------------------|------|----------|--------------------|--------------------------------------------------------------------------|
+| image                 | str  | true     | N/A                | kind node image (with digest)                                            |
 | control_plane_nodes   | int  | false    | 1                  | Number of control plane nodes                                            |
 | worker_nodes          | int  | false    | 3                  | Number of worker nodes                                                   |
 | cluster_name          | str  | false    | kube-eng           | Name of the cluster                                                      |
 | directory             | str  | true     | N/A                | Path to the directory to hold kind configuration                         |
-| ca_file_path          | str  | true     | N/A                | Path to the CA trust file which has signed the air gapped registry certificate |
-| airgap_registry_name  | str  | true     | N/A                | Name of the airgap registry                                              |
+| truststore_path       | str  | true     | N/A                | Path to the CA trust store mounted into the nodes                        |
+| airgap_registry_url   | str  | true     | N/A                | HTTP URL of the mirror registry upstream images are redirected to        |
+| airgap_registry_auth  | str  | false    | ''                 | Base64 of `username:password` written as a static `Authorization` header into each `hosts.toml`; empty pulls anonymously (no_log) |
 | pod_subnet_cidr       | str  | true     | N/A                | Pod subnet CIDR                                                          |
 | service_subnet_cidr   | str  | true     | N/A                | Service subnet CIDR                                                      |
 | cni                   | str  | false    | kind               | CNI plugin to use for the cluster                                        |

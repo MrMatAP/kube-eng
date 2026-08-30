@@ -20,6 +20,7 @@ Role Variables
 |---------------------|------|----------|---------|--------------------------------------------------------------------|
 | directory           | str  | true     | N/A     | Directory holding the registry configuration                        |
 | external_endpoint   | str  | true     | N/A     | External endpoint of the registry (`http.externalUrl`)              |
+| container_port      | int  | false    | 5000    | Port zot listens on inside the container (`http.port`)              |
 | oidc_issuer         | str  | true     | N/A     | OIDC issuer URL for the registry's browser SSO login                |
 | oidc_client_id      | str  | true     | N/A     | IdP client id for the registry                                      |
 | oidc_client_secret  | str  | true     | N/A     | IdP client secret for the registry (no_log)                         |

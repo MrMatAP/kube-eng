@@ -72,6 +72,13 @@ with `infra.registry.admin_password` (generated, readable via `uv run kube-eng c
 > a static htpasswd credential rather than an IdP-issued token. See
 > `docs/adr/0004-registry-push-auth-htpasswd-account.md`.
 
+> **LIMITATION (anonymous pull):**<br/>
+> zot also sends a `WWW-Authenticate: Basic` header on the `/v2/` ping even when it returns `200` and anonymous
+> read is allowed (not RFC 7235 compliant). Standard clients — `docker`, containerd — then refuse to proceed
+> without credentials, so anonymous pull can't be relied on. kube-eng works around this by authenticating every
+> path as the htpasswd account: `infra-apply` runs `docker login` on the host, and the kind nodes carry it as a
+> static header in each containerd `hosts.toml`. zot's `anonymousPolicy: ["read"]` is kept only as a fallback.
+
 ## cluster-apply
 
 `uv run kube-eng cluster-apply` will create the cluster. You can monitor this via `kubectl get po -Aw`. This will 

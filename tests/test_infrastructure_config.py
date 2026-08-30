@@ -132,6 +132,11 @@ class TestRegistry:
         assert registry.provider == 'local'
         assert _url(registry.oci_endpoint) == 'oci://registry.testcluster.k8s:5001'
         assert _url(registry.http_endpoint) == 'https://registry.testcluster.k8s:5001'
+        # The kind nodes share the Docker network and reach the container on
+        # its in-container port, not the host-published one.
+        assert (
+            _url(registry.cluster_endpoint) == 'https://registry.testcluster.k8s:5000'
+        )
 
     def test_local_push_account_is_generated(self, tmp_path: pathlib.Path):
         registry = make_config(tmp_path).infra.registry
@@ -162,6 +167,8 @@ class TestRegistry:
         ).infra.registry
         assert _url(registry.oci_endpoint) == 'oci://harbor.example.com/kube-eng'
         assert _url(registry.http_endpoint) == 'https://harbor.example.com/kube-eng'
+        # A remote registry is off-host; every consumer uses the same URL.
+        assert _url(registry.cluster_endpoint) == 'https://harbor.example.com/kube-eng'
 
     def test_remote_rejects_non_oci_url(self, tmp_path: pathlib.Path):
         with pytest.raises(ValidationError):

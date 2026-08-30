@@ -31,6 +31,15 @@ argument_specs:
         description: URL of the airgap registry
         type: str
         required: true
+      airgap_registry_auth:
+        description: >-
+          Base64 of "username:password" for the airgap registry, written as a
+          static Authorization header into each containerd hosts.toml. Empty to
+          pull anonymously (e.g. a remote registry authenticated out of band).
+        type: str
+        required: false
+        default: ''
+        no_log: true
       pod_subnet_cidr:
         description: Pod subnet CIDR
         type: str

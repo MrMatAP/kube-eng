@@ -13,6 +13,12 @@ zot's `http.auth.openid` covers the first. It does **not** cover the second: in 
 - **Remote registry:** expected to be configured for OpenID **and** LDAP out of band. `infra.registry.admin_username`/`admin_password` are still the credentials `helm_publish` logs in with (an LDAP bind, typically); they are supplied, not generated, and an empty password makes `helm_publish` skip the login and assume the caller is already authenticated.
 - The htpasswd file is written by a dedicated Ansible module, `registry_htpasswd`, called from the `registry_configuration` role with the push account's plaintext password. The `$6$` SHA-512 crypt lives in `module_utils/registry_utils.py` (pure Python, verified against `openssl passwd -6` in the tests) because Python 3.13 dropped `crypt`, `passlib` is unmaintained for 3.13+, and `community.general.htpasswd` needs one of those. The module is idempotent: it re-hashes only when the file has no matching `$6$` entry that verifies against the password, so re-running doesn't restart the registry container.
 
+## Cluster nodes authenticate with the same account
+
+The kind nodes redirect upstream images (`docker.io`, `quay.io`, …) to the registry through a containerd `hosts.toml` mirror per upstream (`kind_configuration` role). containerd 2.x (v2.3.4 in the current node image) dropped `plugins.'io.containerd.cri.v1.images'.registry.configs`, so there is no separate place to put registry credentials — the only static mechanism is the `[host."…".header]` table in `hosts.toml`. Each `hosts.toml` therefore carries `Authorization = "Basic <b64(admin_username:admin_password)>"` (`airgap_registry_auth`, passed from `cluster_apply`, `no_log`). Verified against containerd v2.3.4: the header is sent proactively on the first request and zot authorises it directly (no token exchange). An empty `airgap_registry_auth` (a remote registry with no kube-eng-managed password) omits the header and pulls anonymously.
+
+Consequence: with the host logged in (`infra-apply`) and every node carrying the header, nothing pulls anonymously any more, so zot's `accessControl` `anonymousPolicy: ["read"]` is now belt-and-suspenders and can be removed in a follow-up once the authenticated paths have shipped.
+
 ## Why not a shared IdP service account (the abandoned path)
 
 Two earlier attempts were dropped:

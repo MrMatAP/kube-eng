@@ -9,7 +9,11 @@ import pydantic
 import rich.console
 import yaml
 from pydantic import BaseModel
+from rich.console import Group
 from rich.padding import Padding
+from rich.panel import Panel
+from rich.rule import Rule
+from rich.text import Text
 
 from kube_eng import __default_config_path__, __version__
 from kube_eng.common import AnsibleEvent, AnsibleExecution
@@ -18,62 +22,212 @@ from kube_eng.config import RootConfig, RootConfigAware
 
 console = rich.console.Console()
 
+# Terminal palette mapped from var/mrmat.css (dark-surface variants).
+_ACCENT = '#C49070'  # copper-lt
+_ACCENT_DIM = '#7A5538'  # copper-dim -- rules, panel borders
+_PRIMARY = '#F4F2EE'  # parchment
+_MUTED = '#8896A8'  # mist -- secondary detail
+_SUCCESS = '#93C787'  # green-lt
+_WARNING = '#E6B58F'  # amber-lt
+_DANGER = '#E5745A'  # red-lt
+_INFO = '#88AECB'  # blue-lt
+
+# Left margin for a task line, and for the detail lines nested under it
+# (2 to clear the status glyph + its trailing space).
+_TASK_INDENT = 2
+_DETAIL_INDENT = _TASK_INDENT + 2
+
+_STATUS_STYLE: dict[AnsibleStatusEnum, str] = {
+    AnsibleStatusEnum.ok: _ACCENT,
+    AnsibleStatusEnum.unchanged: _SUCCESS,
+    AnsibleStatusEnum.running: _INFO,
+    AnsibleStatusEnum.failed: _DANGER,
+    AnsibleStatusEnum.unknown: _INFO,
+    AnsibleStatusEnum.empty: _ACCENT,
+}
+
+_STATUS_GLYPH: dict[AnsibleStatusEnum, str] = {
+    AnsibleStatusEnum.ok: '✱',
+    AnsibleStatusEnum.unchanged: '✓',
+    AnsibleStatusEnum.running: '▸',
+    AnsibleStatusEnum.failed: '✗',
+    AnsibleStatusEnum.unknown: '?',
+    AnsibleStatusEnum.empty: '▸',
+}
+
+_SKIP_EVENTS = frozenset(
+    {'playbook_on_task_start', 'runner_on_start', 'playbook_on_play_start'}
+)
+_NOISE_MSGS = frozenset({'', 'Started playbook', 'Started play', 'Started task'})
+_DOCKER_LOGIN_TASK = 'Log the host Docker CLI in to the registry'
+
+
+def _indent(renderable: rich.console.RenderableType, left: int) -> Padding:
+    return Padding(renderable, (0, 0, 0, left), expand=False)
+
 
 class CLIAnsibleEventLog:
-    _status_display: dict[AnsibleStatusEnum, str] = {  # noqa: RUF012
-        AnsibleStatusEnum.ok: 'green',
-        AnsibleStatusEnum.unchanged: 'dim green',
-        AnsibleStatusEnum.empty: 'dim blue',
-        AnsibleStatusEnum.running: 'orange1',
-        AnsibleStatusEnum.failed: 'red',
-        AnsibleStatusEnum.unknown: 'yellow',
-    }
+    """Renders a single Ansible event as an indented, colour-coded block."""
 
     def __init__(self, ev: AnsibleEvent) -> None:
         self._ev = ev
 
+    def _detail(self, label: str, value: str, style: str):
+        yield _indent(Text(label, style=f'dim {style}'), _DETAIL_INDENT)
+        yield _indent(Text(value.rstrip('\n'), style=style), _DETAIL_INDENT + 2)
+
     def __rich_console__(
         self, _con: rich.console.Console, _options: rich.console.ConsoleOptions
     ):
-        color = self._status_display.get(self._ev.status, 'white')
-        yield f'{self._ev.status.value} [{color}]{self._ev.task}[/{color}]'
-        if self._ev.msg:
-            yield Padding(
-                self._ev.msg, pad=(0, 2, 0, 4), style=f'dim {color}', expand=True
+        ev = self._ev
+
+        if ev.event == 'playbook_on_start':
+            name = ev.task.removeprefix('Starting playbook ')
+            yield ''
+            yield Rule(
+                Text(f' {name} ', style=f'bold {_ACCENT}'),
+                style=_ACCENT_DIM,
+                align='left',
             )
-        if self._ev.verbose:
-            yield Padding(
-                f'{self._ev.uuid} - {self._ev.event}',
-                pad=(0, 2, 0, 4),
-                style='blue',
-                expand=True,
+            return
+
+        if ev.event in ('playbook_failed', 'error'):
+            parts: list[Text] = []
+            if ev.stdout:
+                parts.append(Text(ev.stdout.rstrip('\n'), style=_MUTED))
+            if ev.stderr:
+                parts.append(Text(ev.stderr.rstrip('\n'), style=_DANGER))
+            yield ''
+            yield Panel(
+                Group(*parts) if parts else Text('The playbook failed.', style=_DANGER),
+                title=Text('playbook failed', style=f'bold {_DANGER}'),
+                title_align='left',
+                border_style=_DANGER,
             )
-        if self._ev.stdout:
-            yield Padding('Stdout:', pad=(0, 2, 0, 4), style='dim white', expand=True)
-            yield Padding(
-                self._ev.stdout, pad=(0, 2, 0, 6), style='dim white', expand=True
+            return
+
+        ignored = ev.status == AnsibleStatusEnum.failed and ev.ignored
+        if ignored:
+            style, glyph = _WARNING, '!'
+        else:
+            style = _STATUS_STYLE.get(ev.status, _MUTED)
+            glyph = _STATUS_GLYPH.get(ev.status, '·')
+
+        heading = Text(f'{glyph} ', style=style)
+        heading.append(ev.task, style=style)
+        if ignored:
+            heading.append('  ignored', style=_MUTED)
+        yield _indent(heading, _TASK_INDENT)
+
+        if ev.msg and ev.msg not in _NOISE_MSGS:
+            yield _indent(Text(ev.msg, style=_MUTED), _DETAIL_INDENT)
+        if ev.verbose:
+            yield _indent(
+                Text(f'{ev.event}  {ev.uuid}', style=f'dim {_INFO}'), _DETAIL_INDENT
             )
-        if self._ev.stderr:
-            yield Padding('Stderr:', pad=(0, 2, 0, 4), style='dim yellow', expand=True)
-            yield Padding(
-                self._ev.stderr, pad=(0, 2, 0, 6), style='dim yellow', expand=True
-            )
-        if self._ev.warnings:
-            yield Padding('Warnings:', pad=(0, 2, 0, 4), style='yellow', expand=True)
-            for warning in self._ev.warnings:
-                yield Padding(warning, pad=(0, 2, 0, 6), style='yellow', expand=True)
+        if ev.stdout:
+            yield from self._detail('stdout', ev.stdout, _MUTED)
+        if ev.stderr:
+            yield from self._detail('stderr', ev.stderr, _DANGER)
+        for warning in ev.warnings:
+            yield _indent(Text(f'! {warning}', style=_WARNING), _DETAIL_INDENT)
 
 
-def _log_ansible_event(ev: AnsibleEvent) -> None:
-    """
-    Callback to print the outcome of an Ansible event on the CLI console.
-    Args:
-        ev (AnsibleEvent): The Ansible event to print.
-    """
-    if ev.event in ['playbook_on_task_start', 'runner_on_start']:
-        return
-    # console.print(f'{ev.status.value}: {ev.task}')
-    console.print(CLIAnsibleEventLog(ev))
+class CLIAnsibleEventSink:
+    """Prints Ansible events as they stream in and tracks the run outcome."""
+
+    def __init__(self) -> None:
+        self.failed = False
+        self.docker_login_failed = False
+
+    def __call__(self, ev: AnsibleEvent) -> None:
+        if ev.event in _SKIP_EVENTS:
+            return
+        if ev.status == AnsibleStatusEnum.failed or ev.event == 'playbook_failed':
+            if ev.task == _DOCKER_LOGIN_TASK:
+                self.docker_login_failed = True
+            if not ev.ignored:
+                self.failed = True
+        console.print(CLIAnsibleEventLog(ev))
+
+
+def _registry_host(config: RootConfig) -> str:
+    endpoint = config.infra.registry.oci_endpoint
+    host = endpoint.host or ''
+    return f'{host}:{endpoint.port}' if endpoint.port else host
+
+
+def _infra_apply_summary(config: RootConfig, sink: CLIAnsibleEventSink) -> Panel:
+    """The manual steps to complete on the host before `cluster-apply`."""
+    if sink.failed:
+        return Panel(
+            Text(
+                'infra-apply did not finish cleanly. Resolve the errors above '
+                'before running `kube-eng cluster-apply`.',
+                style=_DANGER,
+            ),
+            title=Text('incomplete', style=f'bold {_DANGER}'),
+            title_align='left',
+            border_style=_DANGER,
+        )
+
+    dns = config.infra.dns
+    if dns.provider == 'local':
+        dns_line = (
+            f'Point your host resolver at the local DNS server {dns.ip}:{dns.port} '
+            f'so {dns.domain} names resolve.'
+        )
+    else:
+        dns_line = (
+            f'Ensure your host resolves {dns.domain} records against your remote '
+            'DNS server.'
+        )
+
+    ca_path = config.infra.pki.ca_path
+    ca_line = (
+        f'Import {ca_path} into your login keychain '
+        f'(`security add-certificates {ca_path}`) and mark it "Always Trust". '
+        'Only needed again when the CA is regenerated.'
+    )
+
+    registry = config.infra.registry
+    host = _registry_host(config)
+    if registry.provider != 'local':
+        registry_line = (
+            f'Authenticate your Docker CLI to {host}: `docker login {host}`.'
+        )
+    elif sink.docker_login_failed:
+        registry_line = (
+            f'The automatic `docker login` to {host} failed (the host cannot '
+            'resolve the name or trust the CA yet). After steps 1 and 2, run '
+            f'`docker login {host} -u {registry.admin_username}` -- password via '
+            '`kube-eng config get infra.registry.admin_password`.'
+        )
+    else:
+        registry_line = (
+            f'Your Docker CLI is logged in to {host} as {registry.admin_username}.'
+        )
+
+    steps = [
+        Text(
+            'Complete these steps on your host before `cluster-apply`:\n', style=_MUTED
+        )
+    ]
+    for number, (label, body) in enumerate(
+        (('DNS', dns_line), ('CA trust', ca_line), ('Registry', registry_line)),
+        start=1,
+    ):
+        head = Text(f'{number}. ', style=f'bold {_ACCENT}')
+        head.append(label, style=f'bold {_ACCENT}')
+        steps.append(head)
+        steps.append(Padding(Text(body, style=_PRIMARY), (0, 0, 1, 3)))
+
+    return Panel(
+        Group(*steps),
+        title=Text('next steps', style=f'bold {_ACCENT}'),
+        title_align='left',
+        border_style=_ACCENT_DIM,
+    )
 
 
 async def config_list(config: RootConfig, args: argparse.Namespace) -> int:
@@ -260,9 +414,13 @@ async def ansible_execute(config: RootConfig, args: argparse.Namespace) -> int:
         An integer exit code
     """
     overrides = _collect_overrides(args)
-    ex = AnsibleExecution(config, _log_ansible_event, verbose=args.verbose)
+    sink = CLIAnsibleEventSink()
+    ex = AnsibleExecution(config, sink, verbose=args.verbose)
     await ex.execute(playbook=cmd_to_playbook[args.playbook], overrides=overrides)
-    return 0
+    if args.playbook == 'infra-apply':
+        console.print()
+        console.print(_infra_apply_summary(config, sink))
+    return 1 if sink.failed else 0
 
 
 async def main() -> int:

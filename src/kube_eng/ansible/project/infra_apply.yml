@@ -1,6 +1,10 @@
 ---
 - name: Apply the host infrastructure configuration
   hosts: localhost
+  vars:
+    # host:port of the registry, stripped of the oci:// scheme and any path --
+    # the form `docker login` / `helm registry login` expect.
+    registry_host: "{{ infra.registry.oci_endpoint | string | regex_replace('^oci://', '') | regex_replace('/.*$', '') }}"
   tasks:
 
   - name: Create a dedicated Docker network
@@ -618,6 +622,7 @@
       vars:
         directory: "{{ infra.registry.config_path }}"
         external_endpoint: "{{ infra.registry.http_endpoint }}"
+        container_port: "{{ infra.registry.container_port | int }}"
         oidc_issuer: "{{ infra.idp.issuer_url }}"
         oidc_client_id: "{{ infra.registry.client_id }}"
         oidc_client_secret: "{{ registry_idp_client.client_secret }}"
@@ -662,7 +667,7 @@
         env:
           SSL_CERT_FILE: /etc/zot/truststore.pem
         ports:
-        - "{{ infra.registry.ip }}:{{ infra.registry.port | int }}:5000/tcp"
+        - "{{ infra.registry.ip }}:{{ infra.registry.port | int }}:{{ infra.registry.container_port | int }}/tcp"
         networks:
         - name: "{{ infra.net.name }}"
           aliases:
@@ -671,6 +676,18 @@
         keep_volumes: false
         restart_policy: always
         state: healthy
+    - name: Log the host Docker CLI in to the registry
+      # Same credentials helm_publish pushes charts with. Best-effort: on a
+      # first run the host can't yet resolve the registry name or trust the
+      # CA (both are manual post-apply steps), so a failure here is expected
+      # -- `kube-eng infra-apply` reports the remaining manual steps when it
+      # finishes rather than treating this as fatal.
+      community.docker.docker_login:
+        registry_url: "{{ registry_host }}"
+        username: "{{ infra.registry.admin_username }}"
+        password: "{{ infra.registry.admin_password }}"
+      ignore_errors: true
+      no_log: true
     - name: Update DNS with a record for the registry
       ansible.builtin.import_role:
         name: update_dns_record
@@ -762,6 +779,3 @@
     - kube-eng-tempo
     - kube-eng-grafana
     - kube-eng-kiali
-
-# If you used a local DNS server, then you must now configure your host to point to 127.0.0.1:53
-# You must also trust the CA that was generated for you using security add-certificates ~/.kube-eng/pki/ca.pem

@@ -12,6 +12,11 @@ argument_specs:
         description: External endpoint of the registry
         type: str
         required: true
+      container_port:
+        description: Port zot listens on inside the container
+        type: int
+        required: false
+        default: 5000
       oidc_issuer:
         description: OIDC issuer URL for the registry's browser SSO login
         type: str

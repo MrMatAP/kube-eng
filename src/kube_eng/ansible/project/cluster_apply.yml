@@ -32,7 +32,13 @@
         cluster_name: "{{ cluster.name }}"
         directory: "{{ host.tool.kind.config_path }}"
         truststore_path: "{{ infra.pki.ca_truststore_path }}"
-        airgap_registry_url: "{{ infra.registry.http_endpoint | trim('/') }}"
+        # cluster_endpoint, not http_endpoint: the nodes share the Docker
+        # network with the registry container and reach it on its in-container
+        # port, not the host-published one.
+        airgap_registry_url: "{{ infra.registry.cluster_endpoint | trim('/') }}"
+        # Node pull identity for the mirror. Empty when a remote registry has no
+        # kube-eng-managed password (authenticated out of band) -> anonymous.
+        airgap_registry_auth: "{{ (infra.registry.admin_username ~ ':' ~ infra.registry.admin_password) | b64encode if infra.registry.admin_password else '' }}"
         pod_subnet_cidr: "{{ cluster.pod_subnet_cidr }}"
         service_subnet_cidr: "{{ cluster.service_subnet_cidr }}"
         cni: "{{ cluster.cni.kind }}"

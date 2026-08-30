@@ -9,3 +9,5 @@
   ansible.builtin.template:
     src: templates/upstream_hosts.toml.j2
     dest: "{{ directory }}/certs.d/{{ upstream }}/hosts.toml"
+  # The rendered file carries the registry Basic credential.
+  no_log: true

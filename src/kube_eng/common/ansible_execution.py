@@ -43,6 +43,7 @@ class AnsibleEvent:
     status: AnsibleStatusEnum = dataclasses.field(default=AnsibleStatusEnum.empty)
     stdout: str = dataclasses.field(default='')
     stderr: str = dataclasses.field(default='')
+    ignored: bool = False
     verbose: bool = False
 
 
@@ -130,6 +131,7 @@ class AnsibleExecution:
                 ev.task = event_data.get('task', 'Unknown')
                 ev.msg = event_data.get('res', {}).get('msg', '')
                 ev.status = AnsibleStatusEnum.failed
+                ev.ignored = event_data.get('ignore_errors', False)
                 ev.changed = event_data.get('changed', False)
                 ev.stdout = event_data.get('res', {}).get('stdout', '')
                 ev.stderr = event_data.get('res', {}).get('stderr', '')
