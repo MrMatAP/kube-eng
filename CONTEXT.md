@@ -35,7 +35,7 @@ _Avoid_: `stack.keycloak` (legacy name, being retired — see ADR)
 The OCI registry (zot, locally) that stores the Helm charts kube-eng packages and publishes. Humans get an interactive OIDC login against `infra.idp` mapped to IdP Client Roles; automated chart pushes (`helm_publish`) use the Push Account instead, because zot can't run OIDC bearer auth and browser SSO together. Provisioned as Local infra (Docker container) or Remote, following the same Provider pattern as the other Infra services. See ADR-0004.
 
 **IdP Client Role**:
-One of `admin`, `contributor`, `viewer` — registered as Keycloak client roles on an `infra.idp` client (Cluster, Registry) and granted to a user via Keycloak group membership, carried into the client's `accessControl` policy via a group→role claim mapping. Distinct from Role (S3), which is RustFS-native IAM and doesn't involve the IdP.
+One of `admin`, `contributor`, `viewer` — registered as Keycloak client roles on an `infra.idp` client (Cluster, Registry, S3) and granted to a user via Keycloak group membership, carried into the client's authorization via a `roles` claim. For S3 it names the Role (S3) tier the console applies; enforcement is still RustFS-native (the matching S3 Policy).
 _Avoid_: Role on its own (ambiguous with Role (S3))
 
 **Service Account** (`infra.idp`):
@@ -49,7 +49,14 @@ The single htpasswd credential (`admin_username`, default `kube-eng`, + `admin_p
 The DNS suffix in which Infra service records are registered: `{cluster.name}.{dns.zone}`. Every Local Infra service's `client_fqdn` is `{service.name}.{domain}`.
 
 **Account** (S3):
-A dedicated access key/secret key pair in S3's own IAM system, created for one consuming service via `s3_client` — not shared credentials. Distinct from an IdP client (`infra.idp`), which is Keycloak's identity for a service; an S3 Account is RustFS-native and doesn't involve the IdP. See ADR-0003.
+A dedicated access key/secret key pair in S3's own IAM system, one per consuming service (`svc-<service>`), bound to that service's S3 Policy — not shared credentials. Used for service (machine) access; humans reach the S3 console through OIDC federation with `infra.idp` instead. Distinct from an IdP client (`infra.idp`), which is Keycloak's identity for a service; an S3 Account is RustFS-native and doesn't involve the IdP. See ADR-0003.
+_Note_: not yet wired — Loki/Tempo still use the RustFS root credentials.
+
+**S3 Policy**:
+A named RustFS IAM policy Ansible provisions. Two kinds: the three human tiers `s3-admin` / `s3-contributor` / `s3-viewer` (broad, all buckets — the console-access half, name-matched to the IdP Client Roles so the OIDC `roles` claim resolves), and one least-privilege `svc-<service>` per service, scoped to `arn:aws:s3:::<service>-*`. Distinct from Role (S3), which is only the human tier names.
+
+**Bucket** (S3):
+Named `<service>-<purpose>` (`loki-chunks`, `tempo-traces`, …) — a rule, so a service's S3 Policy is always `arn:aws:s3:::<service>-*`.
 
 **Role** (S3):
-One of `admin`, `contributor`, `viewer` — granted to an S3 Account at creation, mapped to RustFS's canned policies (`consoleAdmin`, `readwrite`, `readonly`). Not to be confused with an IdP Client Role, which is part of the OIDC design S3 still defers — see ADR-0003.
+One of `admin`, `contributor`, `viewer` — the human authorization tier a user gets on the S3 console via OIDC, realised as the `s3-<role>` S3 Policy. Not to be confused with an IdP Client Role, which carries the same three names and is what puts the tier into the token.

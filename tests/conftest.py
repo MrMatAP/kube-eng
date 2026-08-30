@@ -25,7 +25,7 @@ def idp_admin(config: RootConfig) -> typing.Generator[IdPAdmin]:
 @pytest.fixture(scope='session')
 def s3_admin(config: RootConfig) -> typing.Generator[S3Admin]:
     s3 = S3Admin(
-        s3_endpoint=str(config.infra.s3.endpoint),
+        s3_endpoint=str(config.infra.s3.api_endpoint),
         s3_access_key=config.infra.s3.access_key,
         s3_secret_key=config.infra.s3.secret_key,
         s3_region=config.infra.s3.region,

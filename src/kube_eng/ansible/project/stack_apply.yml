@@ -298,7 +298,7 @@
     block:
     - name: Create the loki S3 buckets
       s3_bucket:
-        s3_endpoint: "{{ infra.s3.endpoint }}"
+        s3_endpoint: "{{ infra.s3.api_endpoint }}"
         s3_access_key: "{{ infra.s3.access_key }}"
         s3_secret_key: "{{ infra.s3.secret_key }}"
         s3_region: "{{ infra.s3.region }}"
@@ -367,7 +367,7 @@
     block:
     - name: Create the Tempo S3 buckets
       s3_bucket:
-        s3_endpoint: "{{ infra.s3.endpoint }}"
+        s3_endpoint: "{{ infra.s3.api_endpoint }}"
         s3_access_key: "{{ infra.s3.access_key }}"
         s3_secret_key: "{{ infra.s3.secret_key }}"
         s3_region: "{{ infra.s3.region }}"

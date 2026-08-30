@@ -15,17 +15,6 @@ import requests
 
 from .base import InfraException, InfraResult
 
-S3AccountRole = typing.Literal['admin', 'contributor', 'viewer']
-
-# RustFS's admin API is modelled on MinIO's built-in (canned) policies. These
-# are the only three kube-eng grants; custom policy authoring would need the
-# policy-create endpoint, which isn't needed for the roles we support.
-_ROLE_CANNED_POLICY: dict[S3AccountRole, str] = {
-    'admin': 'consoleAdmin',
-    'contributor': 'readwrite',
-    'viewer': 'readonly',
-}
-
 
 class S3Exception(InfraException):
     pass
@@ -43,9 +32,13 @@ class S3BucketResult(S3Result):
     bucket_name: typing.Annotated[str, pydantic.Field()]
 
 
+class S3PolicyResult(S3Result):
+    policy_name: typing.Annotated[str, pydantic.Field()]
+
+
 class S3AccountResult(S3Result):
     access_key: typing.Annotated[str, pydantic.Field()]
-    role: typing.Annotated[str | None, pydantic.Field(default=None)]
+    policies: typing.Annotated[list[str], pydantic.Field(default_factory=list)]
 
 
 class S3Admin:
@@ -165,15 +158,15 @@ class S3Admin:
         except botocore.exceptions.ClientError as ce:
             raise S3Exception(code=400, msg=str(ce)) from ce
 
-    # -- Accounts and permissions --------------------------------------
+    # -- Accounts, policies and permissions ---------------------------------
     #
     # RustFS exposes a MinIO-style admin API under /rustfs/admin/v3/ for
-    # managing IAM-like "accounts" (access key/secret key pairs) and
-    # attaching canned policies to them. There's no SDK and no published
-    # wire-format spec for it -- the calls below were verified empirically
-    # against a live RustFS instance rather than from documentation. If a
-    # future RustFS release changes this, _admin_request is the one place
-    # to fix.
+    # managing IAM-like "accounts" (access key/secret key pairs), named
+    # policies (AWS-style JSON documents) and the bindings between them.
+    # There's no SDK and no published wire-format spec for it -- the calls
+    # below were verified empirically against a live RustFS instance rather
+    # than from documentation. If a future RustFS release changes this,
+    # _admin_request is the one place to fix.
 
     def _admin_request(
         self,
@@ -304,69 +297,153 @@ class S3Admin:
         )
         return not already_existed
 
-    def account_role_set(self, access_key: str, role: S3AccountRole) -> bool:
+    def account_policy_set(self, access_key: str, policy_names: list[str]) -> bool:
         """
-        Ensure exactly the canned policy for the given role is attached to
-        an account, detaching any others. RustFS's policy/attach endpoint is
-        additive -- it accumulates policies rather than replacing them -- so
-        this diffs against the account's current policies to converge on
-        exactly one.
+        Ensure exactly ``policy_names`` are attached to an account,
+        detaching any others. Works for both canned and custom policy
+        names. RustFS's policy/attach endpoint is additive -- it
+        accumulates policies rather than replacing them -- so this diffs
+        against the account's current policies to converge on the target
+        set.
         Args:
             access_key (str): The account's access key
-            role (S3AccountRole): The role to grant
+            policy_names (list[str]): The exact set of policies to attach
 
         Returns:
             True if the account's attached policies changed
         Throws:
             S3Exception, when the change fails
         """
-        target_policy = _ROLE_CANNED_POLICY[role]
-        current_policies = self.account_policy_get(access_key)
-        if current_policies == {target_policy}:
+        target = set(policy_names)
+        current = self.account_policy_get(access_key)
+        if current == target:
             return False
-        extra_policies = current_policies - {target_policy}
-        if extra_policies:
+        to_detach = current - target
+        if to_detach:
             self._admin_request(
                 'POST',
                 'idp/builtin/policy/detach',
-                json_body={'policies': sorted(extra_policies), 'user': access_key},
+                json_body={'policies': sorted(to_detach), 'user': access_key},
             )
-        if target_policy not in current_policies:
+        to_attach = target - current
+        if to_attach:
             self._admin_request(
                 'POST',
                 'idp/builtin/policy/attach',
-                json_body={'policies': [target_policy], 'user': access_key},
+                json_body={'policies': sorted(to_attach), 'user': access_key},
             )
         return True
 
     def account_ensure(
-        self, access_key: str, secret_key: str, role: S3AccountRole
+        self, access_key: str, secret_key: str, policies: list[str]
     ) -> S3AccountResult:
         """
-        Ensure a dedicated S3 account exists with exactly the given role.
+        Ensure a dedicated S3 account exists with exactly ``policies``
+        attached.
         Args:
             access_key (str): The account's access key -- conventionally the
                 identity of the client it's dedicated to
             secret_key (str): The account's secret key
-            role (S3AccountRole): The role to grant: 'admin', 'contributor'
-                or 'viewer'
+            policies (list[str]): The exact set of policy names to attach
 
         Returns:
             An S3AccountResult
         Throws:
-            S3Exception, when creation or role assignment fails
+            S3Exception, when creation or policy assignment fails
         """
         created = self.account_create(access_key, secret_key)
-        role_changed = self.account_role_set(access_key, role)
+        policies_changed = self.account_policy_set(access_key, policies)
         if created:
             msg = 'Account created'
-        elif role_changed:
-            msg = 'Account role updated'
+        elif policies_changed:
+            msg = 'Account policies updated'
         else:
             msg = 'Account is present'
         return S3AccountResult(
-            changed=created or role_changed, msg=msg, access_key=access_key, role=role
+            changed=created or policies_changed,
+            msg=msg,
+            access_key=access_key,
+            policies=sorted(policies),
         )
+
+    def policy_get(self, name: str) -> dict | None:
+        """
+        Fetch a named policy's document, or None if it doesn't exist.
+        Args:
+            name (str): The policy name
+
+        Returns:
+            The policy document, or None
+        Throws:
+            S3Exception, when the fetch fails for a reason other than the policy being absent
+        """
+        try:
+            response = self._admin_request(
+                'GET', 'info-canned-policy', params={'name': name}
+            )
+        except S3Exception as se:
+            # RustFS reports a missing policy as 500 'InternalError: policy
+            # does not exist' rather than a 404, so match on the message too.
+            if se.code == 404 or 'does not exist' in se.msg.lower():
+                return None
+            raise
+        # RustFS has returned the document bare and, in other builds, wrapped
+        # under a 'Policy'/'policy' key (sometimes as a JSON string).
+        document = response
+        for key in ('Policy', 'policy'):
+            if isinstance(response, dict) and key in response:
+                document = response[key]
+                break
+        if isinstance(document, str):
+            document = json.loads(document)
+        return document or None
+
+    def policy_ensure(self, name: str, document: dict) -> S3PolicyResult:
+        """
+        Create or update a named policy so its document matches
+        ``document``. Idempotent.
+        Args:
+            name (str): The policy name
+            document (dict): The AWS-style policy document
+
+        Returns:
+            An S3PolicyResult
+        Throws:
+            S3Exception, when the write fails
+        """
+        current = self.policy_get(name)
+        if current is not None and json.dumps(current, sort_keys=True) == json.dumps(
+            document, sort_keys=True
+        ):
+            return S3PolicyResult(
+                changed=False, msg='Policy is up to date', policy_name=name
+            )
+        self._admin_request(
+            'PUT', 'add-canned-policy', params={'name': name}, json_body=document
+        )
+        return S3PolicyResult(
+            changed=True,
+            msg='Policy created' if current is None else 'Policy updated',
+            policy_name=name,
+        )
+
+    def policy_remove(self, name: str) -> S3PolicyResult:
+        """
+        Remove a named policy, if it exists.
+        Args:
+            name (str): The policy name
+
+        Returns:
+            An S3PolicyResult
+        Throws:
+            S3Exception, when removal fails
+        """
+        if self.policy_get(name) is None:
+            return S3PolicyResult(
+                changed=False, msg='Policy is absent', policy_name=name
+            )
+        self._admin_request('DELETE', 'remove-canned-policy', params={'name': name})
+        return S3PolicyResult(changed=True, msg='Policy removed', policy_name=name)
 
     def account_remove(self, access_key: str) -> S3AccountResult:
         """

@@ -4,6 +4,7 @@ entirely, so these tests only pin the relay between Ansible task args and
 S3Admin calls -- no live S3, no network.
 """
 
+from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
@@ -16,136 +17,169 @@ BASE_ARGS = {
     's3_secret_key': 'admin-secret',
     's3_region': 'us-east-1',
     's3_ca_path': '/tmp/ca.pem',
-    'access_key': 'loki-covenant',
+    'access_key': 'svc-loki',
+}
+
+_DOC = {
+    'Version': '2012-10-17',
+    'Statement': [
+        {
+            'Effect': 'Allow',
+            'Action': ['s3:GetObject', 's3:PutObject'],
+            'Resource': ['arn:aws:s3:::loki-*/*'],
+        }
+    ],
 }
 
 
-def _fake_admin(*, ensure_result: dict, remove_result: dict) -> MagicMock:
+def _fake_admin() -> MagicMock:
     admin = MagicMock()
-    admin.account_ensure.return_value = MagicMock(ansible_result=lambda: ensure_result)
-    admin.account_remove.return_value = MagicMock(ansible_result=lambda: remove_result)
+    admin.policy_ensure.return_value = SimpleNamespace(
+        changed=True, msg='Policy created', policy_name='svc-loki'
+    )
+    admin.account_ensure.return_value = SimpleNamespace(
+        changed=True,
+        msg='Account created',
+        access_key='svc-loki',
+        policies=['svc-loki'],
+    )
+    admin.account_remove.return_value = SimpleNamespace(
+        changed=True, msg='Account removed', access_key='svc-loki', policies=[]
+    )
+    admin.policy_remove.return_value = SimpleNamespace(
+        changed=True, msg='Policy removed', policy_name='svc-loki'
+    )
     return admin
 
 
-def test_present_ensures_the_dedicated_account(monkeypatch):
+def _patch(monkeypatch, admin):
+    monkeypatch.setattr(s3_client, 'S3Admin', MagicMock(return_value=admin))
+
+
+def test_present_authors_the_policy_and_the_account(monkeypatch):
     set_module_args(
-        {
-            **BASE_ARGS,
-            'secret_key': 'loki-secret',
-            'role': 'contributor',
-            'state': 'present',
-        }
+        {**BASE_ARGS, 'secret_key': 'loki-secret', 'policy': _DOC, 'state': 'present'}
     )
-    fake_admin = _fake_admin(
-        ensure_result={
-            'changed': True,
-            'msg': 'Account created',
-            'access_key': 'loki-covenant',
-            'role': 'contributor',
-        },
-        remove_result={},
-    )
-    monkeypatch.setattr(s3_client, 'S3Admin', MagicMock(return_value=fake_admin))
+    admin = _fake_admin()
+    _patch(monkeypatch, admin)
 
     with pytest.raises(AnsibleExitJson) as exc_info:
         s3_client.main()
 
-    fake_admin.account_ensure.assert_called_once_with(
-        access_key='loki-covenant', secret_key='loki-secret', role='contributor'
+    admin.policy_ensure.assert_called_once_with('svc-loki', _DOC)
+    admin.account_ensure.assert_called_once_with(
+        'svc-loki', 'loki-secret', ['svc-loki']
     )
-    assert exc_info.value.kwargs == {
-        'changed': True,
-        'msg': 'Account created',
-        'access_key': 'loki-covenant',
-        'role': 'contributor',
-    }
+    assert exc_info.value.kwargs['changed'] is True
+    assert exc_info.value.kwargs['policies'] == ['svc-loki']
 
 
-def test_present_requires_secret_key_and_role(monkeypatch):
-    set_module_args({**BASE_ARGS, 'state': 'present'})
-    monkeypatch.setattr(s3_client, 'S3Admin', MagicMock())
-
-    with pytest.raises(AnsibleFailJson) as exc_info:
-        s3_client.main()
-
-    assert 'requires setting secret_key and role' in exc_info.value.kwargs['msg']
-
-
-def test_present_rejects_an_unknown_role(monkeypatch):
+def test_present_with_extra_pre_existing_policies(monkeypatch):
     set_module_args(
         {
             **BASE_ARGS,
             'secret_key': 'loki-secret',
-            'role': 'superuser',
+            'policy': _DOC,
+            'policies': ['readonly'],
             'state': 'present',
         }
     )
-    monkeypatch.setattr(s3_client, 'S3Admin', MagicMock())
-
-    with pytest.raises(AnsibleFailJson) as exc_info:
-        s3_client.main()
-
-    assert 'role must be one of' in exc_info.value.kwargs['msg']
-
-
-@pytest.mark.parametrize('role', ['admin', 'contributor', 'viewer'])
-def test_present_accepts_each_supported_role(monkeypatch, role):
-    set_module_args(
-        {**BASE_ARGS, 'secret_key': 'loki-secret', 'role': role, 'state': 'present'}
-    )
-    fake_admin = _fake_admin(
-        ensure_result={
-            'changed': True,
-            'msg': 'Account created',
-            'access_key': 'loki-covenant',
-            'role': role,
-        },
-        remove_result={},
-    )
-    monkeypatch.setattr(s3_client, 'S3Admin', MagicMock(return_value=fake_admin))
+    admin = _fake_admin()
+    _patch(monkeypatch, admin)
 
     with pytest.raises(AnsibleExitJson):
         s3_client.main()
 
-    fake_admin.account_ensure.assert_called_once_with(
-        access_key='loki-covenant', secret_key='loki-secret', role=role
+    admin.account_ensure.assert_called_once_with(
+        'svc-loki', 'loki-secret', ['svc-loki', 'readonly']
     )
 
 
-def test_absent_removes_the_account(monkeypatch):
-    set_module_args({**BASE_ARGS, 'state': 'absent'})
-    fake_admin = _fake_admin(
-        ensure_result={},
-        remove_result={
-            'changed': True,
-            'msg': 'Account removed',
-            'access_key': 'loki-covenant',
-            'role': None,
-        },
+def test_present_policy_only_does_not_touch_an_account(monkeypatch):
+    set_module_args(
+        {**BASE_ARGS, 'access_key': 's3-admin', 'policy': _DOC, 'state': 'present'}
     )
-    monkeypatch.setattr(s3_client, 'S3Admin', MagicMock(return_value=fake_admin))
+    admin = _fake_admin()
+    admin.policy_ensure.return_value = SimpleNamespace(
+        changed=True, msg='Policy created', policy_name='s3-admin'
+    )
+    _patch(monkeypatch, admin)
 
     with pytest.raises(AnsibleExitJson) as exc_info:
         s3_client.main()
 
-    fake_admin.account_remove.assert_called_once_with('loki-covenant')
+    admin.policy_ensure.assert_called_once_with('s3-admin', _DOC)
+    admin.account_ensure.assert_not_called()
+    assert 'policies' not in exc_info.value.kwargs
+
+
+def test_present_account_only_attaches_named_policies(monkeypatch):
+    set_module_args(
+        {
+            **BASE_ARGS,
+            'secret_key': 'loki-secret',
+            'policies': ['readonly'],
+            'state': 'present',
+        }
+    )
+    admin = _fake_admin()
+    _patch(monkeypatch, admin)
+
+    with pytest.raises(AnsibleExitJson):
+        s3_client.main()
+
+    admin.policy_ensure.assert_not_called()
+    admin.account_ensure.assert_called_once_with(
+        'svc-loki', 'loki-secret', ['readonly']
+    )
+
+
+def test_present_requires_a_secret_key_or_a_policy(monkeypatch):
+    set_module_args({**BASE_ARGS, 'state': 'present'})
+    _patch(monkeypatch, _fake_admin())
+
+    with pytest.raises(AnsibleFailJson) as exc_info:
+        s3_client.main()
+
+    assert 'secret_key' in exc_info.value.kwargs['msg']
+
+
+def test_absent_removes_the_account_and_its_policy(monkeypatch):
+    set_module_args({**BASE_ARGS, 'policy': _DOC, 'state': 'absent'})
+    admin = _fake_admin()
+    _patch(monkeypatch, admin)
+
+    with pytest.raises(AnsibleExitJson) as exc_info:
+        s3_client.main()
+
+    admin.account_remove.assert_called_once_with('svc-loki')
+    admin.policy_remove.assert_called_once_with('svc-loki')
     assert exc_info.value.kwargs['changed'] is True
 
 
-def test_absent_does_not_require_secret_key_or_role(monkeypatch):
-    """state=absent only needs the access_key -- no point demanding
-    credentials/role just to tear something down."""
+def test_absent_without_policy_removes_only_the_account(monkeypatch):
     set_module_args({**BASE_ARGS, 'state': 'absent'})
-    fake_admin = _fake_admin(
-        ensure_result={},
-        remove_result={
-            'changed': False,
-            'msg': 'Account is absent',
-            'access_key': 'loki-covenant',
-            'role': None,
-        },
+    admin = _fake_admin()
+    _patch(monkeypatch, admin)
+
+    with pytest.raises(AnsibleExitJson) as exc_info:
+        s3_client.main()
+
+    admin.account_remove.assert_called_once_with('svc-loki')
+    admin.policy_remove.assert_not_called()
+    assert exc_info.value.kwargs['changed'] is True
+
+
+def test_absent_is_a_no_op_when_nothing_exists(monkeypatch):
+    set_module_args({**BASE_ARGS, 'policy': _DOC, 'state': 'absent'})
+    admin = _fake_admin()
+    admin.account_remove.return_value = SimpleNamespace(
+        changed=False, msg='Account is absent', access_key='svc-loki', policies=[]
     )
-    monkeypatch.setattr(s3_client, 'S3Admin', MagicMock(return_value=fake_admin))
+    admin.policy_remove.return_value = SimpleNamespace(
+        changed=False, msg='Policy is absent', policy_name='svc-loki'
+    )
+    _patch(monkeypatch, admin)
 
     with pytest.raises(AnsibleExitJson) as exc_info:
         s3_client.main()

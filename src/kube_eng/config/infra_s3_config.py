@@ -26,14 +26,14 @@ class S3Config(RootConfigAware, abc.ABC):
     @computed_field(description='Client FQDN of the S3 service')
     @property
     def client_fqdn(self) -> str:
-        if self.endpoint.host is None:
+        if self.api_endpoint.host is None:
             raise ValueError('Missing host in endpoint')
-        return self.endpoint.host or ''
+        return self.api_endpoint.host or ''
 
     @abc.abstractmethod
-    @computed_field(description='Client endpoint of the S3 service')
+    @computed_field(description='API endpoint of the S3 service')
     @property
-    def endpoint(self) -> AnyHttpUrl:
+    def api_endpoint(self) -> AnyHttpUrl:
         """
         Client endpoint of the S3 service
         Returns:
@@ -41,9 +41,9 @@ class S3Config(RootConfigAware, abc.ABC):
         """
     
     @abc.abstractmethod
-    @computed_field(description='Admin endpoint of the S3 service')
+    @computed_field(description='Console endpoint of the S3 service')
     @property
-    def admin_endpoint(self) -> AnyHttpUrl:
+    def console_endpoint(self) -> AnyHttpUrl:
         """
         Admin endpoint of the S3 service
         Returns:
@@ -70,14 +70,14 @@ class LocalS3Config(S3Config):
 
     @computed_field(description='Client endpoint of the S3 service')
     @property
-    def endpoint(self) -> AnyHttpUrl:
+    def api_endpoint(self) -> AnyHttpUrl:
         return AnyHttpUrl(
             f'https://{self.name}.{self._root_config.infra.dns.domain}:{self.port}'
         )
 
     @computed_field(description='Admin endpoint of the S3 service')
     @property
-    def admin_endpoint(self) -> AnyHttpUrl:
+    def console_endpoint(self) -> AnyHttpUrl:
         return AnyHttpUrl(
             f'https://{self.name}.{self._root_config.infra.dns.domain}:{self.console_port}'
         )
@@ -85,7 +85,7 @@ class LocalS3Config(S3Config):
     @computed_field(description='Client endpoint of the S3 service')
     @property
     def client_endpoint(self) -> AnyHttpUrl:
-        return self.endpoint
+        return self.api_endpoint
 
     @computed_field(description='Callback URL for OIDC')
     @property
@@ -125,12 +125,12 @@ class RemoteS3Config(S3Config):
 
     @computed_field(description='Client endpoint of the S3 service')
     @property
-    def endpoint(self) -> AnyHttpUrl:
+    def api_endpoint(self) -> AnyHttpUrl:
         return self.url
 
     @computed_field(description='Admin endpoint of the S3 service')
     @property
-    def admin_endpoint(self) -> AnyHttpUrl:
+    def console_endpoint(self) -> AnyHttpUrl:
         return self.url
 
 

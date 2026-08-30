@@ -16,7 +16,8 @@
       "Bash(awk length>88 {print FILENAME\": \"FNR} *)",
       "Bash(awk 'length>88 {print FILENAME\": \"FNR}' src/kube_eng/config/infrastructure_config.py)",
       "Bash(echo \"exit:$?\")",
-      "Bash(git stash *)"
+      "Bash(git stash *)",
+      "WebFetch(domain:docs.rustfs.com)"
     ]
   },
   "hooks": {

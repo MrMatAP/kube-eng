@@ -356,25 +356,22 @@
         pki_ca_path: "{{ infra.pki.ca_path }}"
         pki_ca_key_path: "{{ infra.pki.ca_key_path }}"
         pki_cert_validity: "{{ infra.pki.crt_validity }}"
-    # OIDC federation between the IdP and S3 is deferred -- RustFS's OIDC
-    # login flow doesn't quite work end to end yet. See ADR-0003. S3 access
-    # is granted via native IAM accounts (s3_client) instead, below.
-    # - name: Create an IdP client for S3
-    #   idp_client:
-    #     idp_url: "{{ infra.idp.client_base_url }}"
-    #     idp_admin_user: "{{ infra.idp.admin_user }}"
-    #     idp_admin_password: "{{ infra.idp.admin_password }}"
-    #     idp_realm: "{{ infra.idp.realm }}"
-    #     idp_ca_path: "{{ infra.pki.ca_truststore_path }}"
-    #     client_id: "{{ infra.s3.client_id }}"
-    #     name: "{{ infra.s3.client_name }}"
-    #     description: "{{ infra.s3.client_description }}"
-    #     root_url: "{{ infra.s3.admin_endpoint }}"
-    #     callback_url: "{{ infra.s3.callback_url }}"
-    #     roles: "{{ infra.s3.client_roles }}"
-    #     state: present
-    #   register: s3_idp_client
-    #   no_log: true
+    - name: Create an IdP client for S3
+      idp_client:
+       idp_url: "{{ infra.idp.client_base_url }}"
+       idp_admin_user: "{{ infra.idp.admin_user }}"
+       idp_admin_password: "{{ infra.idp.admin_password }}"
+       idp_realm: "{{ infra.idp.realm }}"
+       idp_ca_path: "{{ infra.pki.ca_truststore_path }}"
+       client_id: "{{ infra.s3.client_id }}"
+       name: "{{ infra.s3.client_name }}"
+       description: "{{ infra.s3.client_description }}"
+       root_url: "{{ infra.s3.console_endpoint }}"
+       callback_url: "{{ infra.s3.callback_url }}"
+       roles: "{{ infra.s3.client_roles }}"
+       state: present
+      register: s3_idp_client
+      no_log: true
     - name: Start S3
       community.docker.docker_container:
         name: "{{ infra.s3.name }}"
@@ -401,36 +398,32 @@
           SSL_CERT_FILE: "/opt/tls/truststore.pem"
           # See https://docs.rustfs.com/en/reference/environment-variables
           RUSTFS_ADDRESS: ":{{ infra.s3.port }}"
-          RUSTFS_REGION: "us-east-1"
+          RUSTFS_REGION: "{{ infra.s3.region }}"
           RUSTFS_BUFFER_PROFILE: "GeneralPurpose"
           RUSTFS_HEALTH_ENDPOINT_ENABLE: "true"
           RUSTFS_CONSOLE_ENABLE: "true"
           RUSTFS_CONSOLE_ADDRESS: ":{{ infra.s3.console_port }}"
-          RUSTFS_OUTBOUND_ALLOW_ORIGINS: "{{ infra.idp.issuer_url }},https://172.18.0.2:8443"
+          RUSTFS_OUTBOUND_ALLOW_ORIGINS: "{{ infra.idp.client_base_url | regex_replace('/$', '')}}"
           RUSTFS_TLS_PATH: "/opt/tls/"
-          RUSTFS_TRUST_SYSTEM_CA: "true"
-          RUSTFS_TRUST_LEAF_CERT_AS_CA: "true"
-          RUSTFS_SERVER_MTLS_ENABLE: "false"
           RUSTFS_AUDIT_ENABLE: "true"
           RUSTFS_ACCESS_KEY: "{{ infra.s3.access_key }}"
           RUSTFS_SECRET_KEY: "{{ infra.s3.secret_key }}"
-          RUSTFS_BROWSER_REDIRECT_URL: "{{ infra.s3.admin_endpoint }}"
-          # OIDC login is deferred -- see the note above and ADR-0003.
-          # RUSTFS_IDENTITY_OPENID_ENABLE: "true"
-          # RUSTFS_IDENTITY_OPENID_CONFIG_URL: "{{ infra.idp.issuer_url }}/.well-known/openid-configuration"
-          # RUSTFS_IDENTITY_OPENID_CLIENT_ID: "{{ infra.s3.client_id }}"
-          # RUSTFS_IDENTITY_OPENID_CLIENT_SECRET: "{{ s3_idp_client.client_secret }}"
-          # RUSTFS_IDENTITY_OPENID_SCOPES: "openid,profile,email"
-          # RUSTFS_IDENTITY_OPENID_REDIRECT_URI: "{{ infra.s3.admin_endpoint }}rustfs/admin/v3/oidc/callback/default"
-          # RUSTFS_IDENTITY_OPENID_REDIRECT_URI_DYNAMIC: "false"
-          # RUSTFS_IDENTITY_OPENID_DISPLAY_NAME: "Kube-Eng IdP"
-          # RUSTFS_IDENTITY_OPENID_GROUPS_CLAIM: "groups"
-          # RUSTFS_IDENTITY_OPENID_ROLES_CLAIM: "roles"
-          # RUSTFS_IDENTITY_OPENID_EMAIL_CLAIM: "email"
-          # RUSTFS_IDENTITY_OPENID_USERNAME_CLAIM: "preferred_username"
+          RUSTFS_BROWSER_REDIRECT_URL: "{{ infra.s3.console_endpoint }}"
+          RUSTFS_IDENTITY_OPENID_ENABLE: "true"
+          RUSTFS_IDENTITY_OPENID_CONFIG_URL: "{{ infra.idp.issuer_url }}/.well-known/openid-configuration"
+          RUSTFS_IDENTITY_OPENID_CLIENT_ID: "{{ infra.s3.client_id }}"
+          RUSTFS_IDENTITY_OPENID_CLIENT_SECRET: "{{ s3_idp_client.client_secret }}"
+          RUSTFS_IDENTITY_OPENID_SCOPES: "openid,profile,email"
+          RUSTFS_IDENTITY_OPENID_REDIRECT_URI: "{{ infra.s3.console_endpoint }}rustfs/admin/v3/oidc/callback/default"
+          RUSTFS_IDENTITY_OPENID_REDIRECT_URI_DYNAMIC: "false"
+          RUSTFS_IDENTITY_OPENID_DISPLAY_NAME: "Kube-Eng IdP"
+          RUSTFS_IDENTITY_OPENID_GROUPS_CLAIM: "roles"
+          RUSTFS_IDENTITY_OPENID_ROLES_CLAIM: "roles"
+          RUSTFS_IDENTITY_OPENID_EMAIL_CLAIM: "email"
+          RUSTFS_IDENTITY_OPENID_USERNAME_CLAIM: "preferred_username"
           RUSTFS_OBS_USE_STDOUT: "false"
           RUSTFS_OBS_LOG_STDOUT_ENABLED: "false"
-          RUSTFS_OBS_ENDPOINT: "http://lgtm:4318"
+#          RUSTFS_OBS_ENDPOINT: "http://lgtm:4318"
           RUSTFS_OBS_LOG_FILENAME: "rustfs.log"
           RUSTFS_OBS_LOG_ROTATION_TIME: "daily"
           RUSTFS_OBS_LOG_KEEP_FILES: "3"
@@ -453,7 +446,7 @@
         dns_value: "{{ infra.s3.ip }}"
     - name: Validate S3
       s3_validate:
-        s3_endpoint: "{{ infra.s3.admin_endpoint }}"
+        s3_endpoint: "{{ infra.s3.api_endpoint }}"
         s3_access_key: "{{ infra.s3.access_key }}"
         s3_secret_key: "{{ infra.s3.secret_key }}"
         s3_region: "{{ infra.s3.region }}"
@@ -462,6 +455,64 @@
       until: s3_validation.validated
       retries: 3
       delay: 5
+    # The three broad human-access tiers, named to match the s3-* IdP client
+    # roles so RustFS can name-match the OIDC 'roles' claim to a policy at
+    # login (ADR-0003). The console-access half of the model; per-service
+    # least-privilege policies are provisioned at stack-apply.
+    - name: Provision the human-tier S3 console policies
+      s3_client:
+        s3_endpoint: "{{ infra.s3.api_endpoint }}"
+        s3_access_key: "{{ infra.s3.access_key }}"
+        s3_secret_key: "{{ infra.s3.secret_key }}"
+        s3_region: "{{ infra.s3.region }}"
+        s3_ca_path: "{{ infra.pki.ca_truststore_path }}"
+        access_key: "{{ item.name }}"
+        policy: "{{ item.document }}"
+        state: present
+      loop:
+        # RustFS rejects wildcard action names (e.g. 's3:Get*'), so the
+        # viewer tier lists actions explicitly. s3-admin / s3-contributor
+        # mirror the built-in consoleAdmin / readwrite canned policies.
+        - name: s3-admin
+          document:
+            Version: "2012-10-17"
+            Statement:
+              - { Effect: Allow, Action: ["admin:*"] }
+              - { Effect: Allow, Action: ["kms:*"] }
+              - { Effect: Allow, Action: ["sts:AssumeRole"] }
+              - Effect: Allow
+                Action: ["s3:*"]
+                Resource: ["arn:aws:s3:::*"]
+        - name: s3-contributor
+          document:
+            Version: "2012-10-17"
+            Statement:
+              - { Effect: Allow, Action: ["sts:AssumeRole"] }
+              - Effect: Allow
+                Action: ["s3:*"]
+                Resource: ["arn:aws:s3:::*"]
+        - name: s3-viewer
+          document:
+            Version: "2012-10-17"
+            Statement:
+              - { Effect: Allow, Action: ["sts:AssumeRole"] }
+              - Effect: Allow
+                Action:
+                  - s3:GetBucketLocation
+                  - s3:GetBucketNotification
+                  - s3:GetBucketPolicy
+                  - s3:GetBucketTagging
+                  - s3:GetBucketVersioning
+                  - s3:GetObject
+                  - s3:GetObjectTagging
+                  - s3:GetObjectVersion
+                  - s3:ListAllMyBuckets
+                  - s3:ListBucket
+                  - s3:ListBucketMultipartUploads
+                  - s3:ListMultipartUploadParts
+                Resource: ["arn:aws:s3:::*"]
+      loop_control:
+        label: "{{ item.name }}"
 
   - name: Create a local Kafka instance, if enabled
     when: infra.kafka.provider == 'local' and infra.kafka.enabled

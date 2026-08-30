@@ -177,38 +177,38 @@ def test_account_create_reports_not_created_for_an_existing_account(monkeypatch)
     assert created is False
 
 
-# -- account_role_set -------------------------------------------------------
+# -- account_policy_set ----------------------------------------------------
 
 
-def test_account_role_set_attaches_when_no_policy_present(monkeypatch):
+def test_account_policy_set_attaches_when_no_policy_present(monkeypatch):
     admin, mock_request = _admin_with_mocked_transport(monkeypatch)
     mock_request.side_effect = [{'status': 'enabled'}, {}]
 
-    changed = admin.account_role_set('svc-a', 'viewer')
+    changed = admin.account_policy_set('svc-a', ['svc-loki'])
 
     assert changed is True
     attach_call = mock_request.call_args_list[-1]
     assert attach_call.args == ('POST', 'idp/builtin/policy/attach')
     assert attach_call.kwargs == {
-        'json_body': {'policies': ['readonly'], 'user': 'svc-a'}
+        'json_body': {'policies': ['svc-loki'], 'user': 'svc-a'}
     }
 
 
-def test_account_role_set_is_a_no_op_when_the_role_already_matches(monkeypatch):
+def test_account_policy_set_is_a_no_op_when_the_set_already_matches(monkeypatch):
     admin, mock_request = _admin_with_mocked_transport(monkeypatch)
-    mock_request.return_value = {'policyName': 'readonly'}
+    mock_request.return_value = {'policyName': 'readonly,svc-loki'}
 
-    changed = admin.account_role_set('svc-a', 'viewer')
+    changed = admin.account_policy_set('svc-a', ['svc-loki', 'readonly'])
 
     assert changed is False
     mock_request.assert_called_once()
 
 
-def test_account_role_set_detaches_extra_and_attaches_target(monkeypatch):
+def test_account_policy_set_detaches_extra_and_attaches_missing(monkeypatch):
     admin, mock_request = _admin_with_mocked_transport(monkeypatch)
-    mock_request.side_effect = [{'policyName': 'readwrite'}, {}, {}]
+    mock_request.side_effect = [{'policyName': 'readwrite,stale'}, {}, {}]
 
-    changed = admin.account_role_set('svc-a', 'viewer')
+    changed = admin.account_policy_set('svc-a', ['svc-loki', 'readwrite'])
 
     assert changed is True
     detach_call, attach_call = (
@@ -216,13 +216,120 @@ def test_account_role_set_detaches_extra_and_attaches_target(monkeypatch):
         mock_request.call_args_list[2],
     )
     assert detach_call.args == ('POST', 'idp/builtin/policy/detach')
-    assert detach_call.kwargs == {
-        'json_body': {'policies': ['readwrite'], 'user': 'svc-a'}
-    }
+    assert detach_call.kwargs == {'json_body': {'policies': ['stale'], 'user': 'svc-a'}}
     assert attach_call.args == ('POST', 'idp/builtin/policy/attach')
     assert attach_call.kwargs == {
-        'json_body': {'policies': ['readonly'], 'user': 'svc-a'}
+        'json_body': {'policies': ['svc-loki'], 'user': 'svc-a'}
     }
+
+
+# -- policy_get / policy_ensure / policy_remove ---------------------------
+
+_DOC = {
+    'Version': '2012-10-17',
+    'Statement': [
+        {
+            'Effect': 'Allow',
+            'Action': ['s3:GetObject'],
+            'Resource': ['arn:aws:s3:::loki-*/*'],
+        }
+    ],
+}
+
+
+def test_policy_get_returns_none_on_404(monkeypatch):
+    admin, mock_request = _admin_with_mocked_transport(monkeypatch)
+    mock_request.side_effect = S3Exception(code=404, msg='missing')
+
+    assert admin.policy_get('svc-loki') is None
+
+
+def test_policy_get_returns_none_on_rustfs_500_does_not_exist(monkeypatch):
+    admin, mock_request = _admin_with_mocked_transport(monkeypatch)
+    mock_request.side_effect = S3Exception(
+        code=500, msg='InternalError: policy does not exist'
+    )
+
+    assert admin.policy_get('svc-loki') is None
+
+
+def test_policy_get_reraises_an_unrelated_500(monkeypatch):
+    admin, mock_request = _admin_with_mocked_transport(monkeypatch)
+    mock_request.side_effect = S3Exception(code=500, msg='InternalError: boom')
+
+    with pytest.raises(S3Exception):
+        admin.policy_get('svc-loki')
+
+
+def test_policy_get_unwraps_a_wrapped_document(monkeypatch):
+    admin, mock_request = _admin_with_mocked_transport(monkeypatch)
+    mock_request.return_value = {'Policy': json.dumps(_DOC)}
+
+    assert admin.policy_get('svc-loki') == _DOC
+
+
+def test_policy_get_returns_a_bare_document(monkeypatch):
+    admin, mock_request = _admin_with_mocked_transport(monkeypatch)
+    mock_request.return_value = _DOC
+
+    assert admin.policy_get('svc-loki') == _DOC
+
+
+def test_policy_ensure_creates_when_absent(monkeypatch):
+    admin, mock_request = _admin_with_mocked_transport(monkeypatch)
+    mock_request.side_effect = [S3Exception(code=404, msg='missing'), {}]
+
+    result = admin.policy_ensure('svc-loki', _DOC)
+
+    assert result.changed is True
+    assert result.msg == 'Policy created'
+    write_call = mock_request.call_args_list[-1]
+    assert write_call.args == ('PUT', 'add-canned-policy')
+    assert write_call.kwargs == {'params': {'name': 'svc-loki'}, 'json_body': _DOC}
+
+
+def test_policy_ensure_is_a_no_op_when_the_document_matches(monkeypatch):
+    admin, mock_request = _admin_with_mocked_transport(monkeypatch)
+    # same content, different key order -- must still compare equal
+    reordered = {'Statement': _DOC['Statement'], 'Version': _DOC['Version']}
+    mock_request.return_value = reordered
+
+    result = admin.policy_ensure('svc-loki', _DOC)
+
+    assert result.changed is False
+    mock_request.assert_called_once()
+
+
+def test_policy_ensure_updates_when_the_document_differs(monkeypatch):
+    admin, mock_request = _admin_with_mocked_transport(monkeypatch)
+    mock_request.side_effect = [{'Version': '2012-10-17', 'Statement': []}, {}]
+
+    result = admin.policy_ensure('svc-loki', _DOC)
+
+    assert result.changed is True
+    assert result.msg == 'Policy updated'
+
+
+def test_policy_remove_is_a_no_op_when_absent(monkeypatch):
+    admin, mock_request = _admin_with_mocked_transport(monkeypatch)
+    mock_request.side_effect = S3Exception(code=404, msg='missing')
+
+    result = admin.policy_remove('svc-loki')
+
+    assert result.changed is False
+    assert result.msg == 'Policy is absent'
+
+
+def test_policy_remove_deletes_an_existing_policy(monkeypatch):
+    admin, mock_request = _admin_with_mocked_transport(monkeypatch)
+    mock_request.side_effect = [_DOC, {}]
+
+    result = admin.policy_remove('svc-loki')
+
+    assert result.changed is True
+    delete_call = mock_request.call_args_list[-1]
+    assert delete_call.args == ('DELETE', 'remove-canned-policy')
+    assert delete_call.kwargs == {'params': {'name': 'svc-loki'}}
 
 
 # -- account_ensure ---------------------------------------------------------
@@ -231,33 +338,34 @@ def test_account_role_set_detaches_extra_and_attaches_target(monkeypatch):
 def test_account_ensure_reports_created(monkeypatch):
     admin = _admin()
     monkeypatch.setattr(admin, 'account_create', lambda *a, **kw: True)
-    monkeypatch.setattr(admin, 'account_role_set', lambda *a, **kw: True)
+    monkeypatch.setattr(admin, 'account_policy_set', lambda *a, **kw: True)
 
-    result = admin.account_ensure('svc-a', 'secret-1', 'admin')
+    result = admin.account_ensure('svc-a', 'secret-1', ['svc-a'])
 
     assert result.changed is True
     assert result.msg == 'Account created'
     assert result.access_key == 'svc-a'
-    assert result.role == 'admin'
+    assert result.policies == ['svc-a']
 
 
-def test_account_ensure_reports_role_updated_when_only_the_role_changes(monkeypatch):
+def test_account_ensure_reports_policies_updated_when_only_policies_change(monkeypatch):
     admin = _admin()
     monkeypatch.setattr(admin, 'account_create', lambda *a, **kw: False)
-    monkeypatch.setattr(admin, 'account_role_set', lambda *a, **kw: True)
+    monkeypatch.setattr(admin, 'account_policy_set', lambda *a, **kw: True)
 
-    result = admin.account_ensure('svc-a', 'secret-1', 'contributor')
+    result = admin.account_ensure('svc-a', 'secret-1', ['svc-a', 'readonly'])
 
     assert result.changed is True
-    assert result.msg == 'Account role updated'
+    assert result.msg == 'Account policies updated'
+    assert result.policies == ['readonly', 'svc-a']
 
 
 def test_account_ensure_reports_unchanged_when_nothing_changed(monkeypatch):
     admin = _admin()
     monkeypatch.setattr(admin, 'account_create', lambda *a, **kw: False)
-    monkeypatch.setattr(admin, 'account_role_set', lambda *a, **kw: False)
+    monkeypatch.setattr(admin, 'account_policy_set', lambda *a, **kw: False)
 
-    result = admin.account_ensure('svc-a', 'secret-1', 'viewer')
+    result = admin.account_ensure('svc-a', 'secret-1', ['svc-a'])
 
     assert result.changed is False
     assert result.msg == 'Account is present'

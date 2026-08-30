@@ -100,8 +100,8 @@ class TestS3:
     def test_local_defaults(self, tmp_path: pathlib.Path):
         s3 = make_config(tmp_path).infra.s3
         assert s3.provider == 'local'
-        assert _url(s3.endpoint) == 'https://s3.testcluster.k8s:9000'
-        assert _url(s3.admin_endpoint) == 'https://s3.testcluster.k8s:9001'
+        assert _url(s3.api_endpoint) == 'https://s3.testcluster.k8s:9000'
+        assert _url(s3.console_endpoint) == 'https://s3.testcluster.k8s:9001'
         assert s3.access_key == 'admin'
         assert s3.secret_key is not None
         assert s3.region == 'us-east-1'
@@ -116,8 +116,8 @@ class TestS3:
                 'secret_key': 'sk',
             },
         ).infra.s3
-        assert _url(s3.endpoint) == 'https://s3.central.example.com'
-        assert _url(s3.admin_endpoint) == 'https://s3.central.example.com'
+        assert _url(s3.api_endpoint) == 'https://s3.central.example.com'
+        assert _url(s3.console_endpoint) == 'https://s3.central.example.com'
 
     def test_remote_requires_url(self, tmp_path: pathlib.Path):
         """url is the only field a remote S3 has no default for --
