@@ -77,7 +77,7 @@ class ClusterConfig(RootConfigAware):
     )
     image: str = Field(
         description='Image to use for the cluster',
-        default='kindest/node:v1.36.1@sha256:3489c7674813ba5d8b1a9977baea8a6e553784dab7b84759d1014dbd78f7ebd5',
+        default='kindest/node:v1.37.0@sha256:a1ed56cfb0e7b93589bdf97c8cd566405a265939e3620fc4f5de89adff580ae5',
     )
     pod_subnet_cidr: str = Field(default='10.244.0.0/16')
     service_subnet_cidr: str = Field(default='10.96.0.0/12')
