@@ -1,13 +1,17 @@
 #SPDX-License-Identifier: MIT-0
 ---
-# tasks file for registry_configuration
-
-- name: Create a directory for air gapped registry configuration
-  ansible.builtin.file:
-    path: "{{ directory }}"
-    state: directory
-
-- name: Template the air gapped registry configuration
-  ansible.builtin.copy:
-    src: files/config.json
+- name: Configure the registry
+  ansible.builtin.template:
+    src: templates/config.json.j2
     dest: "{{ directory }}/config.json"
+
+- name: Configure OIDC for the registry
+  ansible.builtin.template:
+    src: templates/oidc.json.j2
+    dest: "{{ directory }}/oidc.json"
+
+- name: Write the registry htpasswd file for the push account
+  registry_htpasswd:
+    path: "{{ directory }}/htpasswd"
+    username: "{{ htpasswd_username }}"
+    password: "{{ htpasswd_password }}"

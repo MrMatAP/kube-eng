@@ -15,7 +15,7 @@ $ uv run kube-eng <cmd> <parameters>
 There are four major stages to create your cluster:
 
 * `config` - Review configuration of the cluster. The defaults will set up local infrastructure.
-* `host-apply` - will configure any host infrastructure you may need, such as DNS and a local PKI
+* `infra-apply` - will configure any host infrastructure you may need, such as DNS, a local PKI and the registry
 * `cluster-apply` - will deploy the cluster and core supporting services 
 * `stack-apply` - will deploy the remaining stack
 
@@ -40,9 +40,9 @@ $ uv run kube-eng config get host.dns
 $ uv run kube-eng config set host.dns.enabled false
 ```
 
-## host-apply
+## infra-apply
 
-`uv run kube-eng host-apply` will create the local host infrastructure you configured.
+`uv run kube-eng infra-apply` will create the local host infrastructure you configured.
 
 > **IMPORTANT (DNS):**<br/>
 > kube-eng cluster expect DNS and creating them will register tooling in the configured DNS server. Enabling the 
@@ -57,6 +57,20 @@ $ uv run kube-eng config set host.dns.enabled false
 > remains present, so you only need to re-establish trust on the host when you re-create it.
 > Doubleclick `~/.kube-eng/pki/ca.pem` to import it or run `security add-certificates ~/.kube-eng/pki/ca.pem`, 
 > followed by marking the imported CA certificate as 'Always Trust' in the Keychain Utility.
+
+### Container registry
+
+`infra-apply` runs a local OCI registry ([zot](https://zotregistry.dev/)) and publishes the kube-eng Helm charts
+into it. Humans log into its UI through the IdP (`infra.idp`). Automated chart pushes (`infra-apply`,
+`helm-repackage`) use a dedicated htpasswd account instead: `infra.registry.admin_username` (default `kube-eng`)
+with `infra.registry.admin_password` (generated, readable via `uv run kube-eng config get infra.registry.admin_password`).
+
+> **LIMITATION (registry auth):**<br/>
+> This split is a workaround. zot (through v2.1.20) cannot run OIDC bearer auth and browser OpenID SSO at the same
+> time — enabling `http.auth.bearer` makes zot skip its whole session/OpenID/htpasswd setup, so `/zot/auth/login`
+> then fails with `unrecognized openid provider`. Because kube-eng needs the browser SSO, chart pushes fall back to
+> a static htpasswd credential rather than an IdP-issued token. See
+> `docs/adr/0004-registry-push-auth-htpasswd-account.md`.
 
 ## cluster-apply
 

@@ -130,6 +130,11 @@ class RemoteIdPConfig(IdPConfig):
         base = str(self.url).rstrip('/')
         return AnyHttpUrl(f'{base}/realms/{self.realm}')
 
+    @computed_field(description='The port the IdP is reachable on')
+    @property
+    def port(self) -> int:
+        return self.url.port or 443
+
 
 InfraIdPConfig = typing.Annotated[
     LocalIdPConfig | RemoteIdPConfig,

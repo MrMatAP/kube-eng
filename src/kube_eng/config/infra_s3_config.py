@@ -23,30 +23,6 @@ class S3Config(RootConfigAware, abc.ABC):
         description='S3 secret key. If empty, defaults to the admin password',
     )
 
-    @computed_field(description='S3 Client Id')
-    @property
-    def client_id(self) -> str:
-        return f's3-{self._root_config.cluster.name}'
-
-    @computed_field(description='S3 Client Name')
-    @property
-    def client_name(self) -> str:
-        return f'S3 :: {self._root_config.cluster.name }'
-
-    @computed_field(description='S3 Client description')
-    @property
-    def client_description(self) -> str:
-        return f'S3 instance on {self._root_config.cluster.name}'
-
-    @computed_field(description='S3 Roles')
-    @property
-    def client_roles(self) -> list[IdPClientRole]:
-        return [
-            IdPClientRole(name='kube-eng-s3-admin', description='Kube Eng :: S3 :: Admin'),
-            IdPClientRole(name='kube-eng-s3-contributor', description='Kube Eng :: S3 :: Contributor'),
-            IdPClientRole(name='kube-eng-s3-viewer', description='Kube Eng :: S3 :: Viewer')
-        ]
-
     @computed_field(description='Client FQDN of the S3 service')
     @property
     def client_fqdn(self) -> str:
@@ -116,6 +92,31 @@ class LocalS3Config(S3Config):
     def callback_url(self) -> AnyHttpUrl:
         return AnyHttpUrl(f'https://{self.name}.{self._root_config.infra.dns.domain}:{self.console_port}/rustfs/admin/v3/oidc/callback/default')
 
+    @computed_field(description='S3 client Id')
+    @property
+    def client_id(self) -> str:
+        return f's3-{self._root_config.cluster.name}'
+
+    @computed_field(description='S3 client Name')
+    @property
+    def client_name(self) -> str:
+        return f'S3 :: {self._root_config.cluster.name }'
+
+    @computed_field(description='S3 client description')
+    @property
+    def client_description(self) -> str:
+        return f'S3 instance on {self._root_config.cluster.name}'
+
+    @computed_field(description='S3 roles')
+    @property
+    def client_roles(self) -> list[IdPClientRole]:
+        return [
+            IdPClientRole(name='s3-admin', description='S3 :: Admin'),
+            IdPClientRole(name='s3-contributor', description='S3 :: Contributor'),
+            IdPClientRole(name='s3-viewer', description='S3 :: Viewer')
+        ]
+
+
 class RemoteS3Config(S3Config):
     """Central S3-compatible storage hosted elsewhere."""
 
@@ -131,6 +132,7 @@ class RemoteS3Config(S3Config):
     @property
     def admin_endpoint(self) -> AnyHttpUrl:
         return self.url
+
 
 
 InfraS3Config = typing.Annotated[

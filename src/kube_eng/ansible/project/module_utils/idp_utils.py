@@ -5,7 +5,7 @@ from typing import Annotated, Any
 
 import keycloak.exceptions
 import pydantic
-from keycloak import KeycloakAdmin
+from keycloak import KeycloakAdmin, KeycloakOpenID
 
 from .base import InfraException, InfraResult
 
@@ -25,6 +25,10 @@ class IdPValidationResult(IdPResult):
 class IdPClientCreateResult(IdPResult):
     client_id: typing.Annotated[str, pydantic.Field()]
     client_secret: typing.Annotated[str | None, pydantic.Field(default=None)]
+
+
+class IdPTokenResult(IdPResult):
+    access_token: typing.Annotated[str | None, pydantic.Field(default=None)]
 
 
 class IdPPayload(pydantic.BaseModel):
@@ -123,6 +127,17 @@ class IdPClient(IdPPayload):
         list[str], pydantic.Field(alias='optionalClientScopes', default_factory=list)
     ]
 
+    @pydantic.field_validator('root_url', 'admin_url', 'base_url', mode='before')
+    @classmethod
+    def _blank_url_is_unset(cls, value: Any) -> Any:
+        """
+        Keycloak represents an unset URL field as '' on GET, not null --
+        client_template() never sets base_url, so client_get() would
+        otherwise fail to parse every existing client's representation as
+        soon as it's fetched back (AnyHttpUrl rejects '' outright).
+        """
+        return None if value == '' else value
+
 
 class IdPClientRole(IdPPayload):
     id: str | None = None
@@ -165,6 +180,8 @@ class IdPAdmin:
         except keycloak.exceptions.KeycloakError as ke:
             raise IdPException(code=400, msg='Unable to connect to IdP') from ke
 
+    OPTIONAL_FLOWS = frozenset({'implicit', 'direct_access_grants', 'service_accounts'})
+
     @staticmethod
     def client_template(
         client_id: str,
@@ -172,32 +189,100 @@ class IdPAdmin:
         description: str,
         root_url: str,
         callback_url: str | None = None,
+        redirect_uris: list[str] | None = None,
+        public_client: bool = False,
+        pkce_enabled: bool = True,
+        flows: list[str] | None = None,
+        audience: str | None = None,
     ) -> IdPClient:
+        """
+        Build the standard client shape used across kube-eng.
+
+        Every client authenticates via the standard (authorization code)
+        flow -- that's always on and isn't itself a choice here. flows
+        lists which of Keycloak's other grant types to additionally enable:
+        'implicit', 'direct_access_grants' (resource owner password), and
+        'service_accounts' (client credentials). All default off, so a
+        client gets exactly the standard flow unless a caller opts into
+        more. 'service_accounts' requires a confidential client -- Keycloak
+        has no notion of a service account on a public client -- so
+        combining it with public_client=True is rejected rather than
+        silently ignored.
+
+        pkce_enabled defaults on, matching the security posture we want for
+        every client that can support it. It exists as an escape hatch for
+        relying parties that can't do PKCE at all -- currently only the
+        registry (zot), whose OIDC implementation has no PKCE support as of
+        this writing. Disabling it there is a limitation of that component,
+        not a general recommendation.
+
+        audience, when given, adds a custom audience mapper so tokens issued
+        for this client carry it in their 'aud' claim -- needed by a relying
+        party that validates tokens against a specific audience (e.g. the
+        registry's zot 'bearer.oidc' workload-identity auth, see ADR-0004),
+        rather than by every client.
+        """
+        flows = flows or []
+        unknown_flows = set(flows) - IdPAdmin.OPTIONAL_FLOWS
+        if unknown_flows:
+            raise IdPException(
+                code=400, msg=f'Unknown flow(s): {", ".join(sorted(unknown_flows))}'
+            )
+        if 'service_accounts' in flows and public_client:
+            raise IdPException(
+                code=400,
+                msg='service_accounts requires a confidential client (public_client=False)',
+            )
+        all_redirect_uris = list(redirect_uris or [])
+        if callback_url:
+            all_redirect_uris.append(callback_url)
+        attributes = {
+            'login_theme': 'keycloak.v2',
+            'oauth2.device.authorization.grant.enabled': 'true',
+        }
+        if pkce_enabled:
+            attributes['pkce.code.challenge.method'] = 'S256'
+        protocol_mappers = [
+            IdPProtocolMapper(
+                name='client roles',
+                config={
+                    'introspection.token.claim': False,
+                    'multivalued': True,
+                    'userinfo.token.claim': True,
+                    'id.token.claim': True,
+                    'access.token.claim': True,
+                    'claim.name': 'roles',
+                    'jsonType.label': 'String',
+                    'usermodel.clientRoleMapping.clientId': client_id,
+                },
+            )
+        ]
+        if audience:
+            protocol_mappers.append(
+                IdPProtocolMapper(
+                    name='audience',
+                    protocol_mapper='oidc-audience-mapper',
+                    config={
+                        'included.custom.audience': audience,
+                        'id.token.claim': 'false',
+                        'access.token.claim': 'true',
+                    },
+                )
+            )
         return IdPClient(
             client_id=client_id,
             name=name,
             description=description,
             root_url=pydantic.AnyHttpUrl(root_url),
-            redirect_uris=[pydantic.AnyHttpUrl(callback_url)] if callback_url else None,
-            attributes={
-                'login_theme': 'keycloak.v2',
-                'pkce.code.challenge.method': 'S256',
-            },
-            protocol_mappers=[
-                IdPProtocolMapper(
-                    name='client roles',
-                    config={
-                        'introspection.token.claim': False,
-                        'multivalued': True,
-                        'userinfo.token.claim': True,
-                        'id.token.claim': True,
-                        'access.token.claim': True,
-                        'claim.name': 'roles',
-                        'jsonType.label': 'String',
-                        'usermodel.clientRoleMapping.clientId': client_id,
-                    },
-                )
-            ],
+            redirect_uris=[pydantic.AnyHttpUrl(uri) for uri in all_redirect_uris]
+            or None,
+            public_client=public_client,
+            standard_flow_enabled=True,
+            implicit_flow_enabled='implicit' in flows,
+            direct_access_grants_enabled='direct_access_grants' in flows,
+            service_accounts_enabled='service_accounts' in flows,
+            attributes=attributes,
+            protocol_mappers=protocol_mappers,
             default_client_scopes=[
                 'profile',
                 'basic',
@@ -212,6 +297,49 @@ class IdPAdmin:
                 'roles',
             ],
         )
+
+    @staticmethod
+    def client_credentials_token(
+        idp_url: str,
+        idp_realm: str,
+        idp_ca_path: str,
+        client_id: str,
+        client_secret: str,
+    ) -> str:
+        """
+        Obtain an access token for a confidential client's own service
+        account, via the OAuth2 client_credentials grant. This is a machine
+        credential, not an admin one -- it authenticates as the client
+        itself rather than as an IdP administrator, so it doesn't go
+        through KeycloakAdmin/self._idp_admin at all. Used for
+        machine-to-machine access (e.g. helm_publish's registry pushes) in
+        place of a human OIDC login -- see ADR-0004.
+        Args:
+            idp_url (str): Base URL of the IdP
+            idp_realm (str): Realm the client is registered in
+            idp_ca_path (str): Path to the CA bundle to verify TLS with
+            client_id (str): The client's client_id
+            client_secret (str): The client's credential secret
+
+        Returns:
+            A bearer access token
+        Throws:
+            IdPException, when the grant fails
+        """
+        try:
+            kc_openid = KeycloakOpenID(
+                server_url=idp_url,
+                client_id=client_id,
+                realm_name=idp_realm,
+                client_secret_key=client_secret,
+                verify=idp_ca_path,
+            )
+            token = kc_openid.token(grant_type='client_credentials')
+            return token['access_token']
+        except keycloak.exceptions.KeycloakError as ke:
+            raise IdPException(
+                code=400, msg='Unable to obtain a client credentials token'
+            ) from ke
 
     def client_exists(self, client_id: str) -> bool:
         """
@@ -254,27 +382,38 @@ class IdPAdmin:
 
     def client_create(self, client: IdPClient) -> IdPClient:
         """
-        Create an IdP client. Every client gets a default client scope that
-        surfaces its own client-roles as a top-level 'roles' claim on issued
-        tokens, so callers can rely on that claim without every playbook
-        having to wire it up itself. Clients are confidential (non-public),
-        so the returned client also carries its credential secret -- fetched
-        rather than regenerated, so this is safe to call idempotently
-        against an already-existing client.
+        Create an IdP client, or reconcile it to this representation if one
+        with this client_id already exists. client_template() reflects the
+        caller's *current* desired shape (flows, PKCE, audience, redirect
+        URIs, ...) -- a client created by an earlier run, before that shape
+        changed, must still converge to it here rather than being silently
+        left stale forever (e.g. a client created before 'service_accounts'
+        was added to its flows would otherwise never pick that up). Every
+        client gets a default client scope that surfaces its own
+        client-roles as a top-level 'roles' claim on issued tokens, so
+        callers can rely on that claim without every playbook having to
+        wire it up itself. Confidential clients also carry their credential
+        secret on return -- fetched rather than regenerated, so this is
+        safe to call idempotently, and a PUT update doesn't rotate it
+        either. Public clients have no secret to fetch.
         Args:
-            client (IdPClient): The client to create
+            client (IdPClient): The desired client representation
 
         Returns:
-            The populated IdPClient, including its secret
+            The populated IdPClient, including its secret if confidential
         Throws:
-            IdPException, when creation fails
+            IdPException, when creation/update fails
         """
         try:
-            self._idp_admin.create_client(
-                client.model_dump(mode='json'), skip_exists=True
-            )
+            payload = client.model_dump(mode='json')
+            object_id = self._idp_admin.get_client_id(client.client_id)
+            if object_id is not None:
+                self._idp_admin.update_client(object_id, payload)
+            else:
+                self._idp_admin.create_client(payload)
             created = self.client_get(client.client_id)
-            created.secret = self.client_secret_get(created)
+            if not created.public_client:
+                created.secret = self.client_secret_get(created)
             return created
         except keycloak.exceptions.KeycloakError as ke:
             raise IdPException from ke

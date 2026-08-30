@@ -3,149 +3,25 @@
   hosts: localhost
   tasks:
 
-- name: (Re-)package and publish the Helm charts
-  hosts: localhost
-  tasks:
-  - name: Package the Helm charts
-    ansible.builtin.include_role:
-      name: helm_publish
-    vars:
-      helm_tool_path: "{{ host.tool.helm.path }}"
-      chart_version: "{{ host.tool.helm.chart_version }}"
-      chart_name: "{{ item }}"
-      chart_src_path: "{{ host.tool.helm.chart_path }}/{{ item }}"
-      chart_pkg_path: "{{ host.tool.helm.packaged_chart_path }}"
-      chart_registry_url: "{{ cluster.registry.url }}/kube-eng/"
-    loop:
-    - kube-eng-cilium
-    - kube-eng-istio
-    - kube-eng-pki
-    - kube-eng-pki-trust
-    - kube-eng-prometheus
-    - kube-eng-edge
-    - kube-eng-loki
-    - kube-eng-alloy
-    - kube-eng-tempo
-    - kube-eng-grafana
-    - kube-eng-kiali
-
   - name: Create the cluster
     block:
-    - name: Create a client scope for sanitised role memberships for the cluster
-      community.general.keycloak_clientscope:
-        auth_keycloak_url: "https://{{ host.idp.name }}.{{ host.dns.zone }}:{{ host.idp.host_port }}"
-        auth_realm: master
-        auth_username: admin
-        auth_password: "{{ admin_password }}"
-        name: "kube-eng-{{ cluster.name }}-roles"
-        description: Adds top-level roles to a token
-        protocol: openid-connect
-        protocol_mappers:
-        - config:
-            access.token.claim: true
-            claim.name: "roles"
-            id.token.claim: true
-            introspection.token.claim: true
-            lightweight.claim: false
-            userinfo.token.claim: true
-            jsonType.label: String
-            multivalued: true
-            usermodel.clientRoleMapping.clientId: "kube-eng-{{ cluster.name }}"
-          name: "client roles"
-          protocol: openid-connect
-          protocolMapper: oidc-usermodel-client-role-mapper
-        state: present
-        validate_certs: true
     - name: Register the cluster in the IdP
-      community.general.keycloak_client:
-        auth_keycloak_url: "https://{{ host.idp.name }}.{{ host.dns.zone }}:{{ host.idp.host_port }}"
-        auth_realm: master
-        auth_username: admin
-        auth_password: "{{ admin_password }}"
-        client_id: "kube-eng-{{ cluster.name }}"
-        name: "Kube Eng :: Cluster :: {{ cluster.name }}"
-        description: "OIDC Authentication for the {{ cluster.name }} Kube Eng Cluster"
-        enabled: true
-        protocol: openid-connect
+      idp_client:
+        idp_url: "{{ infra.idp.client_base_url }}"
+        idp_admin_user: "{{ infra.idp.admin_user }}"
+        idp_admin_password: "{{ infra.idp.admin_password }}"
+        idp_realm: "{{ infra.idp.realm }}"
+        idp_ca_path: "{{ infra.pki.ca_truststore_path }}"
+        client_id: "{{ cluster.client_id }}"
+        name: "{{ cluster.client_name }}"
+        description: "{{ cluster.client_description }}"
+        root_url: "{{ cluster.admin_endpoint }}"
+        redirect_uris: "{{ cluster.callback_urls }}"
         public_client: true
-        standard_flow_enabled: true
-        implicit_flow_enabled: false
-        direct_access_grants_enabled: false
-        default_client_scopes:
-        - email
-        - offline_access
-        - profile
-        - "kube-eng-{{ cluster.name }}-roles"
-        redirect_uris:
-        - http://localhost:8000
-        - http://localhost:18000
-        attributes:
-          oauth2.device.authorization.grant.enabled: true
-          pkce.code.challenge.method: "S256"
-        validate_certs: true
-    - name: Register the kube-eng-viewer role in the IdP
-      community.general.keycloak_role:
-        auth_keycloak_url: "https://{{ host.idp.name }}.{{ host.dns.zone }}:{{ host.idp.host_port }}"
-        auth_realm: master
-        auth_username: admin
-        auth_password: "{{ admin_password }}"
-        name: kube-eng-viewer
-        description: "Kube Eng :: Kubernetes Viewers"
-        client_id: "kube-eng-{{ cluster.name }}"
+        roles: "{{ cluster.client_roles }}"
         state: present
-        validate_certs: true
-    - name: Register the kube-eng-user role in the IdP
-      community.general.keycloak_role:
-        auth_keycloak_url: "https://{{ host.idp.name }}.{{ host.dns.zone }}:{{ host.idp.host_port }}"
-        auth_realm: master
-        auth_username: admin
-        auth_password: "{{ admin_password }}"
-        name: kube-eng-user
-        description: "Kube Eng :: Kubernetes Users"
-        client_id: "kube-eng-{{ cluster.name }}"
-        state: present
-        validate_certs: true
-    - name: Register the kube-eng-admin role in the IdP
-      community.general.keycloak_role:
-        auth_keycloak_url: "https://{{ host.idp.name }}.{{ host.dns.zone }}:{{ host.idp.host_port }}"
-        auth_realm: master
-        auth_username: admin
-        auth_password: "{{ admin_password }}"
-        name: kube-eng-admin
-        description: "Kube Eng :: Kubernetes Administrators"
-        client_id: "kube-eng-{{ cluster.name }}"
-        state: present
-        validate_certs: true
-    - name: Create the kube-eng user
-      community.general.keycloak_user:
-        auth_keycloak_url: "https://{{ host.idp.name }}.{{ host.dns.zone }}:{{ host.idp.host_port }}"
-        auth_realm: master
-        auth_username: admin
-        auth_password: "{{ admin_password }}"
-        realm: master
-        username: "kube-eng"
-        firstName: Kube-Eng
-        lastName: Service Account
-        email: "kube-eng-{{ cluster.name }}@{{ host.dns.zone }}"
-        enabled: true
-        emailVerified: true
-        credentials:
-        - type: password
-          value: "{{ admin_password }}"
-          temporary: false
-        state: present
-    - name: Grant the kube-eng-admin role to the kube-eng user
-      community.general.keycloak_user_rolemapping:
-        auth_keycloak_url: "https://{{ host.idp.name }}.{{ host.dns.zone }}:{{ host.idp.host_port }}"
-        auth_realm: master
-        auth_username: admin
-        auth_password: "{{ admin_password }}"
-        realm: master
-        target_username:  "kube-eng"
-        client_id: "kube-eng-{{ cluster.name }}"
-        state: present
-        roles:
-        - name: kube-eng-admin
+      register: cluster_idp_client
+      no_log: true
     - name: Template the cluster configuration
       ansible.builtin.import_role:
         name: kind_configuration
@@ -156,22 +32,22 @@
         cluster_name: "{{ cluster.name }}"
         directory: "{{ host.tool.kind.config_path }}"
         truststore_path: "{{ infra.pki.ca_truststore_path }}"
-        airgap_registry_url: "{{ cluster.registry.https_url }}"
+        airgap_registry_url: "{{ infra.registry.http_endpoint | trim('/') }}"
         pod_subnet_cidr: "{{ cluster.pod_subnet_cidr }}"
         service_subnet_cidr: "{{ cluster.service_subnet_cidr }}"
         cni: "{{ cluster.cni.kind }}"
-        oidc_discovery_url: "https://{{ host.idp.name }}.{{ host.dns.zone }}:{{ host.idp.host_port }}/realms/master/.well-known/openid-configuration"
-        oidc_issuer_url: "{{ cluster.oidc.issuer_url }}"
-        oidc_client_id: "kube-eng-{{ cluster.name }}"
-        oidc_username_claim: "{{ cluster.oidc.username_claim }}"
-        oidc_groups_claim: "{{ cluster.oidc.groups_claim }}"
+        oidc_discovery_url: "{{ infra.idp.issuer_url }}/.well-known/openid-configuration"
+        oidc_issuer_url: "{{ infra.idp.issuer_url }}"
+        oidc_client_id: "{{ cluster.client_id }}"
+        oidc_username_claim: "{{ infra.idp.username_claim }}"
+        oidc_groups_claim: "{{ infra.idp.groups_claim }}"
     - name: Deploy the cluster
       kind_cluster:
         cluster_name: "{{ cluster.name }}"
         config_file: "{{ host.tool.kind.config_path }}/config.yaml"
         tool_kind: "{{ host.tool.kind.path }}"
         state: present
-    - name: Apply the kube-eng-viewer cluster role binding
+    - name: Apply the kind-viewer cluster role binding
       kubernetes.core.k8s:
         state: present
         apply: true
@@ -182,7 +58,7 @@
           apiVersion: rbac.authorization.k8s.io/v1
           kind: ClusterRoleBinding
           metadata:
-            name: oidc:kube-eng-viewer
+            name: oidc:kind-viewer
           roleRef:
             apiGroup: rbac.authorization.k8s.io
             kind: ClusterRole
@@ -190,8 +66,8 @@
           subjects:
           - apiGroup: rbac.authorization.k8s.io
             kind: Group
-            name: oidc:kube-eng-viewer
-    - name: Apply the kube-eng-user cluster role binding
+            name: oidc:kind-viewer
+    - name: Apply the kind-contributor cluster role binding
       kubernetes.core.k8s:
         state: present
         apply: true
@@ -202,7 +78,7 @@
           apiVersion: rbac.authorization.k8s.io/v1
           kind: ClusterRoleBinding
           metadata:
-            name: oidc:kube-eng-user
+            name: oidc:kind-contributor
           roleRef:
             apiGroup: rbac.authorization.k8s.io
             kind: ClusterRole
@@ -210,8 +86,8 @@
           subjects:
           - apiGroup: rbac.authorization.k8s.io
             kind: Group
-            name: oidc:kube-eng-user
-    - name: Apply the kube-eng-admin cluster role binding
+            name: oidc:kind-contributor
+    - name: Apply the kind-admin cluster role binding
       kubernetes.core.k8s:
         state: present
         apply: true
@@ -222,7 +98,7 @@
           apiVersion: rbac.authorization.k8s.io/v1
           kind: ClusterRoleBinding
           metadata:
-            name: oidc:kube-eng-admin
+            name: oidc:kind-admin
           roleRef:
             apiGroup: rbac.authorization.k8s.io
             kind: ClusterRole
@@ -230,7 +106,7 @@
           subjects:
           - apiGroup: rbac.authorization.k8s.io
             kind: Group
-            name: oidc:kube-eng-admin
+            name: oidc:kind-admin
     - name: Set up IdP authentication in kubectl for when a browser is available
       ansible.builtin.command:
         cmd: >
@@ -240,9 +116,9 @@
           --exec-command=kubectl
           --exec-arg=oidc-login
           --exec-arg=get-token
-          --exec-arg="--oidc-issuer-url={{ cluster.oidc.issuer_url }}"
-          --exec-arg="--oidc-client-id=kube-eng-{{ cluster.name }}"
-          --exec-arg="--oidc-redirect-url=http://localhost:8000" 
+          --exec-arg="--oidc-issuer-url={{ infra.idp.issuer_url }}"
+          --exec-arg="--oidc-client-id={{ cluster.client_id }}"
+          --exec-arg="--oidc-redirect-url={{ cluster.admin_endpoint[0] }}"
           --exec-arg="--grant-type=authcode"
     - name: Set up IdP authentication in kubectl for when no browser is available
       ansible.builtin.command:
@@ -253,9 +129,9 @@
           --exec-command=kubectl
           --exec-arg=oidc-login
           --exec-arg=get-token
-          --exec-arg="--oidc-issuer-url={{ cluster.oidc.issuer_url }}"
-          --exec-arg="--oidc-client-id=kube-eng-{{ cluster.name }}"
-          --exec-arg="--oidc-redirect-url=http://localhost:8000" 
+          --exec-arg="--oidc-issuer-url={{ infra.idp.issuer_url }}"
+          --exec-arg="--oidc-client-id={{ cluster.client_id }}"
+          --exec-arg="--oidc-redirect-url={{ cluster.admin_endpoint[0] }}"
           --exec-arg="--grant-type=authcode-keyboard"
     - name: Declare a kubectl context for the cluster that uses IdP browser-based authentication
       ansible.builtin.command:
@@ -289,7 +165,7 @@
         name: cilium-system
         create_namespace: true
         release_namespace: cilium
-        chart_ref: "{{ cluster.registry.url }}/kube-eng/kube-eng-cilium"
+        chart_ref: "{{ infra.registry.oci_endpoint }}/kube-eng/kube-eng-cilium"
         chart_version: "{{ host.tool.helm.chart_version }}"
         binary_path: "{{ host.tool.helm.path }}"
         wait: true
@@ -298,7 +174,7 @@
             name: "{{ cluster.name }}"
             edge:
               kind: "{{ cluster.edge.kind }}"
-              fqdn: "{{ cluster.cni.hostname }}.{{ host.dns.zone }}"
+              fqdn: "{{ cluster.cni.hostname }}.{{ infra.dns.zone }}"
               gateway:
                 name: "{{ cluster.edge.name }}"
                 ns: "{{ cluster.edge.ns }}"
@@ -316,7 +192,7 @@
         name: istio
         create_namespace: true
         release_namespace: "{{ cluster.mesh.ns }}"
-        chart_ref: "{{ cluster.registry.url }}/kube-eng/kube-eng-istio"
+        chart_ref: "{{ infra.registry.oci_endpoint }}/kube-eng/kube-eng-istio"
         chart_version: "{{ host.tool.helm.chart_version }}"
         binary_path: "{{ host.tool.helm.path }}"
         wait: true
@@ -328,10 +204,9 @@
             profile: "{{ (cluster.mesh.kind == 'istio-ambient') | ternary('ambient', 'default') }}"
           overrides_cni:
             profile: "{{ (cluster.mesh.kind == 'istio-ambient') | ternary('ambient', 'default') }}"
-    - name: Re-direct PG resolution, if enabled
-      when: "host.postgresql.enabled | bool == true"
+    - name: Re-direct PG resolution
       block:
-      - name: Create a service entry for the PG service, if enabled
+      - name: Create a service entry for the PG service
         kubernetes.core.k8s:
           state: present
           definition:
@@ -346,15 +221,14 @@
               location: MESH_EXTERNAL
               resolution: DNS
               hosts:
-              - "{{ host.postgresql.name }}.{{ host.dns.zone }}"
+              - "{{ infra.pg.client_fqdn }}"
               ports:
               - name: postgres
-                number: 5432
+                number: "{{ infra.pg.port }}"
                 protocol: TCP
-    - name: Re-direct IDP resolution, if enabled
-      when: "host.idp.enabled | bool == true"
+    - name: Re-direct IDP resolution
       block:
-      - name: Create a service entry for the IDP service, if enabled
+      - name: Create a service entry for the IDP service
         kubernetes.core.k8s:
           state: present
           definition:
@@ -369,15 +243,14 @@
               location: MESH_EXTERNAL
               resolution: DNS
               hosts:
-              - "{{ host.idp.name }}.{{ host.dns.zone }}"
+              - "{{ infra.idp.client_fqdn }}"
               ports:
               - name: idp-https
-                number: 8443
+                number: "{{ infra.idp.port }}"
                 protocol: HTTPS
-    - name: Re-direct S3 resolution, if enabled
-      when: "host.s3.enabled | bool == true"
+    - name: Re-direct S3 resolution
       block:
-      - name: Create a service entry for the S3 service, if enabled
+      - name: Create a service entry for the S3 service
         kubernetes.core.k8s:
           state: present
           definition:
@@ -392,13 +265,13 @@
               location: MESH_EXTERNAL
               resolution: DNS
               hosts:
-              - "{{ host.s3.name }}.{{ host.dns.zone }}"
+              - "{{ infra.s3.client_fqdn }}"
               ports:
               - name: s3-https
-                number: 9000
+                number: "{{ infra.s3.port }}"
                 protocol: HTTPS
     - name: Re-direct Kafka resolution, if enabled
-      when: "host.kafka.enabled | bool == true"
+      when: "infra.kafka.enabled | bool == true"
       block:
       - name: Create a service entry for the Kafka service
         kubernetes.core.k8s:
@@ -415,10 +288,10 @@
               location: MESH_EXTERNAL
               resolution: DNS
               hosts:
-              - "{{ host.kafka.name }}.{{ host.dns.zone }}"
+              - "{{ infra.kafka.client_fqdn }}"
               ports:
               - name: kafka-https
-                number: 9092
+                number: "{{ infra.kafka.port }}"
                 protocol: TCP
 
   - name: Deploy cluster PKI
@@ -434,7 +307,7 @@
         name: kube-eng-pki
         create_namespace: false
         release_namespace: "{{ cluster.pki.ns }}"
-        chart_ref: "{{ cluster.registry.url }}/kube-eng/kube-eng-pki"
+        chart_ref: "{{ infra.registry.oci_endpoint }}/kube-eng/kube-eng-pki"
         chart_version: "{{ host.tool.helm.chart_version }}"
         binary_path: "{{ host.tool.helm.path }}"
         wait: true
@@ -473,7 +346,7 @@
         name: kube-eng-pki-trust
         create_namespace: false
         release_namespace: "{{ cluster.pki.ns }}"
-        chart_ref: "{{ cluster.registry.url }}/kube-eng/kube-eng-pki-trust"
+        chart_ref: "{{ infra.registry.oci_endpoint }}/kube-eng/kube-eng-pki-trust"
         chart_version: "{{ host.tool.helm.chart_version }}"
         binary_path: "{{ host.tool.helm.path }}"
         wait: true
@@ -517,7 +390,7 @@
         name: edge
         create_namespace: false
         release_namespace: "{{ cluster.edge.ns }}"
-        chart_ref: "{{ cluster.registry.url }}/kube-eng/kube-eng-edge"
+        chart_ref: "{{ infra.registry.oci_endpoint }}/kube-eng/kube-eng-edge"
         chart_version: "{{ host.tool.helm.chart_version }}"
         binary_path: "{{ host.tool.helm.path }}"
         wait: true
@@ -530,22 +403,22 @@
           gateway:
             classname: "{{ cluster.edge.gateway_class }}"
           traefik:
-            enabled: "{{ cluster.edge.kind == 'traefik' | bool }}"
+            enabled: "{{ cluster.edge.kind == 'traefik' }}"
           stack:
             prometheus:
               enabled: "{{ stack.prometheus.enabled }}"
-              fqdn: "{{ stack.prometheus.hostname }}.{{ host.dns.zone }}"
+              fqdn: "{{ stack.prometheus.hostname }}.{{ infra.dns.zone }}"
             alloy:
               enabled: "{{ stack.alloy.enabled }}"
-              fqdn: "{{ stack.alloy.hostname }}.{{ host.dns.zone }}"
+              fqdn: "{{ stack.alloy.hostname }}.{{ infra.dns.zone }}"
             tempo:
               enabled: "{{ stack.tempo.enabled }}"
-              fqdn: "{{ stack.tempo.hostname }}.{{ host.dns.zone }}"
+              fqdn: "{{ stack.tempo.hostname }}.{{ infra.dns.zone }}"
             grafana:
               enabled: "{{ stack.grafana.enabled }}"
-              fqdn: "{{ stack.grafana.hostname }}.{{ host.dns.zone }}"
+              fqdn: "{{ stack.grafana.hostname }}.{{ infra.dns.zone }}"
             kiali:
               enabled: "{{ stack.kiali.enabled }}"
-              fqdn: "{{ stack.kiali.hostname }}.{{ host.dns.zone }}"
+              fqdn: "{{ stack.kiali.hostname }}.{{ infra.dns.zone }}"
 
 # You now need to start cloud-provider-kind as root

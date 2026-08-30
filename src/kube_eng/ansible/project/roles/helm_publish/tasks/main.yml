@@ -11,6 +11,18 @@
     cmd: "{{ helm_tool_path }} dependency build {{ chart_src_path }}"
   when: chart_deps.files | length == 0
 
+- name: Authenticate to the registry
+  ansible.builtin.command:
+    cmd: >
+      {{ helm_tool_path }} registry login
+      --username "{{ username }}"
+      --password-stdin
+      {% if registry_ca_path | length > 0 %}--ca-file "{{ registry_ca_path }}"{% endif %}
+      {{ registry_url }}
+    stdin: "{{ password }}"
+  when: username | length > 0 and password | length > 0
+  no_log: true
+
 - name: Package the Helm chart
   ansible.builtin.command:
     cmd: >
@@ -25,3 +37,4 @@
       {{ helm_tool_path }} push
       {{ chart_pkg_path }}/{{ chart_name }}-{{ chart_version }}.tgz
       {{ chart_registry_url }}
+      {% if registry_ca_path | length > 0 %}--ca-file "{{ registry_ca_path }}"{% endif %}

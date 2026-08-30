@@ -2,9 +2,39 @@
 ---
 argument_specs:
   main:
-    short_description: Template the air gapped registry configuration
+    short_description: Template the local registry (zot) configuration
     options:
       directory:
-        description: Path to the directory to hold air gapped registry configuration
+        description: Path to the directory holding the registry configuration
         type: str
         required: true
+      external_endpoint:
+        description: External endpoint of the registry
+        type: str
+        required: true
+      oidc_issuer:
+        description: OIDC issuer URL for the registry's browser SSO login
+        type: str
+        required: true
+      oidc_client_id:
+        description: IdP client id for the registry
+        type: str
+        required: true
+      oidc_client_secret:
+        description: IdP client secret for the registry
+        type: str
+        required: true
+        no_log: true
+      oidc_callback_url:
+        description: OIDC callback URL, allow-listed as a login redirect origin
+        type: str
+        required: true
+      htpasswd_username:
+        description: Username of the htpasswd push account (referenced by the access policy)
+        type: str
+        required: true
+      htpasswd_password:
+        description: Password for the htpasswd push account; hashed into the htpasswd file
+        type: str
+        required: true
+        no_log: true

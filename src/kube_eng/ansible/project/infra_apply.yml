@@ -175,6 +175,10 @@
   - name: Validate connectivity to PostgreSQL
     pg_validate:
       admin_dsn: "{{ infra.pg.admin_dsn }}"
+    register: pg_validation
+    until: pg_validation.validated
+    retries: 3
+    delay: 5
 
   # Create a local IdP, if enabled
   - when: infra.idp.provider == 'local'
@@ -316,11 +320,7 @@
   - name: Create a local S3 instance, if enabled
     when: infra.s3.provider == 'local'
     block:
-    - name: Create a volume for S3
-      community.docker.docker_volume:
-        name: "{{ infra.s3.volume_name }}"
-        state: present
-    - name: Configure the S3 config directory
+    - name: Create a directory for S3
       ansible.builtin.file:
         path: "{{ infra.s3.config_path }}/{{ item }}"
         state: directory
@@ -332,6 +332,10 @@
         src: "{{ infra.pki.ca_truststore_path }}"
         dest: "{{ infra.s3.config_path }}/etc/truststore.pem"
         remote_src: true
+    - name: Create a volume for S3
+      community.docker.docker_volume:
+        name: "{{ infra.s3.volume_name }}"
+        state: present
     - name: Issue a TLS certificate for S3
       ansible.builtin.import_role:
         name: issue_tls_certificate
@@ -447,6 +451,17 @@
         dns_ttl: "{{ infra.dns.ttl | int }}"
         dns_record: "{{ infra.s3.client_fqdn }}."
         dns_value: "{{ infra.s3.ip }}"
+    - name: Validate S3
+      s3_validate:
+        s3_endpoint: "{{ infra.s3.admin_endpoint }}"
+        s3_access_key: "{{ infra.s3.access_key }}"
+        s3_secret_key: "{{ infra.s3.secret_key }}"
+        s3_region: "{{ infra.s3.region }}"
+        s3_ca_path: "{{ infra.pki.ca_truststore_path }}"
+      register: s3_validation
+      until: s3_validation.validated
+      retries: 3
+      delay: 5
 
   - name: Create a local Kafka instance, if enabled
     when: infra.kafka.provider == 'local' and infra.kafka.enabled
@@ -526,11 +541,38 @@
         pki_ca_path: "{{ infra.pki.ca_path }}"
         pki_ca_key_path: "{{ infra.pki.ca_key_path }}"
         pki_cert_validity: "{{ infra.pki.crt_validity }}"
+    - name: Create an IdP client for the registry
+      idp_client:
+        idp_url: "{{ infra.idp.client_base_url }}"
+        idp_admin_user: "{{ infra.idp.admin_user }}"
+        idp_admin_password: "{{ infra.idp.admin_password }}"
+        idp_realm: "{{ infra.idp.realm }}"
+        idp_ca_path: "{{ infra.pki.ca_truststore_path }}"
+        client_id: "{{ infra.registry.client_id }}"
+        name: "{{ infra.registry.client_name }}"
+        description: "{{ infra.registry.client_description }}"
+        root_url: "{{ infra.registry.http_endpoint }}"
+        callback_url: "{{ infra.registry.callback_url }}"
+        roles: "{{ infra.registry.client_roles }}"
+        # The registry (zot) has no PKCE support in its OIDC implementation
+        # as of this writing -- a limitation of that component, not a
+        # general recommendation. Every other client should keep PKCE on.
+        pkce_enabled: false
+        state: present
+      register: registry_idp_client
+      no_log: true
     - name: Configure the registry
       ansible.builtin.import_role:
         name: registry_configuration
       vars:
         directory: "{{ infra.registry.config_path }}"
+        external_endpoint: "{{ infra.registry.http_endpoint }}"
+        oidc_issuer: "{{ infra.idp.issuer_url }}"
+        oidc_client_id: "{{ infra.registry.client_id }}"
+        oidc_client_secret: "{{ registry_idp_client.client_secret }}"
+        oidc_callback_url: "{{ infra.registry.callback_url }}"
+        htpasswd_username: "{{ infra.registry.admin_username }}"
+        htpasswd_password: "{{ infra.registry.admin_password }}"
     - name: Create a volume for the registry
       community.docker.docker_volume:
         name: "{{ infra.registry.volume_name }}"
@@ -546,6 +588,14 @@
           target: /etc/zot/config.json
           read_only: true
           type: bind
+        - source: "{{ infra.registry.config_path }}/oidc.json"
+          target: /etc/zot/oidc.json
+          read_only: true
+          type: bind
+        - source: "{{ infra.registry.config_path }}/htpasswd"
+          target: /etc/zot/htpasswd
+          read_only: true
+          type: bind
         - source: "{{ infra.registry.config_path }}/registry.key"
           target: /etc/zot/registry.key
           read_only: true
@@ -554,6 +604,12 @@
           target: /etc/zot/registry.pem
           read_only: true
           type: bind
+        - source: "{{ infra.pki.ca_truststore_path}}"
+          target: /etc/zot/truststore.pem
+          read_only: true
+          type: bind
+        env:
+          SSL_CERT_FILE: /etc/zot/truststore.pem
         ports:
         - "{{ infra.registry.ip }}:{{ infra.registry.port | int }}:5000/tcp"
         networks:
@@ -576,6 +632,19 @@
         dns_ttl: "{{ infra.dns.ttl | int }}"
         dns_record: "{{ infra.registry.client_fqdn }}."
         dns_value: "{{ infra.registry.ip }}"
+  - name: Validate connectivity to the registry
+    registry_validate:
+      registry_endpoint: "{{ infra.registry.http_endpoint }}"
+      registry_ca_path: "{{ infra.pki.ca_truststore_path }}"
+      # The push account also exercises the entitlements check; a remote
+      # registry with no kube-eng-managed credential (empty password) falls
+      # back to a bare connectivity probe.
+      username: "{{ infra.registry.admin_username }}"
+      password: "{{ infra.registry.admin_password }}"
+    register: registry_validation
+    until: registry_validation.validated
+    retries: 3
+    delay: 5
 
   - name: Template the cloud-provider-kind configuration
     ansible.builtin.import_role:
@@ -613,6 +682,35 @@
         loop:
           - keycloaks.k8s.keycloak.org-v1.yml
           - keycloakrealmimports.k8s.keycloak.org-v1.yml
+
+  - name: Package the Helm charts
+    ansible.builtin.include_role:
+      name: helm_publish
+    vars:
+      helm_tool_path: "{{ host.tool.helm.path }}"
+      chart_version: "{{ host.tool.helm.chart_version }}"
+      chart_name: "{{ item }}"
+      chart_src_path: "{{ host.tool.helm.chart_path }}/{{ item }}"
+      chart_pkg_path: "{{ host.tool.helm.packaged_chart_path }}"
+      chart_registry_url: "{{ infra.registry.oci_endpoint }}/kube-eng"
+      registry_url: "{{ infra.registry.oci_endpoint | regex_replace('^oci://', '') | regex_replace('/.*$', '') }}"
+      registry_ca_path: "{{ infra.pki.ca_truststore_path }}"
+      # A remote registry with no password set is authenticated out of band;
+      # helm_publish then skips `helm registry login` (see the role).
+      username: "{{ infra.registry.admin_username }}"
+      password: "{{ infra.registry.admin_password }}"
+    loop:
+    - kube-eng-cilium
+    - kube-eng-istio
+    - kube-eng-pki
+    - kube-eng-pki-trust
+    - kube-eng-prometheus
+    - kube-eng-edge
+    - kube-eng-loki
+    - kube-eng-alloy
+    - kube-eng-tempo
+    - kube-eng-grafana
+    - kube-eng-kiali
 
 # If you used a local DNS server, then you must now configure your host to point to 127.0.0.1:53
 # You must also trust the CA that was generated for you using security add-certificates ~/.kube-eng/pki/ca.pem

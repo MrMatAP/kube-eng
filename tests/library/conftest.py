@@ -20,12 +20,14 @@ from kube_eng.ansible.project.module_utils import (
     dns_utils,
     idp_utils,
     pg_utils,
+    registry_utils,
     s3_utils,
 )
 
 sys.modules.setdefault('ansible.module_utils.dns_utils', dns_utils)
 sys.modules.setdefault('ansible.module_utils.idp_utils', idp_utils)
 sys.modules.setdefault('ansible.module_utils.pg_utils', pg_utils)
+sys.modules.setdefault('ansible.module_utils.registry_utils', registry_utils)
 sys.modules.setdefault('ansible.module_utils.s3_utils', s3_utils)
 
 

@@ -98,6 +98,11 @@ def test_create_client_relays_callback_url_to_client_template(monkeypatch):
         root_url='https://s3.kube-eng.test',
         description='S3 instance on kube-eng',
         callback_url='https://s3.kube-eng.test/rustfs/admin/v3/oidc/callback/default',
+        redirect_uris=None,
+        public_client=False,
+        pkce_enabled=True,
+        flows=[],
+        audience=None,
     )
 
 
@@ -112,6 +117,147 @@ def test_create_client_defaults_callback_url_to_none(monkeypatch):
         idp_client.main()
 
     assert mock_idp_admin_cls.client_template.call_args.kwargs['callback_url'] is None
+
+
+def test_create_client_relays_redirect_uris_and_public_client_to_client_template(
+    monkeypatch,
+):
+    set_module_args(
+        {
+            **PRESENT_ARGS,
+            'redirect_uris': ['http://localhost:8000', 'http://localhost:18000'],
+            'public_client': True,
+        }
+    )
+
+    fake_admin = _fake_admin()
+    mock_idp_admin_cls = MagicMock(return_value=fake_admin)
+    monkeypatch.setattr(idp_client, 'IdPAdmin', mock_idp_admin_cls)
+
+    with pytest.raises(AnsibleExitJson):
+        idp_client.main()
+
+    mock_idp_admin_cls.client_template.assert_called_once_with(
+        client_id='s3-kube-eng',
+        name='S3 :: kube-eng',
+        root_url='https://s3.kube-eng.test',
+        description='S3 instance on kube-eng',
+        callback_url=None,
+        redirect_uris=['http://localhost:8000', 'http://localhost:18000'],
+        public_client=True,
+        pkce_enabled=True,
+        flows=[],
+        audience=None,
+    )
+
+
+def test_create_client_defaults_public_client_to_false(monkeypatch):
+    set_module_args(PRESENT_ARGS)
+
+    fake_admin = _fake_admin()
+    mock_idp_admin_cls = MagicMock(return_value=fake_admin)
+    monkeypatch.setattr(idp_client, 'IdPAdmin', mock_idp_admin_cls)
+
+    with pytest.raises(AnsibleExitJson):
+        idp_client.main()
+
+    assert mock_idp_admin_cls.client_template.call_args.kwargs['public_client'] is False
+
+
+def test_create_client_defaults_pkce_enabled_to_true(monkeypatch):
+    set_module_args(PRESENT_ARGS)
+
+    fake_admin = _fake_admin()
+    mock_idp_admin_cls = MagicMock(return_value=fake_admin)
+    monkeypatch.setattr(idp_client, 'IdPAdmin', mock_idp_admin_cls)
+
+    with pytest.raises(AnsibleExitJson):
+        idp_client.main()
+
+    assert mock_idp_admin_cls.client_template.call_args.kwargs['pkce_enabled'] is True
+
+
+def test_create_client_relays_pkce_enabled_false_to_client_template(monkeypatch):
+    set_module_args({**PRESENT_ARGS, 'pkce_enabled': False})
+
+    fake_admin = _fake_admin()
+    mock_idp_admin_cls = MagicMock(return_value=fake_admin)
+    monkeypatch.setattr(idp_client, 'IdPAdmin', mock_idp_admin_cls)
+
+    with pytest.raises(AnsibleExitJson):
+        idp_client.main()
+
+    assert mock_idp_admin_cls.client_template.call_args.kwargs['pkce_enabled'] is False
+
+
+def test_create_client_defaults_flows_to_empty(monkeypatch):
+    """Standard flow is always on inside client_template and isn't a
+    choice here -- a plain client gets an empty flows list, i.e. nothing
+    beyond standard flow."""
+    set_module_args(PRESENT_ARGS)
+
+    fake_admin = _fake_admin()
+    mock_idp_admin_cls = MagicMock(return_value=fake_admin)
+    monkeypatch.setattr(idp_client, 'IdPAdmin', mock_idp_admin_cls)
+
+    with pytest.raises(AnsibleExitJson):
+        idp_client.main()
+
+    assert mock_idp_admin_cls.client_template.call_args.kwargs['flows'] == []
+
+
+def test_create_client_relays_flows_to_client_template(monkeypatch):
+    set_module_args({**PRESENT_ARGS, 'flows': ['direct_access_grants']})
+
+    fake_admin = _fake_admin()
+    mock_idp_admin_cls = MagicMock(return_value=fake_admin)
+    monkeypatch.setattr(idp_client, 'IdPAdmin', mock_idp_admin_cls)
+
+    with pytest.raises(AnsibleExitJson):
+        idp_client.main()
+
+    assert mock_idp_admin_cls.client_template.call_args.kwargs['flows'] == [
+        'direct_access_grants'
+    ]
+
+
+def test_create_client_defaults_audience_to_none(monkeypatch):
+    set_module_args(PRESENT_ARGS)
+
+    fake_admin = _fake_admin()
+    mock_idp_admin_cls = MagicMock(return_value=fake_admin)
+    monkeypatch.setattr(idp_client, 'IdPAdmin', mock_idp_admin_cls)
+
+    with pytest.raises(AnsibleExitJson):
+        idp_client.main()
+
+    assert mock_idp_admin_cls.client_template.call_args.kwargs['audience'] is None
+
+
+def test_create_client_relays_audience_to_client_template(monkeypatch):
+    set_module_args({**PRESENT_ARGS, 'audience': 'registry-kube-eng'})
+
+    fake_admin = _fake_admin()
+    mock_idp_admin_cls = MagicMock(return_value=fake_admin)
+    monkeypatch.setattr(idp_client, 'IdPAdmin', mock_idp_admin_cls)
+
+    with pytest.raises(AnsibleExitJson):
+        idp_client.main()
+
+    assert (
+        mock_idp_admin_cls.client_template.call_args.kwargs['audience']
+        == 'registry-kube-eng'
+    )
+
+
+def test_create_client_rejects_an_unknown_flow(monkeypatch):
+    """Ansible's own choices validation on the 'flows' arg_spec should
+    reject this before client_template ever runs."""
+    set_module_args({**PRESENT_ARGS, 'flows': ['bogus']})
+    monkeypatch.setattr(idp_client, 'IdPAdmin', MagicMock())
+
+    with pytest.raises(AnsibleFailJson):
+        idp_client.main()
 
 
 def test_create_client_reports_unchanged_for_an_already_existing_client(monkeypatch):

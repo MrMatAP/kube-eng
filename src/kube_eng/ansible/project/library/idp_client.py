@@ -16,6 +16,27 @@ def run_module():
         'description': {'type': 'str', 'required': False, 'default': _UNSET_},
         'root_url': {'type': 'str', 'required': False, 'default': _UNSET_},
         'callback_url': {'type': 'str', 'required': False, 'default': None},
+        'redirect_uris': {'type': 'list', 'elements': 'str', 'required': False},
+        'public_client': {'type': 'bool', 'required': False, 'default': False},
+        # Defaults on. Only disable this for a relying party that can't do
+        # PKCE at all -- e.g. the registry (zot), whose OIDC implementation
+        # currently has no PKCE support. That's a limitation of the
+        # component being registered, not something to turn off by default.
+        'pkce_enabled': {'type': 'bool', 'required': False, 'default': True},
+        # The standard (authorization code) flow is always on and isn't a
+        # choice here. Everything else Keycloak can enable for a client is
+        # opt-in through this list -- a plain client gets standard flow only.
+        'flows': {
+            'type': 'list',
+            'elements': 'str',
+            'required': False,
+            'default': [],
+            'choices': ['implicit', 'direct_access_grants', 'service_accounts'],
+        },
+        # Only needed by a relying party that validates tokens against a
+        # specific audience (e.g. the registry's zot 'bearer.oidc' workload
+        # identity auth, see ADR-0004) -- not by every client.
+        'audience': {'type': 'str', 'required': False, 'default': None},
         'roles': {'type': 'list', 'elements': 'dict', 'required': False},
         'state': {
             'type': 'str',
@@ -55,6 +76,11 @@ def run_module():
                 root_url=module.params['root_url'],
                 description=module.params['description'],
                 callback_url=module.params['callback_url'],
+                redirect_uris=module.params['redirect_uris'],
+                public_client=module.params['public_client'],
+                pkce_enabled=module.params['pkce_enabled'],
+                flows=module.params['flows'],
+                audience=module.params['audience'],
             )
             created_client = idp_admin.client_create(client)
             for role in module.params['roles'] or []:

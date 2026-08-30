@@ -2,9 +2,9 @@ import enum
 import socket
 from typing import Any
 
-from pydantic import Field, computed_field
+from pydantic import AnyHttpUrl, Field, computed_field
 
-from .base import RootConfigAware
+from .base import IdPClientRole, RootConfigAware
 
 
 class ClusterCNIKindEnum(str, enum.Enum):
@@ -84,10 +84,46 @@ class ClusterConfig(RootConfigAware):
     control_plane_nodes: int = Field(default=1)
     worker_nodes: int = Field(default=3)
 
+    admin_port: int = Field(default=8000)
+
     cni: ClusterCNIConfig = Field(default_factory=ClusterCNIConfig)
     mesh: ClusterMeshConfig = Field(default_factory=ClusterMeshConfig)
     pki: ClusterPKIConfig = Field(default_factory=ClusterPKIConfig)
     edge: ClusterEdgeConfig = Field(default_factory=ClusterEdgeConfig)
+
+    @computed_field(description='Cluster Client Id')
+    @property
+    def client_id(self) -> str:
+        return f'kind-{self.name}'
+
+    @computed_field(description='Cluster Client Name')
+    @property
+    def client_name(self) -> str:
+        return f'Kind :: {self.name}'
+
+    @computed_field(description='Cluster Client Description')
+    @property
+    def client_description(self) -> str:
+        return f'Kind Cluster on {self.name}'
+
+    @computed_field(description='Cluster Roles')
+    @property
+    def client_roles(self) -> list[IdPClientRole]:
+        return [
+            IdPClientRole(name='kind-admin', description='Kind :: Admin'),
+            IdPClientRole(name='kind-contributor', description='Kind :: Contributor'),
+            IdPClientRole(name='kind-viewer', description='Kind :: Viewer'),
+        ]
+
+    @computed_field(description='Cluster admin endpoint')
+    @property
+    def admin_endpoint(self) -> AnyHttpUrl:
+        return AnyHttpUrl(f'https://{self.name}.{self._root_config.infra.dns.domain}:{self.admin_port}')
+
+    @computed_field(description='Cluster Callback URLs')
+    @property
+    def callback_urls(self) -> list[AnyHttpUrl]:
+        return [self.admin_endpoint]
 
     def model_post_init(self, context: Any, /) -> None:
         super().model_post_init(context)

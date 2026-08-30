@@ -11,7 +11,13 @@
       chart_name: "{{ item }}"
       chart_src_path: "{{ host.tool.helm.chart_path }}/{{ item }}"
       chart_pkg_path: "{{ host.tool.helm.packaged_chart_path }}"
-      chart_registry_url: "{{ cluster.registry.url }}/kube-eng"
+      chart_registry_url: "{{ infra.registry.oci_endpoint }}/kube-eng"
+      registry_url: "{{ infra.registry.oci_endpoint | regex_replace('^oci://', '') | regex_replace('/.*$', '') }}"
+      registry_ca_path: "{{ infra.pki.ca_truststore_path }}"
+      # A remote registry with no password set is authenticated out of band;
+      # helm_publish then skips `helm registry login` (see the role).
+      username: "{{ infra.registry.admin_username }}"
+      password: "{{ infra.registry.admin_password }}"
     loop:
     - kube-eng-cilium
     - kube-eng-istio

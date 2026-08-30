@@ -1,0 +1,133 @@
+{
+  "distSpecVersion": "1.1.1",
+  "storage": {
+    "rootDirectory": "/data",
+    "commit": true,
+    "dedupe": true,
+    "gc": true,
+    "gcDelay": "1h",
+    "gcInterval": "24h"
+  },
+  "http": {
+    "address": "0.0.0.0",
+    "port": "5000",
+    "externalUrl": "{{ external_endpoint }}",
+    "compat": ["docker2s2"],
+    "tls": {
+      "cert": "/etc/zot/registry.pem",
+      "key": "/etc/zot/registry.key"
+    },
+{#
+  zot (<= 2.1.20) treats http.auth.bearer and http.auth.openid as mutually
+  exclusive: enabling bearer makes zot skip the entire session/openid/htpasswd
+  setup, so browser SSO can never work alongside a workload-identity push token.
+  kube-eng needs the browser SSO, so we keep openid and give helm_publish a
+  dedicated htpasswd account ({{ htpasswd_username }}) instead. See ADR-0004.
+#}
+    "auth": {
+      "failDelay": 5,
+      "htpasswd": {
+        "path": "/etc/zot/htpasswd"
+      },
+      "openid": {
+        "callbackAllowOrigins": ["{{ oidc_callback_url }}"],
+        "providers": {
+          "oidc": {
+            "credentialsFile": "/etc/zot/oidc.json",
+            "issuer": "{{ oidc_issuer }}",
+            "keypath": "",
+            "scopes": ["openid", "profile", "email", "roles"],
+            "claimMapping": {
+              "groups": "roles"
+            }
+          }
+        }
+      }
+    },
+    "accessControl": {
+      "metrics": {
+        "anonymousPolicy": ["read"]
+      },
+      "repositories": {
+        "**": {
+          "defaultPolicy": ["read"],
+          "anonymousPolicy": ["read"],
+          "policies": [
+            { "users":  ["{{ htpasswd_username }}"], "actions": ["read", "create", "update", "delete"]},
+            { "groups": ["registry-contributor"], "actions": ["read", "create", "update"] },
+            { "groups": ["registry-admin"], "actions": ["read", "create", "update", "delete"] }
+          ]
+        }
+      }
+    }
+  },
+  "log": {
+    "level": "info",
+    "audit": "/data/audit.log"
+  },
+  "scheduler": {
+    "numWorkers": 3
+  },
+  "extensions": {
+    "search": {
+      "enable": true,
+      "cve": {
+        "updateInterval": "24h"
+      }
+    },
+    "scrub": {
+      "enable": true,
+      "interval": "24h"
+    },
+    "ui": {
+      "enable": true
+    },
+    "mgmt": {
+      "enable": true
+    },
+    "lint": {
+      "enable": true
+    },
+    "metrics": {
+      "enable": true,
+      "prometheus": {
+        "path": "/metrics"
+      }
+    },
+    "sync": {
+      "enable": true,
+      "registries": [
+        {
+          "urls": ["https://k8s.gcr.io"],
+          "onDemand": true,
+          "tlsVerify": true
+        },
+        {
+          "urls": ["https://registry.k8s.io"],
+          "onDemand": true,
+          "tlsVerify": true
+        },
+        {
+          "urls": [ "https://docker.io" ],
+          "onDemand": true,
+          "tlsVerify": true
+        },
+        {
+          "urls": ["https://quay.io"],
+          "onDemand": true,
+          "tlsVerify": true
+        },
+        {
+          "urls": ["https://ghcr.io"],
+          "onDemand": true,
+          "tlsVerify": true
+        },
+        {
+          "urls": ["https://registry.istio.io"],
+          "onDemand": true,
+          "tlsVerify": true
+        }
+      ]
+    }
+  }
+}

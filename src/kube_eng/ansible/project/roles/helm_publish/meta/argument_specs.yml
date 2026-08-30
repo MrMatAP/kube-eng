@@ -30,3 +30,29 @@ argument_specs:
         description: URL of the Helm chart registry
         type: str
         required: true
+      registry_url:
+        description: >
+          Host[:port] of the registry to authenticate against with
+          `helm registry login`. Leave empty to skip authentication (e.g. a
+          remote registry the caller has logged into out of band).
+        type: str
+        required: false
+        default: ''
+      registry_ca_path:
+        description: >
+          Path to a CA bundle used to verify the registry's TLS certificate
+          during login and push. Leave empty to rely on the system trust store.
+        type: str
+        required: false
+        default: ''
+      username:
+        description: Username for the Helm chart registry. Empty skips authentication.
+        type: str
+        required: false
+        default: ''
+      password:
+        description: Password (or identity token) for the Helm chart registry.
+        type: str
+        required: false
+        default: ''
+        no_log: true

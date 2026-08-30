@@ -11,14 +11,18 @@ None
 Role Variables
 --------------
 
-| Variable           | Type | Required | Default                | Description                         |
-|--------------------|------|----------|------------------------|-------------------------------------|
-| helm_tool_path     | str  | false    | /opt/homebrew/bin/helm | Path to the Helm binary             |
-| chart_version      | str  | false    | 0.0.0-dev0             | Version of the Helm chart           |
-| chart_name         | str  | true     | N/A                    | Name of the Helm chart              |
-| chart_src_path     | str  | true     | N/A                    | Path to the chart source directory  |
-| chart_pkg_path     | str  | true     | N/A                    | Path to the chart package directory |
-| chart_registry_url | str  | true     | N/A                    | URL of the Helm chart registry      |
+| Variable           | Type | Required | Default                | Description                                                        |
+|--------------------|------|----------|------------------------|-------------------------------------------------------------------|
+| helm_tool_path     | str  | false    | /opt/homebrew/bin/helm | Path to the Helm binary                                            |
+| chart_version      | str  | false    | 0.0.0-dev0             | Version of the Helm chart                                          |
+| chart_name         | str  | true     | N/A                    | Name of the Helm chart                                             |
+| chart_src_path     | str  | true     | N/A                    | Path to the chart source directory                                |
+| chart_pkg_path     | str  | true     | N/A                    | Path to the chart package directory                               |
+| chart_registry_url | str  | true     | N/A                    | OCI URL to push the chart to                                       |
+| registry_url       | str  | false    | ''                     | Host[:port] for `helm registry login`; empty skips authentication |
+| registry_ca_path   | str  | false    | ''                     | CA bundle to verify the registry's TLS cert on login and push     |
+| username           | str  | false    | ''                     | Registry username; empty skips authentication                     |
+| password           | str  | false    | ''                     | Registry password or identity token                               |
 
 Dependencies
 ------------

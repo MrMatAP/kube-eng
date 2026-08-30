@@ -133,6 +133,25 @@ class TestRegistry:
         assert _url(registry.oci_endpoint) == 'oci://registry.testcluster.k8s:5001'
         assert _url(registry.http_endpoint) == 'https://registry.testcluster.k8s:5001'
 
+    def test_local_push_account_is_generated(self, tmp_path: pathlib.Path):
+        registry = make_config(tmp_path).infra.registry
+        assert registry.admin_username == 'kube-eng'
+        assert registry.admin_password  # generated
+
+    def test_remote_push_account_is_supplied_not_generated(
+        self, tmp_path: pathlib.Path
+    ):
+        registry = make_config(
+            tmp_path,
+            registry={
+                'provider': 'remote',
+                'url': 'oci://harbor.example.com/kube-eng',
+                'admin_password': 'from-vault',
+            },
+        ).infra.registry
+        assert registry.admin_username == 'kube-eng'
+        assert registry.admin_password == 'from-vault'
+
     def test_remote(self, tmp_path: pathlib.Path):
         registry = make_config(
             tmp_path,
@@ -142,7 +161,7 @@ class TestRegistry:
             },
         ).infra.registry
         assert _url(registry.oci_endpoint) == 'oci://harbor.example.com/kube-eng'
-        assert _url(registry.http_endpoint) == 'http://harbor.example.com/kube-eng'
+        assert _url(registry.http_endpoint) == 'https://harbor.example.com/kube-eng'
 
     def test_remote_rejects_non_oci_url(self, tmp_path: pathlib.Path):
         with pytest.raises(ValidationError):
