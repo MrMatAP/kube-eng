@@ -1,6 +1,5 @@
 import getpass
 import pathlib
-import secrets
 from typing import Any
 
 import yaml
@@ -21,10 +20,6 @@ class RootConfig(BaseModel):
     """
 
     config_path: pathlib.Path = Field(description='Path to the configuration directory')
-    admin_password: str = Field(
-        default_factory=lambda: secrets.token_urlsafe(16),
-        description='Admin password for the cluster and its services',
-    )
     user_id: str = Field(
         default_factory=getpass.getuser, description='Real user id of the current user'
     )
@@ -128,33 +123,3 @@ class RootConfig(BaseModel):
         for field in dict(self).values():
             if issubclass(type(field), RootConfigAware):
                 field.propagate_root_config(self)
-
-        # If we are to use the local default DNS server and have not been
-        # given a key_secret, we default to the base64-encoded admin password
-        # if self.infra.dns.enabled and self.cluster.dns.key_secret == '':
-        #     self.cluster.dns.key_secret = base64.b64encode(
-        #         bytes(self.admin_password, encoding='utf-8')
-        #     ).decode('utf-8')
-        #
-        # # Populate the cluster Helm registry if not provided
-        # if self.cluster.registry.url == '' and self.host.registry.enabled:
-        #     self.cluster.registry.url = f'oci://{self.host.registry.name}.{self.host.dns.zone}:{self.host.registry.host_port}/'
-        #
-        # # Populate the IdP database password if not provided
-        # if self.host.idp.enabled and self.host.idp.db_password == '':
-        #     self.host.idp.db_password = self.admin_password
-        #
-        # # Local infrastructure credentials default to the admin password
-        # infra = self.infra
-        # if (
-        #     infra.pg.provider == 'local'
-        #     and infra.pg.admin_password == ''
-        # ):
-        #     infra.pg.admin_password = self.admin_password
-        # if infra.idp.provider == 'local':
-        #     if infra.idp.admin_password == '':
-        #         infra.idp.admin_password = self.admin_password
-        #     if infra.idp.db_password == '':
-        #         infra.idp.db_password = self.admin_password
-        # if infra.s3.provider == 'local' and infra.s3.secret_key == '':
-        #     infra.s3.secret_key = self.admin_password
