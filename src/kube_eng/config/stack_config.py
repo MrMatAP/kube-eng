@@ -33,13 +33,6 @@ class StackLokiConfig(RootConfigAware):
     hostname: str = Field(default='loki')
 
 
-class StackKeycloakConfig(RootConfigAware):
-    enabled: bool = Field(default=True)
-    ns: str = Field(default='keycloak')
-    hostname: str = Field(default='keycloak')
-    operator_version: str = Field(default='26.4.7')
-
-
 class StackGrafanaDBKind(str, enum.Enum):
     postgres = 'postgres'
     sqlite3 = 'sqlite3'
@@ -86,7 +79,6 @@ class StackConfig(RootConfigAware):
     mimir: StackMimirConfig = Field(default_factory=StackMimirConfig)
     alloy: StackAlloyConfig = Field(default_factory=StackAlloyConfig)
     loki: StackLokiConfig = Field(default_factory=StackLokiConfig)
-    keycloak: StackKeycloakConfig = Field(default_factory=StackKeycloakConfig)
     grafana: StackGrafanaConfig = Field(default_factory=StackGrafanaConfig)
     tempo: StackTempoConfig = Field(default_factory=StackTempoConfig)
     kiali: StackKialiConfig = Field(default_factory=StackKialiConfig)
