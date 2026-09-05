@@ -1,8 +1,9 @@
 import enum
+import secrets
 
-from pydantic import Field
+from pydantic import Field, computed_field
 
-from .base import RootConfigAware
+from .base import IdPClientRole, RootConfigAware
 
 
 class StackPrometheusConfig(RootConfigAware):
@@ -51,6 +52,8 @@ class StackGrafanaConfig(RootConfigAware):
     hostname: str = Field(default='grafana')
     client_id: str = Field(default='kube-eng-grafana')
     admin_user: str = Field(default='admin')
+    admin_password: str = Field(default_factory=lambda: secrets.token_urlsafe(16),
+                                description='Grafana admin password')
     db_kind: StackGrafanaDBKind = Field(default=StackGrafanaDBKind.sqlite3)
     db_host: str = Field(default='pg')
     db_port: int = Field(default=5432)
@@ -58,6 +61,21 @@ class StackGrafanaConfig(RootConfigAware):
     db_user: str = Field(default='grafana')
     db_password: str = Field(default='grafana')
     db_ssl_mode: StackGrafanaDBSSL = Field(default=StackGrafanaDBSSL.require)
+
+    @computed_field(description='Grafana roles')
+    @property
+    def client_roles(self) -> list[IdPClientRole]:
+        return [
+            IdPClientRole(
+                name='grafana-viewer', description='Kube-Eng :: Grafana :: Viewers'
+            ),
+            IdPClientRole(
+                name='grafana-editor', description='Kube-Eng :: Grafana :: Editors'
+            ),
+            IdPClientRole(
+                name='grafana-admin', description='Kube-Eng :: Grafana :: Admins'
+            ),
+        ]
 
 
 class StackTempoConfig(RootConfigAware):
