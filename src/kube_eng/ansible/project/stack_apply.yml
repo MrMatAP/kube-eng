@@ -37,7 +37,7 @@
         name: prometheus
         create_namespace: false
         release_namespace: "{{ stack.prometheus.ns }}"
-        chart_ref: "{{ cluster.registry.url }}/kube-eng/kube-eng-prometheus"
+        chart_ref: "{{ infra.registry.oci_endpoint }}/kube-eng/kube-eng-prometheus"
         chart_version: "{{ host.tool.helm.chart_version }}"
         binary_path: "{{ host.tool.helm.path }}"
         wait: true
@@ -46,7 +46,7 @@
             name: "{{ cluster.name }}"
             edge:
               kind: "{{ cluster.edge.kind }}"
-              fqdn: "{{ stack.prometheus.hostname }}.{{ host.dns.zone }}"
+              fqdn: "{{ stack.prometheus.hostname }}.{{ infra.dns.domain }}"
               gateway:
                 name: "{{ cluster.edge.name }}"
                 ns: "{{ cluster.edge.ns }}"
@@ -55,22 +55,30 @@
               prometheusSpec:
                 externalLabels:
                   origin_prometheus: "{{ cluster.name }}"
+                remoteWrite: "{{ [{'url': 'http://mimir-gateway.' ~ stack.mimir.ns ~ '.svc.cluster.local/api/v1/push'}] if stack.mimir.enabled else [] }}"
     - name: Update DNS with a record for Prometheus
-      ansible.builtin.import_role:
-        name: update_dns_record
-      vars:
-        dns_key_name: "{{ cluster.dns.key_name }}"
-        dns_key_secret: "{{ cluster.dns.key_secret }}"
-        dns_key_algorithm: "{{ cluster.dns.key_algorithm }}"
-        dns_server: "{{ cluster.dns.server }}"
-        dns_protocol: "{{ cluster.dns.protocol }}"
-        dns_ttl: "{{ cluster.dns.ttl | int }}"
-        dns_record: "{{ stack.prometheus.hostname }}.{{ host.dns.zone }}."
+      dns_record:
+        dns_ip: "{{ infra.dns.ip }}"
+        dns_admin_key_name: "{{ infra.dns.admin_key_name }}"
+        dns_admin_key_secret: "{{ infra.dns.admin_key_secret }}"
+        dns_protocol: "{{ infra.dns.protocol }}"
+        dns_zone: "{{ infra.dns.zone }}"
+        dns_record: "{{ stack.prometheus.hostname }}.{{ infra.dns.domain }}."
         dns_value: "{{ edge_gateway.resources[0].status.addresses[0].value }}"
+        dns_ttl: "{{ infra.dns.ttl | int }}"
 
   - name: Deploy Mimir
     when: "stack.mimir.enabled | bool == true"
     block:
+      - name: Create the Mimir S3 bucket
+        s3_bucket:
+          s3_endpoint: "{{ infra.s3.api_endpoint }}"
+          s3_access_key: "{{ infra.s3.access_key }}"
+          s3_secret_key: "{{ infra.s3.secret_key }}"
+          s3_region: "{{ infra.s3.region }}"
+          s3_ca_path: "{{ infra.pki.ca_truststore_path }}"
+          bucket_name: mimir-blocks
+          state: present
       - name: Create and label the Mimir namespace
         ansible.builtin.import_role:
           name: create_namespace
@@ -78,12 +86,21 @@
           ns: "{{ stack.mimir.ns }}"
           mesh: "{{ cluster.mesh.kind }}"
           waypoint: wp-mimir
+      - name: Determine Mimir's Kafka-backed ingest storage configuration
+        ansible.builtin.set_fact:
+          mimir_ingest_storage: "{{ {
+            'ingest_storage': {'enabled': true, 'kafka': {
+              'address': infra.kafka.client_fqdn ~ ':' ~ (infra.kafka.port | string),
+              'topic': 'mimir-ingest',
+              'auto_create_topic_default_partitions': 4}},
+            'ingester': {'push_grpc_method_enabled': false}
+            } if infra.kafka.enabled else {} }}"
       - name: Install Mimir
         kubernetes.core.helm:
           name: mimir
           create_namespace: false
-          release_namespace: "{{ stack.grafana.ns }}"
-          chart_ref: "{{ cluster.registry.url }}/kube-eng/kube-eng-mimir"
+          release_namespace: "{{ stack.mimir.ns }}"
+          chart_ref: "{{ infra.registry.oci_endpoint }}/kube-eng/kube-eng-mimir"
           chart_version: "{{ host.tool.helm.chart_version }}"
           binary_path: "{{ host.tool.helm.path }}"
           wait: true
@@ -92,22 +109,29 @@
               name: "{{ cluster.name }}"
               edge:
                 kind: "{{ cluster.edge.kind }}"
-                fqdn: "{{ stack.mimir.hostname }}.{{ host.dns.zone }}"
+                fqdn: "{{ stack.mimir.hostname }}.{{ infra.dns.domain }}"
                 gateway:
                   name: "{{ cluster.edge.name }}"
                   ns: "{{ cluster.edge.ns }}"
+            mimir:
+              mimir:
+                structuredConfig: "{{ {
+                  'common': {'storage': {'s3': {
+                    'endpoint': infra.s3.client_fqdn ~ ':' ~ (infra.s3.port | string),
+                    'access_key_id': infra.s3.access_key,
+                    'secret_access_key': infra.s3.secret_key
+                  }}}
+                  } | combine(mimir_ingest_storage, recursive=true) }}"
       - name: Update DNS with a record for Mimir
-        ansible.builtin.import_role:
-          name: update_dns_record
-        vars:
-          dns_key_name: "{{ cluster.dns.key_name }}"
-          dns_key_secret: "{{ cluster.dns.key_secret }}"
-          dns_key_algorithm: "{{ cluster.dns.key_algorithm }}"
-          dns_server: "{{ cluster.dns.server }}"
-          dns_protocol: "{{ cluster.dns.protocol }}"
-          dns_ttl: "{{ cluster.dns.ttl | int }}"
-          dns_record: "{{ stack.mimir.hostname }}.{{ host.dns.zone }}."
+        dns_record:
+          dns_ip: "{{ infra.dns.ip }}"
+          dns_admin_key_name: "{{ infra.dns.admin_key_name }}"
+          dns_admin_key_secret: "{{ infra.dns.admin_key_secret }}"
+          dns_protocol: "{{ infra.dns.protocol }}"
+          dns_zone: "{{ infra.dns.zone }}"
+          dns_record: "{{ stack.mimir.hostname }}.{{ infra.dns.domain }}."
           dns_value: "{{ edge_gateway.resources[0].status.addresses[0].value }}"
+          dns_ttl: "{{ infra.dns.ttl | int }}"
 
   - name: Deploy Grafana
     when: "stack.grafana.enabled | bool == true"
@@ -119,124 +143,40 @@
         ns: "{{ stack.grafana.ns }}"
         mesh: "{{ cluster.mesh.kind }}"
         waypoint: wp-grafana
-    - name: Create a client scope for sanitised role memberships for Grafana
-      community.general.keycloak_clientscope:
-        auth_keycloak_url: "https://{{ host.idp.name }}.{{ host.dns.zone }}:{{ host.idp.host_port }}"
-        auth_realm: master
-        auth_username: admin
-        auth_password: "{{ admin_password }}"
-        name: "kube-eng-{{ cluster.name }}-grafana-roles"
-        description: Adds top-level roles to a token
-        protocol: openid-connect
-        protocol_mappers:
-        - config:
-            access.token.claim: true
-            claim.name: "roles"
-            id.token.claim: true
-            introspection.token.claim: true
-            lightweight.claim: false
-            userinfo.token.claim: true
-            jsonType.label: String
-            multivalued: true
-            usermodel.clientRoleMapping.clientId: "{{ stack.grafana.client_id }}"
-          name: "client roles"
-          protocol: openid-connect
-          protocolMapper: oidc-usermodel-client-role-mapper
-        state: present
-        validate_certs: true
     - name: Register Grafana in Keycloak
-      community.general.keycloak_client:
-        auth_keycloak_url: "https://{{ host.idp.name }}.{{ host.dns.zone }}:{{ host.idp.host_port }}"
-        auth_realm: master
-        auth_username: admin
-        auth_password: "{{ admin_password }}"
+      idp_client:
+        idp_url: "{{ infra.idp.client_base_url }}"
+        idp_admin_user: "{{ infra.idp.admin_user }}"
+        idp_admin_password: "{{ infra.idp.admin_password }}"
+        idp_realm: "{{ infra.idp.realm }}"
+        idp_ca_path: "{{ infra.pki.ca_truststore_path }}"
         client_id: "{{ stack.grafana.client_id }}"
         name: "Kube Eng :: Grafana :: {{ cluster.name }}"
         description: "Grafana metrics visualisation for the Kube Eng cluster"
-        enabled: true
-        protocol: openid-connect
-        public_client: false
-        client_authenticator_type: client-secret
-        secret: "{{ admin_password }}"
-        root_url: "https://{{ stack.grafana.hostname }}.{{ host.dns.zone }}/"
-        base_url: "https://{{ stack.grafana.hostname }}.{{ host.dns.zone }}/"
-        admin_url: "https://{{ stack.grafana.hostname }}.{{ host.dns.zone }}/"
+        root_url: "https://{{ stack.grafana.hostname }}.{{ infra.dns.domain }}/"
         redirect_uris:
-        - "https://{{ stack.grafana.hostname }}.{{ host.dns.zone }}/login/generic_oauth"
-        standard_flow_enabled: true
-        implicit_flow_enabled: false
-        direct_access_grants_enabled: true
-        default_client_scopes:
-        - email
-        - offline_access
-        - profile
-        - "kube-eng-{{ cluster.name }}-grafana-roles"
-        validate_certs: true
-    - name: Register Grafana Viewer role
-      community.general.keycloak_role:
-        auth_keycloak_url: "https://{{ host.idp.name }}.{{ host.dns.zone }}:{{ host.idp.host_port }}"
-        auth_realm: master
-        auth_username: admin
-        auth_password: "{{ admin_password }}"
-        name: grafana-viewer
-        description: "Kube-Eng :: Grafana :: Viewers"
-        client_id: "{{ stack.grafana.client_id }}"
+        - "https://{{ stack.grafana.hostname }}.{{ infra.dns.domain }}/login/generic_oauth"
+        public_client: false
+        flows:
+        - direct_access_grants
+        roles: "{{ stack.grafana.client_roles }}"
         state: present
-        validate_certs: true
-    - name: Register Grafana Editor role
-      community.general.keycloak_role:
-        auth_keycloak_url: "https://{{ host.idp.name }}.{{ host.dns.zone }}:{{ host.idp.host_port }}"
-        auth_realm: master
-        auth_username: admin
-        auth_password: "{{ admin_password }}"
-        name: grafana-editor
-        description: "Kube-Eng :: Grafana :: Editors"
-        client_id: "{{ stack.grafana.client_id }}"
+      register: grafana_idp_client
+      no_log: true
+    - name: Create a database for Grafana in PostgreSQL
+      when: stack.grafana.db_kind == "postgres"
+      pg_database:
+        admin_dsn: "{{ infra.pg.admin_dsn }}"
+        db_name: "{{ stack.grafana.db_name }}"
+        db_user: "{{ stack.grafana.db_user }}"
+        db_password: "{{ stack.grafana.db_password }}"
         state: present
-        validate_certs: true
-    - name: Register Grafana Admin role
-      community.general.keycloak_role:
-        auth_keycloak_url: "https://{{ host.idp.name }}.{{ host.dns.zone }}:{{ host.idp.host_port }}"
-        auth_realm: master
-        auth_username: admin
-        auth_password: "{{ admin_password }}"
-        name: grafana-admin
-        description: "Kube-Eng :: Grafana :: Admins"
-        client_id: "{{ stack.grafana.client_id }}"
-        state: present
-        validate_certs: true
-    - when: stack.grafana.db_kind == "postgres"
-      block:
-      - name: Create a user for Grafana in PostgreSQL
-        community.postgresql.postgresql_user:
-          login_host: "{{ host.postgresql.host_ip }}"
-          login_port: "{{ host.postgresql.host_port | int }}"
-          login_user: postgres
-          login_password: "{{ admin_password }}"
-          login_db: postgres
-          name: "{{ stack.grafana.db_user }}"
-          password: "{{ stack.grafana.db_password }}"
-          comment: "Grafana DB User"
-          state: present
-        environment:
-          PGOPTIONS: "-c password_encryption=scram-sha-256"
-      - name: Create a database for Grafana in PostgreSQL
-        community.postgresql.postgresql_db:
-          login_host: "{{ host.postgresql.host_ip }}"
-          login_port: "{{ host.postgresql.host_port | int }}"
-          login_user: postgres
-          login_password: "{{ admin_password }}"
-          name: "{{ stack.grafana.db_name }}"
-          owner: "{{ stack.grafana.db_name }}"
-          comment: "Grafana Database"
-          encoding: UTF-8
-          state: present
     - name: Install Grafana
       kubernetes.core.helm:
         name: grafana
         create_namespace: false
         release_namespace: "{{ stack.grafana.ns }}"
-        chart_ref: "{{ cluster.registry.url }}/kube-eng/kube-eng-grafana"
+        chart_ref: "{{ infra.registry.oci_endpoint }}/kube-eng/kube-eng-grafana"
         chart_version: "{{ host.tool.helm.chart_version }}"
         binary_path: "{{ host.tool.helm.path }}"
         wait: true
@@ -245,20 +185,20 @@
             name: "{{ cluster.name }}"
             edge:
               kind: "{{ cluster.edge.kind }}"
-              fqdn: "{{ stack.grafana.hostname }}.{{ host.dns.zone }}"
+              fqdn: "{{ stack.grafana.hostname }}.{{ infra.dns.domain }}"
               gateway:
                 name: "{{ cluster.edge.name }}"
                 ns: "{{ cluster.edge.ns }}"
           integration:
             adminUser: "{{ stack.grafana.admin_user }}"
-            adminPassword: "{{ admin_password }}"
-            rootUrl: "https://{{ stack.grafana.hostname }}.{{ host.dns.zone }}/"
+            adminPassword: "{{ stack.grafana.admin_password }}"
+            rootUrl: "https://{{ stack.grafana.hostname }}.{{ infra.dns.domain }}/"
             oauth:
               clientId: "{{ stack.grafana.client_id }}"
-              clientSecret: "{{ admin_password }}"
-              authUrl: "https://{{ host.idp.name }}.{{ host.dns.zone }}:{{ host.idp.host_port }}/realms/master/protocol/openid-connect/auth"
-              tokenUrl: "https://{{ host.idp.name }}.{{ host.dns.zone }}:{{ host.idp.host_port }}/realms/master/protocol/openid-connect/token"
-              apiUrl: "https://{{ host.idp.name }}.{{ host.dns.zone }}:{{ host.idp.host_port }}/realms/master/protocol/openid-connect/userinfo"
+              clientSecret: "{{ grafana_idp_client.client_secret }}"
+              authUrl: "{{ infra.idp.issuer_url }}/protocol/openid-connect/auth"
+              tokenUrl: "{{ infra.idp.issuer_url }}/protocol/openid-connect/token"
+              apiUrl: "{{ infra.idp.issuer_url }}/protocol/openid-connect/userinfo"
             database:
               type: "{{ stack.grafana.db_kind }}"
               host: "{{ stack.grafana.db_host }}:{{ stack.grafana.db_port | int }}"
@@ -269,17 +209,15 @@
             prometheus:
               url: "http://prometheus-operated.{{ stack.prometheus.ns }}.svc.cluster.local:9090/"
     - name: Update DNS with a record for Grafana
-      ansible.builtin.import_role:
-        name: update_dns_record
-      vars:
-        dns_key_name: "{{ cluster.dns.key_name }}"
-        dns_key_secret: "{{ cluster.dns.key_secret }}"
-        dns_key_algorithm: "{{ cluster.dns.key_algorithm }}"
-        dns_server: "{{ cluster.dns.server }}"
-        dns_protocol: "{{ cluster.dns.protocol }}"
-        dns_ttl: "{{ cluster.dns.ttl | int }}"
-        dns_record: "{{ stack.grafana.hostname }}.{{ host.dns.zone }}."
+      dns_record:
+        dns_ip: "{{ infra.dns.ip }}"
+        dns_admin_key_name: "{{ infra.dns.admin_key_name }}"
+        dns_admin_key_secret: "{{ infra.dns.admin_key_secret }}"
+        dns_protocol: "{{ infra.dns.protocol }}"
+        dns_zone: "{{ infra.dns.zone }}"
+        dns_record: "{{ stack.grafana.hostname }}.{{ infra.dns.domain }}."
         dns_value: "{{ edge_gateway.resources[0].status.addresses[0].value }}"
+        dns_ttl: "{{ infra.dns.ttl | int }}"
 
   - name: Deploy Alloy
     when: "stack.alloy.enabled | bool == true"
@@ -296,14 +234,14 @@
         cmd: |
           {{ host.tool.helm.path }} show chart
           --version {{ host.tool.helm.chart_version }}
-          "{{ cluster.registry.url }}/kube-eng-alloy"
+          "{{ infra.registry.oci_endpoint }}/kube-eng/kube-eng-alloy"
       register: alloy_chart_info
     - name: Deploy the Alloy Helm Chart
       kubernetes.core.helm:
         name: alloy
         create_namespace: false
         release_namespace: "{{ stack.alloy.ns }}"
-        chart_ref: "{{ cluster.registry.url }}/kube-eng/kube-eng-alloy"
+        chart_ref: "{{ infra.registry.oci_endpoint }}/kube-eng/kube-eng-alloy"
         chart_version: "{{ host.tool.helm.chart_version }}"
         binary_path: "{{ host.tool.helm.path }}"
         wait: true
@@ -312,7 +250,7 @@
             name: "{{ cluster.name }}"
             edge:
               kind: "{{ cluster.edge.kind }}"
-              fqdn: "{{ stack.alloy.hostname }}.{{ host.dns.zone }}"
+              fqdn: "{{ stack.alloy.hostname }}.{{ infra.dns.domain }}"
               gateway:
                 name: "{{ cluster.edge.name }}"
                 ns: "{{ cluster.edge.ns }}"
@@ -322,17 +260,15 @@
                 app: alloy
                 version: "{{ (alloy_chart_info.stdout | from_yaml).appVersion }}"
     - name: Update DNS with a record for Alloy
-      ansible.builtin.import_role:
-        name: update_dns_record
-      vars:
-        dns_key_name: "{{ cluster.dns.key_name }}"
-        dns_key_secret: "{{ cluster.dns.key_secret }}"
-        dns_key_algorithm: "{{ cluster.dns.key_algorithm }}"
-        dns_server: "{{ cluster.dns.server }}"
-        dns_protocol: "{{ cluster.dns.protocol }}"
-        dns_ttl: "{{ cluster.dns.ttl | int }}"
-        dns_record: "{{ stack.alloy.hostname }}.{{ cluster.name }}.{{ host.dns.zone }}."
+      dns_record:
+        dns_ip: "{{ infra.dns.ip }}"
+        dns_admin_key_name: "{{ infra.dns.admin_key_name }}"
+        dns_admin_key_secret: "{{ infra.dns.admin_key_secret }}"
+        dns_protocol: "{{ infra.dns.protocol }}"
+        dns_zone: "{{ infra.dns.zone }}"
+        dns_record: "{{ stack.alloy.hostname }}.{{ infra.dns.domain }}."
         dns_value: "{{ edge_gateway.resources[0].status.addresses[0].value }}"
+        dns_ttl: "{{ infra.dns.ttl | int }}"
 
   - name: Deploy Loki
     when: "stack.loki.enabled | bool == true"
@@ -362,14 +298,14 @@
         cmd: |
           {{ host.tool.helm.path }} show chart
           --version {{ host.tool.helm.chart_version }}
-          "{{ cluster.registry.url }}/kube-eng-loki"
+          "{{ infra.registry.oci_endpoint }}/kube-eng/kube-eng-loki"
       register: loki_chart_info
     - name: Deploy the Loki Helm chart
       kubernetes.core.helm:
         name: loki
         create_namespace: false
         release_namespace: "{{ stack.loki.ns }}"
-        chart_ref: "{{ cluster.registry.url }}/kube-eng/kube-eng-loki"
+        chart_ref: "{{ infra.registry.oci_endpoint }}/kube-eng/kube-eng-loki"
         chart_version: "{{ host.tool.helm.chart_version }}"
         binary_path: "{{ host.tool.helm.path }}"
         wait: true
@@ -383,25 +319,23 @@
                 version: "{{ (loki_chart_info.stdout | from_yaml).appVersion }}"
               storage:
                 s3:
-                  endpoint: "https://{{ host.s3.name }}.{{ host.dns.zone }}:{{ host.s3.port }}"
-                  accessKeyId: admin
-                  secretAccessKey: "{{ admin_password }}"
+                  endpoint: "https://{{ infra.s3.client_fqdn }}:{{ infra.s3.port }}"
+                  accessKeyId: "{{ infra.s3.access_key }}"
+                  secretAccessKey: "{{ infra.s3.secret_key }}"
           lokiCanary:
             podLabels:
               app: loki
               version: "{{ (loki_chart_info.stdout | from_yaml).appVersion }}"
     - name: Update DNS with a record for Loki
-      ansible.builtin.import_role:
-        name: update_dns_record
-      vars:
-        dns_key_name: "{{ cluster.dns.key_name }}"
-        dns_key_secret: "{{ cluster.dns.key_secret }}"
-        dns_key_algorithm: "{{ cluster.dns.key_algorithm }}"
-        dns_server: "{{ cluster.dns.server }}"
-        dns_protocol: "{{ cluster.dns.protocol }}"
-        dns_ttl: "{{ cluster.dns.ttl | int }}"
-        dns_record: "{{ stack.loki.hostname }}.{{ host.dns.zone }}."
+      dns_record:
+        dns_ip: "{{ infra.dns.ip }}"
+        dns_admin_key_name: "{{ infra.dns.admin_key_name }}"
+        dns_admin_key_secret: "{{ infra.dns.admin_key_secret }}"
+        dns_protocol: "{{ infra.dns.protocol }}"
+        dns_zone: "{{ infra.dns.zone }}"
+        dns_record: "{{ stack.loki.hostname }}.{{ infra.dns.domain }}."
         dns_value: "{{ edge_gateway.resources[0].status.addresses[0].value }}"
+        dns_ttl: "{{ infra.dns.ttl | int }}"
 
   - name: Deploy Tempo
     when: "stack.tempo.enabled | bool == true"
@@ -426,7 +360,7 @@
         name: tempo
         create_namespace: false
         release_namespace: "{{ stack.tempo.ns }}"
-        chart_ref: "{{ cluster.registry.url }}/kube-eng/kube-eng-tempo"
+        chart_ref: "{{ infra.registry.oci_endpoint }}/kube-eng/kube-eng-tempo"
         chart_version: "{{ host.tool.helm.chart_version }}"
         binary_path: "{{ host.tool.helm.path }}"
         wait: true
@@ -435,7 +369,7 @@
             name: "{{ cluster.name }}"
             edge:
               kind: "{{ cluster.edge.kind }}"
-              fqdn: "{{ stack.tempo.hostname }}.{{ host.dns.zone }}"
+              fqdn: "{{ stack.tempo.hostname }}.{{ infra.dns.domain }}"
               gateway:
                 name: "{{ cluster.edge.name }}"
                 ns: "{{ cluster.edge.ns }}"
@@ -445,81 +379,45 @@
                 trace:
                   backend: s3
                   s3:
-                    endpoint: "{{ host.s3.name }}.{{ host.dns.zone }}:{{ host.s3.host_port }}"
-                    access_key: admin
-                    secret_key: "{{ admin_password }}"
+                    endpoint: "{{ infra.s3.client_fqdn }}:{{ infra.s3.port }}"
+                    access_key: "{{ infra.s3.access_key }}"
+                    secret_key: "{{ infra.s3.secret_key }}"
                     region: us-east-1
                     insecure: false
                     tls_insecure_skip_verify: true
     - name: Update DNS with a record for Tempo
-      ansible.builtin.import_role:
-        name: update_dns_record
-      vars:
-        dns_key_name: "{{ cluster.dns.key_name }}"
-        dns_key_secret: "{{ cluster.dns.key_secret }}"
-        dns_key_algorithm: "{{ cluster.dns.key_algorithm }}"
-        dns_server: "{{ cluster.dns.server }}"
-        dns_protocol: "{{ cluster.dns.protocol }}"
-        dns_ttl: "{{ cluster.dns.ttl | int }}"
-        dns_record: "{{ stack.tempo.hostname }}.{{ host.dns.zone }}."
+      dns_record:
+        dns_ip: "{{ infra.dns.ip }}"
+        dns_admin_key_name: "{{ infra.dns.admin_key_name }}"
+        dns_admin_key_secret: "{{ infra.dns.admin_key_secret }}"
+        dns_protocol: "{{ infra.dns.protocol }}"
+        dns_zone: "{{ infra.dns.zone }}"
+        dns_record: "{{ stack.tempo.hostname }}.{{ infra.dns.domain }}."
         dns_value: "{{ edge_gateway.resources[0].status.addresses[0].value }}"
+        dns_ttl: "{{ infra.dns.ttl | int }}"
 
   - name: Deploy Kiali
     when: "stack.kiali.enabled | bool == true"
     block:
-    - name: Create a client scope for sanitised role memberships for kiali
-      community.general.keycloak_clientscope:
-        auth_keycloak_url: "https://{{ host.idp.name }}.{{ host.dns.zone }}:{{ host.idp.host_port }}"
-        auth_realm: master
-        auth_username: admin
-        auth_password: "{{ admin_password }}"
-        name: "kube-eng-{{ cluster.name }}-kiali-roles"
-        description: Adds top-level roles to a token
-        protocol: openid-connect
-        protocol_mappers:
-        - config:
-            access.token.claim: true
-            claim.name: "roles"
-            id.token.claim: true
-            introspection.token.claim: true
-            lightweight.claim: false
-            userinfo.token.claim: true
-            jsonType.label: String
-            multivalued: true
-            usermodel.clientRoleMapping.clientId: "{{ stack.kiali.client_id }}"
-          name: "client roles"
-          protocol: openid-connect
-          protocolMapper: oidc-usermodel-client-role-mapper
-        state: present
-        validate_certs: true
     - name: Register Kiali in Keycloak
-      community.general.keycloak_client:
-        auth_keycloak_url: "https://{{ host.idp.name }}.{{ host.dns.zone }}:{{ host.idp.host_port }}"
-        auth_realm: master
-        auth_username: admin
-        auth_password: "{{ admin_password }}"
+      idp_client:
+        idp_url: "{{ infra.idp.client_base_url }}"
+        idp_admin_user: "{{ infra.idp.admin_user }}"
+        idp_admin_password: "{{ infra.idp.admin_password }}"
+        idp_realm: "{{ infra.idp.realm }}"
+        idp_ca_path: "{{ infra.pki.ca_truststore_path }}"
         client_id: "{{ stack.kiali.client_id }}"
         name: "Kube Eng :: Kiali"
         description: "Istio traffic management and observability for the Kube-Eng cluster"
-        enabled: true
-        protocol: openid-connect
-        public_client: false
-        client_authenticator_type: client-secret
-        secret: "{{ admin_password }}"
-        root_url: "https://{{ stack.kiali.hostname }}.{{ host.dns.zone }}/"
-        base_url: "https://{{ stack.kiali.hostname }}.{{ host.dns.zone }}/"
-        admin_url: "https://{{ stack.kiali.hostname }}.{{ host.dns.zone }}/"
+        root_url: "https://{{ stack.kiali.hostname }}.{{ infra.dns.domain }}/"
         redirect_uris:
-        - "https://{{ stack.kiali.hostname }}.{{ host.dns.zone }}/*"
-        standard_flow_enabled: true
-        implicit_flow_enabled: false
-        direct_access_grants_enabled: true
-        default_client_scopes:
-        - email
-        - offline_access
-        - profile
-        - "kube-eng-{{ cluster.name }}-kiali-roles"
-        validate_certs: true
+        - "https://{{ stack.kiali.hostname }}.{{ infra.dns.domain }}/*"
+        public_client: false
+        flows:
+        - direct_access_grants
+        state: present
+      register: kiali_idp_client
+      no_log: true
     - name: Collect information about the Kiali Service Account
       kubernetes.core.k8s_info:
         api_version: grafana.integreatly.org/v1beta1
@@ -551,25 +449,14 @@
             namespace: "{{ stack.kiali.ns }}"
           type: Opaque
           stringData:
-            oidc-secret: "{{ admin_password }}"
+            oidc-secret: "{{ kiali_idp_client.client_secret }}"
         state: present
-    - name: Create a CA trust store ConfigMap for Kiali
-      kubernetes.core.k8s:
-        state: present
-        definition:
-          apiVersion: v1
-          kind: ConfigMap
-          metadata:
-            name: kiali-cabundle
-            namespace: "{{ stack.kiali.ns }}"
-          data:
-            additional-ca-bundle.pem: "{{ lookup('ansible.builtin.file', infra.pki.ca_path) }}"
     - name: Deploy the Kiali Helm Chart
       kubernetes.core.helm:
         name: kiali
         create_namespace: false
         release_namespace: "{{ stack.kiali.ns }}"
-        chart_ref: "{{ cluster.registry.url }}/kube-eng/kube-eng-kiali"
+        chart_ref: "{{ infra.registry.oci_endpoint }}/kube-eng/kube-eng-kiali"
         chart_version: "{{ host.tool.helm.chart_version }}"
         binary_path: "{{ host.tool.helm.path }}"
         wait: true
@@ -578,37 +465,35 @@
             name: "{{ cluster.name }}"
             edge:
               kind: "{{ cluster.edge.kind }}"
-              fqdn: "{{ stack.kiali.hostname }}.{{ host.dns.zone }}"
+              fqdn: "{{ stack.kiali.hostname }}.{{ infra.dns.domain }}"
               gateway:
                 name: "{{ cluster.edge.name }}"
                 ns: "{{ cluster.edge.ns }}"
           integration:
             keycloak:
               client_id: "{{ stack.kiali.client_id }}"
-              issuer_uri: "https://{{ host.idp.name }}.{{ host.dns.zone }}:{{ host.idp.host_port }}/realms/master"
+              issuer_uri: "{{ infra.idp.issuer_url }}"
             prometheus:
               hostname: "{{ stack.prometheus.hostname }}"
               ns: "{{ stack.prometheus.ns }}"
               url: "http://prometheus-operated.{{ stack.prometheus.ns }}.svc.cluster.local:9090/"
             grafana:
               internal_url: "http://grafana-service.{{ stack.grafana.ns }}.svc.cluster.local:3000/"
-              external_url: "https://{{ stack.grafana.hostname }}.{{ cluster.name }}.{{ host.dns.zone }}/"
+              external_url: "https://{{ stack.grafana.hostname }}.{{ infra.dns.domain }}/"
               auth:
                 username: "{{ kiali_grafana_sa.resources[0].status.account.login }}"
                 token: "{{ kiali_grafana_sa_token.resources[0].data.token | b64decode }}"
             tempo:
               internal_url: "http://tempo.{{ stack.tempo.ns }}.svc.cluster.local:3200/"
-              external_url: "https://{{ stack.tempo.hostname }}.{{ host.dns.zone }}/"
+              external_url: "https://{{ stack.tempo.hostname }}.{{ infra.dns.domain }}/"
               collector_url: "tempo.{{ stack.tempo.ns }}.svc.cluster.local:4317"
     - name: Update DNS with a record for Kiali
-      ansible.builtin.import_role:
-        name: update_dns_record
-      vars:
-        dns_key_name: "{{ cluster.dns.key_name }}"
-        dns_key_secret: "{{ cluster.dns.key_secret }}"
-        dns_key_algorithm: "{{ cluster.dns.key_algorithm }}"
-        dns_server: "{{ cluster.dns.server }}"
-        dns_protocol: "{{ cluster.dns.protocol }}"
-        dns_ttl: "{{ cluster.dns.ttl | int }}"
-        dns_record: "{{ stack.kiali.hostname }}.{{ host.dns.zone }}."
+      dns_record:
+        dns_ip: "{{ infra.dns.ip }}"
+        dns_admin_key_name: "{{ infra.dns.admin_key_name }}"
+        dns_admin_key_secret: "{{ infra.dns.admin_key_secret }}"
+        dns_protocol: "{{ infra.dns.protocol }}"
+        dns_zone: "{{ infra.dns.zone }}"
+        dns_record: "{{ stack.kiali.hostname }}.{{ infra.dns.domain }}."
         dns_value: "{{ edge_gateway.resources[0].status.addresses[0].value }}"
+        dns_ttl: "{{ infra.dns.ttl | int }}"

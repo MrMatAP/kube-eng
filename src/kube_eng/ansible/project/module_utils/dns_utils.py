@@ -28,6 +28,10 @@ class DNSValidationResult(DNSResult):
     validated: typing.Annotated[bool, pydantic.Field()]
 
 
+class DNSRecordResult(DNSResult):
+    pass
+
+
 class DNSAdmin:
     def __init__(
         self,
@@ -97,5 +101,52 @@ class DNSAdmin:
                 msg='Connectivity and entitlements are granted',
                 validated=True,
             )
+        except dns.exception.DNSException as de:
+            raise DNSException(code=400, msg=str(de) or 'Unknown Error') from de
+
+    def record_set(
+        self, dns_zone: str, dns_record: str, dns_value: str, dns_ttl: int
+    ) -> DNSRecordResult:
+        """
+        Ensure a DNS A record carries the given value and TTL via DDNS
+        (nsupdate), replacing any existing value. Idempotent: the record is
+        read back first, so 'changed' is only True when the value or TTL
+        actually differs from what's already there.
+        Args:
+            dns_zone (str): The DNS zone to send the update to
+            dns_record (str): Fully-qualified name of the record to set, including the trailing dot
+            dns_value (str): IP address to set for the A record
+            dns_ttl (int): Time-to-live for the record in seconds
+
+        Returns:
+            A DNSRecordResult
+        Throws:
+            DNSException, when the update fails
+        """
+        try:
+            existing_query = dns.message.make_query(qname=dns_record, rdtype='A')
+            existing_response = self._query(q=existing_query, where=self._dns_ip)
+            existing = {
+                (rdata.to_text(), rrset.ttl)
+                for rrset in existing_response.answer
+                for rdata in rrset
+            }
+            if existing == {(dns_value, dns_ttl)}:
+                return DNSRecordResult(changed=False, msg='Record is up to date')
+
+            keyring = dns.tsigkeyring.from_text(
+                {self._admin_key_name: self._admin_key_secret}
+            )
+            dns_update = dns.update.Update(
+                dns_zone, keyring=keyring, keyalgorithm=dns.tsig.HMAC_SHA256
+            )
+            dns_update.replace(dns_record, dns_ttl, 'A', dns_value)
+            update_response = self._query(q=dns_update, where=self._dns_ip)
+            if update_response.rcode() != dns.rcode.NOERROR:
+                raise DNSException(
+                    code=400,
+                    msg=f'DNS update failed: {dns.rcode.to_text(update_response.rcode())}',
+                )
+            return DNSRecordResult(changed=True, msg='Record updated')
         except dns.exception.DNSException as de:
             raise DNSException(code=400, msg=str(de) or 'Unknown Error') from de

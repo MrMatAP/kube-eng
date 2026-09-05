@@ -22,6 +22,23 @@ class _FakeRdata:
         self.strings = [text.encode()]
 
 
+class _FakeARdata:
+    def __init__(self, text: str):
+        self._text = text
+
+    def to_text(self) -> str:
+        return self._text
+
+
+class _FakeRRset(list):
+    """A minimal stand-in for dns.rrset.RRset: iterable over its rdatas, with
+    a 'ttl' attribute alongside."""
+
+    def __init__(self, rdatas, ttl: int):
+        super().__init__(rdatas)
+        self.ttl = ttl
+
+
 class _FakeResponse:
     def __init__(self, *, flags: int = 0, rcode: int | None = None, answer=None):
         self.flags = flags
@@ -114,5 +131,90 @@ def test_validate_wraps_dnspython_exceptions():
 
     with pytest.raises(DNSException) as exc_info:
         admin.validate(dns_zone='k8s', dns_domain='testcluster.k8s')
+
+    assert exc_info.value.code == 400
+
+
+def test_record_set_is_unchanged_when_value_and_ttl_already_match():
+    admin = _admin()
+    admin._query.return_value = _FakeResponse(
+        answer=[_FakeRRset([_FakeARdata('192.168.1.10')], ttl=1800)]
+    )
+
+    result = admin.record_set(
+        dns_zone='k8s',
+        dns_record='grafana.testcluster.k8s.',
+        dns_value='192.168.1.10',
+        dns_ttl=1800,
+    )
+
+    assert result.changed is False
+    admin._query.assert_called_once()  # only the readback, no update sent
+
+
+def test_record_set_updates_when_the_value_differs():
+    admin = _admin()
+    admin._query.side_effect = [
+        _FakeResponse(answer=[_FakeRRset([_FakeARdata('192.168.1.1')], ttl=1800)]),
+        _FakeResponse(rcode=dns.rcode.NOERROR),
+    ]
+
+    result = admin.record_set(
+        dns_zone='k8s',
+        dns_record='grafana.testcluster.k8s.',
+        dns_value='192.168.1.10',
+        dns_ttl=1800,
+    )
+
+    assert result.changed is True
+    assert admin._query.call_count == 2
+
+
+def test_record_set_updates_when_no_record_exists_yet():
+    admin = _admin()
+    admin._query.side_effect = [
+        _FakeResponse(answer=[]),
+        _FakeResponse(rcode=dns.rcode.NOERROR),
+    ]
+
+    result = admin.record_set(
+        dns_zone='k8s',
+        dns_record='grafana.testcluster.k8s.',
+        dns_value='192.168.1.10',
+        dns_ttl=1800,
+    )
+
+    assert result.changed is True
+
+
+def test_record_set_fails_when_the_update_is_rejected():
+    admin = _admin()
+    admin._query.side_effect = [
+        _FakeResponse(answer=[]),
+        _FakeResponse(rcode=dns.rcode.REFUSED),
+    ]
+
+    with pytest.raises(DNSException) as exc_info:
+        admin.record_set(
+            dns_zone='k8s',
+            dns_record='grafana.testcluster.k8s.',
+            dns_value='192.168.1.10',
+            dns_ttl=1800,
+        )
+
+    assert 'DNS update failed' in exc_info.value.msg
+
+
+def test_record_set_wraps_dnspython_exceptions():
+    admin = _admin()
+    admin._query.side_effect = dns.exception.Timeout()
+
+    with pytest.raises(DNSException) as exc_info:
+        admin.record_set(
+            dns_zone='k8s',
+            dns_record='grafana.testcluster.k8s.',
+            dns_value='192.168.1.10',
+            dns_ttl=1800,
+        )
 
     assert exc_info.value.code == 400

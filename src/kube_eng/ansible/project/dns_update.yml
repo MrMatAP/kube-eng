@@ -24,126 +24,96 @@
     when: "cluster.cni.ui | bool == true"
     block:
     - name: Update DNS with a record for CNI
-      ansible.builtin.import_role:
-        name: update_dns_record
-      vars:
-        dns_key_name: "{{ cluster.dns.key_name }}"
-        dns_key_secret: "{{ cluster.dns.key_secret }}"
-        dns_key_algorithm: "{{ cluster.dns.key_algorithm }}"
-        dns_server: "{{ cluster.dns.server }}"
-        dns_protocol: "{{ cluster.dns.protocol }}"
-        dns_ttl: "{{ cluster.dns.ttl | int }}"
-        dns_record: "{{ cluster.cni.hostname }}.{{ host.dns.zone }}."
+      dns_record:
+        dns_ip: "{{ infra.dns.ip }}"
+        dns_admin_key_name: "{{ infra.dns.admin_key_name }}"
+        dns_admin_key_secret: "{{ infra.dns.admin_key_secret }}"
+        dns_protocol: "{{ infra.dns.protocol }}"
+        dns_zone: "{{ infra.dns.zone }}"
+        dns_record: "{{ cluster.cni.hostname }}.{{ infra.dns.domain }}."
         dns_value: "{{ edge_gateway.resources[0].status.addresses[0].value }}"
+        dns_ttl: "{{ infra.dns.ttl | int }}"
 
   - name: Update Prometheus DNS, if enabled
     when: "stack.prometheus.enabled | bool == true"
     block:
     - name: Update DNS with a record for Prometheus
-      ansible.builtin.import_role:
-        name: update_dns_record
-      vars:
-        dns_key_name: "{{ cluster.dns.key_name }}"
-        dns_key_secret: "{{ cluster.dns.key_secret }}"
-        dns_key_algorithm: "{{ cluster.dns.key_algorithm }}"
-        dns_server: "{{ cluster.dns.server }}"
-        dns_protocol: "{{ cluster.dns.protocol }}"
-        dns_ttl: "{{ cluster.dns.ttl | int }}"
-        dns_record: "{{ stack.prometheus.hostname }}.{{ host.dns.zone }}."
+      dns_record:
+        dns_ip: "{{ infra.dns.ip }}"
+        dns_admin_key_name: "{{ infra.dns.admin_key_name }}"
+        dns_admin_key_secret: "{{ infra.dns.admin_key_secret }}"
+        dns_protocol: "{{ infra.dns.protocol }}"
+        dns_zone: "{{ infra.dns.zone }}"
+        dns_record: "{{ stack.prometheus.hostname }}.{{ infra.dns.domain }}."
         dns_value: "{{ edge_gateway.resources[0].status.addresses[0].value }}"
+        dns_ttl: "{{ infra.dns.ttl | int }}"
 
   - name: Update Alloy DNS, if enabled
     when: "stack.alloy.enabled | bool == true"
     block:
     - name: Update DNS with a record for Alloy
-      ansible.builtin.import_role:
-        name: update_dns_record
-      vars:
-        dns_key_name: "{{ cluster.dns.key_name }}"
-        dns_key_secret: "{{ cluster.dns.key_secret }}"
-        dns_key_algorithm: "{{ cluster.dns.key_algorithm }}"
-        dns_server: "{{ cluster.dns.server }}"
-        dns_protocol: "{{ cluster.dns.protocol }}"
-        dns_ttl: "{{ cluster.dns.ttl | int }}"
-        dns_record: "{{ stack.alloy.hostname }}.{{ host.dns.zone }}."
+      dns_record:
+        dns_ip: "{{ infra.dns.ip }}"
+        dns_admin_key_name: "{{ infra.dns.admin_key_name }}"
+        dns_admin_key_secret: "{{ infra.dns.admin_key_secret }}"
+        dns_protocol: "{{ infra.dns.protocol }}"
+        dns_zone: "{{ infra.dns.zone }}"
+        dns_record: "{{ stack.alloy.hostname }}.{{ infra.dns.domain }}."
         dns_value: "{{ edge_gateway.resources[0].status.addresses[0].value }}"
+        dns_ttl: "{{ infra.dns.ttl | int }}"
 
   - name: Update Loki DNS, if enabled
     when: "stack.loki.enabled | bool == true"
     block:
     - name: Update DNS with a record for Loki
-      ansible.builtin.import_role:
-        name: update_dns_record
-      vars:
-        dns_key_name: "{{ cluster.dns.key_name }}"
-        dns_key_secret: "{{ cluster.dns.key_secret }}"
-        dns_key_algorithm: "{{ cluster.dns.key_algorithm }}"
-        dns_server: "{{ cluster.dns.server }}"
-        dns_protocol: "{{ cluster.dns.protocol }}"
-        dns_ttl: "{{ cluster.dns.ttl | int }}"
-        dns_record: "{{ stack.loki.hostname }}.{{ host.dns.zone }}."
+      dns_record:
+        dns_ip: "{{ infra.dns.ip }}"
+        dns_admin_key_name: "{{ infra.dns.admin_key_name }}"
+        dns_admin_key_secret: "{{ infra.dns.admin_key_secret }}"
+        dns_protocol: "{{ infra.dns.protocol }}"
+        dns_zone: "{{ infra.dns.zone }}"
+        dns_record: "{{ stack.loki.hostname }}.{{ infra.dns.domain }}."
         dns_value: "{{ edge_gateway.resources[0].status.addresses[0].value }}"
-
-  - name: Update Keycloak DNS, if enabled
-    when: "stack.keycloak.enabled | bool == true"
-    block:
-    - name: Update DNS with a record for Keycloak
-      ansible.builtin.import_role:
-        name: update_dns_record
-      vars:
-        dns_key_name: "{{ cluster.dns.key_name }}"
-        dns_key_secret: "{{ cluster.dns.key_secret }}"
-        dns_key_algorithm: "{{ cluster.dns.key_algorithm }}"
-        dns_server: "{{ cluster.dns.server }}"
-        dns_protocol: "{{ cluster.dns.protocol }}"
-        dns_ttl: "{{ cluster.dns.ttl | int }}"
-        dns_record: "{{ stack.keycloak.hostname }}.{{ host.dns.zone }}."
-        dns_value: "{{ edge_gateway.resources[0].status.addresses[0].value }}"
+        dns_ttl: "{{ infra.dns.ttl | int }}"
 
   - name: Update Grafana DNS, if enabled
     when: "stack.grafana.enabled | bool == true"
     block:
     - name: Update DNS with a record for Grafana
-      ansible.builtin.import_role:
-        name: update_dns_record
-      vars:
-        dns_key_name: "{{ cluster.dns.key_name }}"
-        dns_key_secret: "{{ cluster.dns.key_secret }}"
-        dns_key_algorithm: "{{ cluster.dns.key_algorithm }}"
-        dns_server: "{{ cluster.dns.server }}"
-        dns_protocol: "{{ cluster.dns.protocol }}"
-        dns_ttl: "{{ cluster.dns.ttl | int }}"
-        dns_record: "{{ stack.grafana.hostname }}.{{ host.dns.zone }}."
+      dns_record:
+        dns_ip: "{{ infra.dns.ip }}"
+        dns_admin_key_name: "{{ infra.dns.admin_key_name }}"
+        dns_admin_key_secret: "{{ infra.dns.admin_key_secret }}"
+        dns_protocol: "{{ infra.dns.protocol }}"
+        dns_zone: "{{ infra.dns.zone }}"
+        dns_record: "{{ stack.grafana.hostname }}.{{ infra.dns.domain }}."
         dns_value: "{{ edge_gateway.resources[0].status.addresses[0].value }}"
+        dns_ttl: "{{ infra.dns.ttl | int }}"
 
   - name: Update Tempo DNS, if enabled
     when: "stack.tempo.enabled | bool == true"
     block:
     - name: Update DNS with a record for Tempo
-      ansible.builtin.import_role:
-        name: update_dns_record
-      vars:
-        dns_key_name: "{{ cluster.dns.key_name }}"
-        dns_key_secret: "{{ cluster.dns.key_secret }}"
-        dns_key_algorithm: "{{ cluster.dns.key_algorithm }}"
-        dns_server: "{{ cluster.dns.server }}"
-        dns_protocol: "{{ cluster.dns.protocol }}"
-        dns_ttl: "{{ cluster.dns.ttl | int }}"
-        dns_record: "{{ stack.tempo.hostname }}.{{ host.dns.zone }}."
+      dns_record:
+        dns_ip: "{{ infra.dns.ip }}"
+        dns_admin_key_name: "{{ infra.dns.admin_key_name }}"
+        dns_admin_key_secret: "{{ infra.dns.admin_key_secret }}"
+        dns_protocol: "{{ infra.dns.protocol }}"
+        dns_zone: "{{ infra.dns.zone }}"
+        dns_record: "{{ stack.tempo.hostname }}.{{ infra.dns.domain }}."
         dns_value: "{{ edge_gateway.resources[0].status.addresses[0].value }}"
+        dns_ttl: "{{ infra.dns.ttl | int }}"
 
   - name: Update Kiali DNS, if enabled
     when: "stack.kiali.enabled | bool == true"
     block:
     - name: Update DNS with a record for Kiali
-      ansible.builtin.import_role:
-        name: update_dns_record
-      vars:
-        dns_key_name: "{{ cluster.dns.key_name }}"
-        dns_key_secret: "{{ cluster.dns.key_secret }}"
-        dns_key_algorithm: "{{ cluster.dns.key_algorithm }}"
-        dns_server: "{{ cluster.dns.server }}"
-        dns_protocol: "{{ cluster.dns.protocol }}"
-        dns_ttl: "{{ cluster.dns.ttl | int }}"
-        dns_record: "{{ stack.kiali.hostname }}.{{ host.dns.zone }}."
+      dns_record:
+        dns_ip: "{{ infra.dns.ip }}"
+        dns_admin_key_name: "{{ infra.dns.admin_key_name }}"
+        dns_admin_key_secret: "{{ infra.dns.admin_key_secret }}"
+        dns_protocol: "{{ infra.dns.protocol }}"
+        dns_zone: "{{ infra.dns.zone }}"
+        dns_record: "{{ stack.kiali.hostname }}.{{ infra.dns.domain }}."
         dns_value: "{{ edge_gateway.resources[0].status.addresses[0].value }}"
+        dns_ttl: "{{ infra.dns.ttl | int }}"

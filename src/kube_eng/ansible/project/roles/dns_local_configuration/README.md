@@ -37,7 +37,7 @@ Example Playbook
     vars:
       dns_local_config_path: "{{ host.dns.config_path }}"
       dns_local_zone: "{{ host.dns.zone }}"
-      dns_local_update_key: "{{ admin_password }}"
+      dns_local_update_key: "{{ update_key }}"
 ```
 
 License
