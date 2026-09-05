@@ -16,6 +16,10 @@ class StackPrometheusConfig(RootConfigAware):
         default='https://raw.githubusercontent.com/prometheus-operator/prometheus-operator/main/example/prometheus-operator-crd/monitoring.coreos.com_podmonitors.yaml'
     )
 
+class StackMimirConfig(RootConfigAware):
+    enabled: bool = Field(default=True)
+    ns: str = Field(default='mimir')
+    hostname: str = Field(default='mimir')
 
 class StackAlloyConfig(RootConfigAware):
     enabled: bool = Field(default=True)
@@ -79,6 +83,7 @@ class StackKialiConfig(RootConfigAware):
 
 class StackConfig(RootConfigAware):
     prometheus: StackPrometheusConfig = Field(default_factory=StackPrometheusConfig)
+    mimir: StackMimirConfig = Field(default_factory=StackMimirConfig)
     alloy: StackAlloyConfig = Field(default_factory=StackAlloyConfig)
     loki: StackLokiConfig = Field(default_factory=StackLokiConfig)
     keycloak: StackKeycloakConfig = Field(default_factory=StackKeycloakConfig)

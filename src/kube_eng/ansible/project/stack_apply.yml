@@ -68,6 +68,47 @@
         dns_record: "{{ stack.prometheus.hostname }}.{{ host.dns.zone }}."
         dns_value: "{{ edge_gateway.resources[0].status.addresses[0].value }}"
 
+  - name: Deploy Mimir
+    when: "stack.mimir.enabled | bool == true"
+    block:
+      - name: Create and label the Mimir namespace
+        ansible.builtin.import_role:
+          name: create_namespace
+        vars:
+          ns: "{{ stack.mimir.ns }}"
+          mesh: "{{ cluster.mesh.kind }}"
+          waypoint: wp-mimir
+      - name: Install Mimir
+        kubernetes.core.helm:
+          name: mimir
+          create_namespace: false
+          release_namespace: "{{ stack.grafana.ns }}"
+          chart_ref: "{{ cluster.registry.url }}/kube-eng/kube-eng-mimir"
+          chart_version: "{{ host.tool.helm.chart_version }}"
+          binary_path: "{{ host.tool.helm.path }}"
+          wait: true
+          values:
+            cluster:
+              name: "{{ cluster.name }}"
+              edge:
+                kind: "{{ cluster.edge.kind }}"
+                fqdn: "{{ stack.mimir.hostname }}.{{ host.dns.zone }}"
+                gateway:
+                  name: "{{ cluster.edge.name }}"
+                  ns: "{{ cluster.edge.ns }}"
+      - name: Update DNS with a record for Mimir
+        ansible.builtin.import_role:
+          name: update_dns_record
+        vars:
+          dns_key_name: "{{ cluster.dns.key_name }}"
+          dns_key_secret: "{{ cluster.dns.key_secret }}"
+          dns_key_algorithm: "{{ cluster.dns.key_algorithm }}"
+          dns_server: "{{ cluster.dns.server }}"
+          dns_protocol: "{{ cluster.dns.protocol }}"
+          dns_ttl: "{{ cluster.dns.ttl | int }}"
+          dns_record: "{{ stack.mimir.hostname }}.{{ host.dns.zone }}."
+          dns_value: "{{ edge_gateway.resources[0].status.addresses[0].value }}"
+
   - name: Deploy Grafana
     when: "stack.grafana.enabled | bool == true"
     block:

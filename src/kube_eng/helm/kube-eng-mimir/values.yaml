@@ -1,0 +1,14 @@
+#
+# Default values for Kube Eng :: Mimir
+
+cluster:
+  name: cluster
+  edge:
+    kind: istio-gateway-api
+    fqdn: tempo.cluster.k8s
+    gateway:
+      name: edge
+      ns: edge
+      section: tempo
+
+mimir:

@@ -1,0 +1,26 @@
+apiVersion: v2
+name: kube-eng-mimir
+version: 0.0.0
+description: A Helm chart for Grafana Mimir in a kube-eng cluster
+type: application
+keywords:
+- kube-eng
+- mimir
+sources:
+- https://github.com/MrMatAP/kube-eng
+maintainers:
+- name: MrMatAP
+  email: imfeldma@gmail.com
+  url: https://github.com/MrMatAP
+appVersion: "3.2.0"
+annotations:
+  org.opencontainers.image.title: kube-eng-mimir
+  org.opencontainers.image.description: A customised Helm chart wrapping Grafana Mimir in Kube-Eng clusters
+  org.opencontainers.image.source: https://github.com/MrMatAP/kube-eng
+  org.opencontainers.image.licenses: "MIT, Apache-2.0"
+  org.opencontainers.image.authors: "MrMat <imfeldma@gmail.com>"
+  org.opencontainers.image.vendor: "The MrMat Organisation"
+dependencies:
+- name: mimir-distributed
+  version: 6.2.0
+  repository: https://grafana.github.io/helm-charts

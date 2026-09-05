@@ -774,6 +774,7 @@
     - kube-eng-pki-trust
     - kube-eng-prometheus
     - kube-eng-edge
+    - kube-eng-mimir
     - kube-eng-loki
     - kube-eng-alloy
     - kube-eng-tempo

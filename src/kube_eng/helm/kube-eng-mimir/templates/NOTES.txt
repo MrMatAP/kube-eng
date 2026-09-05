@@ -1,0 +1,3 @@
+# Kube-Eng :: Mimir
+
+FQDN:   {{ .Values.cluster.edge.fqdn }}
