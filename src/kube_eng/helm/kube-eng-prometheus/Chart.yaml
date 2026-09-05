@@ -12,7 +12,7 @@ maintainers:
 - name: MrMatAP
   email: imfeldma@gmail.com
   url: https://github.com/MrMatAP
-appVersion: "v3.8.1"
+appVersion: "v0.93.1"
 annotations:
   org.opencontainers.image.title: kube-eng-prometheus
   org.opencontainers.image.description: A customised Helm chart wrapping Prometheus in Kube-Eng clusters
@@ -22,6 +22,6 @@ annotations:
   org.opencontainers.image.vendor: "The MrMat Organisation"
 dependencies:
 - name: kube-prometheus-stack
-  version: 86.2.0
+  version: 89.2.2
   repository: https://prometheus-community.github.io/helm-charts
   alias: prometheus

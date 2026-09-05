@@ -12,7 +12,7 @@ maintainers:
 - name: MrMatAP
   email: imfeldma@gmail.com
   url: https://github.com/MrMatAP
-appVersion: "1.18.5"
+appVersion: "1.20.1"
 annotations:
   org.opencontainers.image.title: kube-eng-cilium
   org.opencontainers.image.description: A customised Helm chart wrapping Cilium in Kube-Eng clusters
@@ -22,5 +22,5 @@ annotations:
   org.opencontainers.image.vendor: "The MrMat Organisation"
 dependencies:
 - name: cilium
-  version: 1.19.4
+  version: 1.20.1
   repository: https://helm.cilium.io/

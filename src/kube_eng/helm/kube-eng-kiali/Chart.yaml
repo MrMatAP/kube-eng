@@ -13,7 +13,7 @@ maintainers:
 - name: MrMatAP
   email: imfeldma@gmail.com
   url: https://github.com/MrMatAP
-appVersion: "v2.20.0"
+appVersion: "v2.31.0"
 annotations:
   org.opencontainers.image.title: kube-eng-kiali
   org.opencontainers.image.description: A customised Helm chart wrapping Kiali in Kube-Eng clusters
@@ -23,5 +23,5 @@ annotations:
   org.opencontainers.image.vendor: "The MrMat Organisation"
 dependencies:
 - name: kiali-operator
-  version: 2.27.0
+  version: 2.31.0
   repository: https://kiali.org/helm-charts

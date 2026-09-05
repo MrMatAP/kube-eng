@@ -12,7 +12,7 @@ maintainers:
 - name: MrMatAP
   email: imfeldma@gmail.com
   url: https://github.com/MrMatAP
-appVersion: "3.6.7"
+appVersion: "3.6.12"
 annotations:
   org.opencontainers.image.title: kube-eng-loki
   org.opencontainers.image.description: A customised Helm chart wrapping Grafana Loki in Kube-Eng clusters
@@ -23,5 +23,5 @@ annotations:
 dependencies:
 - name: loki
   repository: https://grafana.github.io/helm-charts
-  version: 7.0.0
+  version: 7.3.0
   alias: loki

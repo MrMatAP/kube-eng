@@ -15,7 +15,7 @@ tempo:
   extraVolumes:
   - name: truststore
     configMap:
-      name: tempo-truststore
+      name: ca-trust
   tempo:
     reportingEnabled: false
     metricsGenerator:

@@ -12,7 +12,7 @@ maintainers:
 - name: MrMatAP
   email: imfeldma@gmail.com
   url: https://github.com/MrMatAP
-appVersion: "1.28.2"
+appVersion: "1.30.4"
 annotations:
   org.opencontainers.image.title: kube-eng-istio
   org.opencontainers.image.description: A customised Helm chart wrapping Istio in Kube-Eng clusters
@@ -23,24 +23,24 @@ annotations:
 dependencies:
 - name: base
   repository: https://istio-release.storage.googleapis.com/charts
-  version: 1.30.1
+  version: 1.30.4
   alias: overrides_base
 - name: istiod
   repository: https://istio-release.storage.googleapis.com/charts
-  version: 1.30.1
+  version: 1.30.4
   alias: overrides_istiod
 - name: cni
   repository: https://istio-release.storage.googleapis.com/charts
-  version: 1.30.1
+  version: 1.30.4
   alias: overrides_cni
   condition: ambient
 - name: ztunnel
   repository: https://istio-release.storage.googleapis.com/charts
-  version: 1.30.1
+  version: 1.30.4
   alias: overrides_ztunnel
   condition: ambient
 - name: gateway
   repository: https://istio-release.storage.googleapis.com/charts
-  version: 1.30.1
+  version: 1.30.4
   alias: overrides_gateway
   condition: classic_gateway

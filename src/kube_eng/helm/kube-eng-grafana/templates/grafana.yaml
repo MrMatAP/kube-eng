@@ -26,9 +26,9 @@ spec:
           - name: dashboard-provisioning-config
             configMap:
               name: dashboard-provisioning-config
-          - name: mrmat-ca-trust
+          - name: ca-trust
             configMap:
-              name: mrmat-ca-trust
+              name: ca-trust
           containers:
             - name: grafana
               volumeMounts:
@@ -37,7 +37,7 @@ spec:
               - mountPath: /var/lib/grafana/dashboards
                 name: dashboards
               - mountPath: /opt/mrmat
-                name: mrmat-ca-trust
+                name: ca-trust
                 readOnly: true
               env:
                 - name: GF_SECURITY_ADMIN_USER

@@ -1,7 +1,7 @@
 
 {{/* Common labels */}}
 {{ define "common.labels" }}
-app: tempo
+app: mimir
 version: {{ .Chart.AppVersion }}
 app.kubernetes.io/name: mimir
 app.kubernetes.io/component: kube-eng

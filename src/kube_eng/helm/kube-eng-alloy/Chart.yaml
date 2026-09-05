@@ -12,7 +12,7 @@ maintainers:
 - name: MrMatAP
   email: imfeldma@gmail.com
   url: https://github.com/MrMatAP
-appVersion: "v1.14.0"
+appVersion: "v1.19.2"
 annotations:
   org.opencontainers.image.title: kube-eng-alloy
   org.opencontainers.image.description: A customised Helm chart wrapping Grafana Alloy in Kube-Eng clusters
@@ -23,4 +23,4 @@ annotations:
 dependencies:
 - name: alloy
   repository: https://grafana.github.io/helm-charts
-  version: 1.8.2
+  version: 1.12.1
