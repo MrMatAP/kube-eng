@@ -16,7 +16,7 @@ class IdPConfig(RootConfigAware, abc.ABC):
     admin_password: str = Field(
         default_factory=lambda: secrets.token_urlsafe(16),
         description=(
-            'IdP administrative password. If empty, defaults to the admin password'
+            'IdP administrative password'
         ),
     )
 
