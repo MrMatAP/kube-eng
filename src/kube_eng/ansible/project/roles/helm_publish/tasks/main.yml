@@ -1,15 +1,15 @@
 #SPDX-License-Identifier: MIT-0
 ---
-- name: Check if chart dependencies are present
-  ansible.builtin.find:
-    paths: "{{ chart_src_path }}/charts"
-    patterns: "*.tgz"
-  register: chart_deps
-
-- name: Fetch chart dependencies (first build or missing)
+- name: Fetch chart dependencies
   ansible.builtin.command:
-    cmd: "{{ helm_tool_path }} dependency build {{ chart_src_path }}"
-  when: chart_deps.files | length == 0
+    cmd: "{{ helm_tool_path }} dependency update {{ chart_src_path }}"
+  # 'dependency build' trusts an existing Chart.lock verbatim, even when it
+  # no longer matches Chart.yaml (e.g. after a manual version bump) -- a
+  # stale cached .tgz left over from before such a bump then silently
+  # ignores that dependency's 'condition', unconditionally installing it.
+  # 'update' always reconciles charts/ and Chart.lock against the current
+  # Chart.yaml, so it's the only one of the two that's safe to skip
+  # forgetting to re-run by hand.
 
 - name: Authenticate to the registry
   ansible.builtin.command:
