@@ -12,9 +12,10 @@ data:
       format = "logfmt"
     }
 
+    {{- if .Values.logging.enabled }}
     loki.write "kube_eng_loki" {
       endpoint {
-        url = "http://loki.loki.svc.cluster.local:3100/loki/api/v1/push"
+        url = "{{ .Values.logging.lokiUrl }}"
       }
     }
 
@@ -101,3 +102,4 @@ data:
       }
       forward_to = [loki.write.kube_eng_loki.receiver]
     }
+    {{- end }}

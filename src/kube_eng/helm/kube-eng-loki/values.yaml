@@ -4,12 +4,11 @@ cluster:
   name: cluster
 
 loki:
-  deploymentMode: SingleBinary
-  singleBinary:
-    replicas: 1
-    persistence:
-      enabled: true
-      size: 3Gi
+  # Distributed (microservices) mode -- the modern equivalent of the old,
+  # now-archived standalone loki-distributed chart, folded into this chart
+  # as one of its deployment modes. See the "Distributed Mode" replicas
+  # below.
+  deploymentMode: Distributed
   loki:
     auth_enabled: false
     commonConfig:
@@ -22,12 +21,15 @@ loki:
         admin: loki-admin
       type: s3
       s3:
-        endpoint: https://s3:9000
         s3ForcePathStyle: true
-        accessKeyId: null
-        secretAccessKey: null
         signatureVersion: v4
-        # TODO: Inject the CA
+        # endpoint/accessKeyId/secretAccessKey are injected by stack_apply.yml
+        # at deploy time from infra.s3, the same as Mimir's
+        # common.storage.s3 -- baking placeholder values in here is
+        # pointless, they're always overridden.
+        # TODO: Inject the cluster CA (see kube-eng-pki-trust's ca-trust
+        # ConfigMap) once the correct field for this Loki version is
+        # confirmed, same as Mimir's common.storage.s3.http.insecure_skip_verify.
         http_config:
           insecure_skip_verify: true
     schemaConfig:
@@ -62,8 +64,16 @@ loki:
         index:
           prefix: index_
           period: 24h
+  # A synthetic log-generating/verifying DaemonSet -- one pod per node --
+  # useful for testing a real deployment, not for a local single-tenant
+  # cluster. `test.enabled` must be turned off alongside it: the chart
+  # refuses to render at all otherwise (its own helm-test hook requires the
+  # canary it exercises).
   lokiCanary:
+    enabled: false
     podLabels: {}
+  test:
+    enabled: false
   memberlist:
     service:
       publishNotReadyAddresses: true
@@ -71,13 +81,14 @@ loki:
     enabled: false
   enterprise:
     enabled: false
+  # Memcached-backed caches: pure performance optimisations, not needed for
+  # correctness. Disabled for the smallest footprint, same as Mimir's
+  # chunks-cache/index-cache/metadata-cache/results-cache.
+  resultsCache:
+    enabled: false
   chunksCache:
-    resources:
-      limits:
-        memory: 4Gi
-      requests:
-        memory: 4Gi
-  # Simple Scalable Mode
+    enabled: false
+  # Simple Scalable Mode -- unused, we run Distributed instead.
   write:
     replicas: 0
   read:
@@ -85,21 +96,28 @@ loki:
   backend:
     replicas: 0
 
-  # Microservice Mode
+  # Distributed Mode: one replica of each core component, the smallest
+  # topology that's actually a working distributed deployment.
   ingester:
-    replicas: 0
+    replicas: 1
+    # Zone-aware replication defaults on and spreads 'replicas' across 3
+    # zone StatefulSets -- 3 ingester pods for replicas: 1, not 1. Not
+    # useful with a single replica anyway; matches Mimir's ingester.
+    zoneAwareReplication:
+      enabled: false
   distributor:
-    replicas: 0
+    replicas: 1
   querier:
-    replicas: 0
+    replicas: 1
   queryFrontend:
-    replicas: 0
+    replicas: 1
   queryScheduler:
-    replicas: 0
+    replicas: 1
   indexGateway:
-    replicas: 0
+    replicas: 1
   compactor:
-    replicas: 0
+    replicas: 1
+  # Bloom filters accelerate large-scale queries; not needed at this size.
   bloomGateway:
     replicas: 0
   bloomPlanner:

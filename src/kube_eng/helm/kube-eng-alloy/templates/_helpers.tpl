@@ -3,7 +3,7 @@
 {{ define "common.labels" }}
 app: alloy
 version: {{ .Chart.AppVersion }}
-app.kubernetes.io/name: tempo
+app.kubernetes.io/name: alloy
 app.kubernetes.io/component: kube-eng
 app.kubernetes.io/version: {{ .Chart.AppVersion }}
 app.kubernetes.io/part-of: kube-eng-stack

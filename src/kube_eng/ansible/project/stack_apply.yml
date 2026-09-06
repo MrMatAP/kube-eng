@@ -259,6 +259,9 @@
               podLabels:
                 app: alloy
                 version: "{{ (alloy_chart_info.stdout | from_yaml).appVersion }}"
+          logging:
+            enabled: "{{ stack.loki.enabled }}"
+            lokiUrl: "http://loki.{{ stack.loki.ns }}.svc.cluster.local:3100/loki/api/v1/push"
     - name: Update DNS with a record for Alloy
       dns_record:
         dns_ip: "{{ infra.dns.ip }}"

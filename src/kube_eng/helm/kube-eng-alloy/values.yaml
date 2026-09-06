@@ -10,6 +10,13 @@ cluster:
       ns: edge
       section: alloy
 
+# Pod log forwarding to Loki (see templates/cm.yaml). Off by default so the
+# chart renders standalone without assuming Loki exists; stack_apply.yml
+# switches this on (and supplies the real push URL) when stack.loki.enabled.
+logging:
+  enabled: false
+  lokiUrl: "http://loki.loki.svc.cluster.local:3100/loki/api/v1/push"
+
 alloy:
   alloy:
     configMap:

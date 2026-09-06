@@ -30,9 +30,10 @@ tempo:
         backend: s3
         s3:
           bucket: tempo-traces
-          endpoint: "https://s3.kind:9000"
-          access_key: null
-          secret_key: null
+          # endpoint/access_key/secret_key are injected by stack_apply.yml
+          # at deploy time from infra.s3, the same as Mimir's
+          # common.storage.s3 -- baking placeholder values in here is
+          # pointless, they're always overridden.
           region: us-east-1
           insecure: false
           tls_insecure_skip_verify: false
