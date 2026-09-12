@@ -1,3 +1,4 @@
+{{- if .Values.integration.prometheus.enabled }}
 apiVersion: grafana.integreatly.org/v1beta1
 kind: GrafanaDatasource
 metadata:
@@ -15,3 +16,4 @@ spec:
     access: proxy
     url: {{ .Values.integration.prometheus.url }}
     isDefault: {{ .Values.integration.prometheus.isDefault }}
+{{- end }}

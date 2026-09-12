@@ -29,16 +29,39 @@ integration:
     user: grafana
     password: ~
     ssl_mode: require
+  # Every datasource below follows the same shape: {enabled, url[, isDefault]}.
+  # stack_apply.yml sets `enabled` from the matching stack.<component>.enabled
+  # and `url` from that component's own query_url computed field, so a
+  # datasource only renders (see templates/datasource-*.yaml) when the thing
+  # it points at is actually installed. Standalone (no stack_apply.yml)
+  # renders here default to the component's own local install.
   prometheus:
-    url: http://prometheus.prometheus.svc.cluster.local
+    enabled: true
+    url: http://prometheus-operated.prometheus.svc.cluster.local:9090/
     isDefault: true
+  mimir:
+    enabled: false
+    url: http://mimir-gateway.mimir.svc.cluster.local/prometheus
+    isDefault: false
+  loki:
+    enabled: false
+    url: http://loki.loki.svc.cluster.local:3100
+  tempo:
+    enabled: false
+    url: http://tempo.tempo.svc.cluster.local:3200
 
 operator:
   replicas: 1
   clusterDomain: cluster.local
   isOpenShift: false
+  # This renders a ServiceMonitor CR, which requires the monitoring.coreos.com
+  # CRDs to already exist in the cluster -- install fails outright otherwise.
+  # Off by default so the chart renders standalone without assuming they're
+  # present; stack_apply.yml switches this on only when
+  # stack.prometheus.chart_enabled (the CRDs are always installed alongside
+  # that chart, see docs/adr/0005).
   serviceMonitor:
-    enabled: true
+    enabled: false
     additionalLabels:
       app.kubernetes.io/monitored-by: prometheus
   dashboard:

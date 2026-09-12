@@ -12,10 +12,39 @@ cluster:
 
 # Pod log forwarding to Loki (see templates/cm.yaml). Off by default so the
 # chart renders standalone without assuming Loki exists; stack_apply.yml
-# switches this on (and supplies the real push URL) when stack.loki.enabled.
+# switches this on (and supplies the real push URL) when stack.alloy.logs.enabled.
 logging:
   enabled: false
   lokiUrl: "http://loki.loki.svc.cluster.local:3100/loki/api/v1/push"
+
+# Metrics scraping + remote_write to Mimir (see templates/cm.yaml and
+# templates/rbac-metrics.yaml). Off by default, same reasoning as logging
+# above; stack_apply.yml switches this on when stack.alloy.metrics.enabled.
+#
+# This scrapes every target natively via discovery.kubernetes +
+# prometheus.scrape, replicating the same target set the kube-eng-prometheus
+# chart's ServiceMonitors describe -- not by consuming those ServiceMonitor
+# CRs. Alloy therefore needs no monitoring.coreos.com CRDs and no
+# Prometheus/Prometheus-Operator installed at all to collect metrics; the
+# only real dependency left is that the *workloads* being scraped (Grafana,
+# Kiali, Loki, Tempo, kube-state-metrics/node-exporter if stack.prometheus is
+# enabled, ...) actually exist. See docs/adr/0005 for the completeness/sanity
+# review of what this does and doesn't cover.
+metrics:
+  enabled: false
+  remoteWriteUrl: "http://mimir-gateway.mimir.svc.cluster.local/api/v1/push"
+  # Namespaces/names of the things being scraped, so this doesn't hardcode
+  # what's actually configurable elsewhere in the stack. stack_apply.yml
+  # wires these from the matching stack.<x>.ns / cluster.<x> values.
+  targets:
+    prometheusNs: prometheus
+    certManagerNs: cert-manager
+    edgeNs: edge
+    edgeGatewayName: gw-edge
+    kialiNs: kiali
+    lokiNs: loki
+    tempoNs: tempo
+    grafanaNs: grafana
 
 alloy:
   alloy:

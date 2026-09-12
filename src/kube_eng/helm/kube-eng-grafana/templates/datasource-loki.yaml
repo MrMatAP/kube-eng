@@ -1,3 +1,4 @@
+{{- if .Values.integration.loki.enabled }}
 apiVersion: grafana.integreatly.org/v1beta1
 kind: GrafanaDatasource
 metadata:
@@ -13,5 +14,6 @@ spec:
     name: loki
     type: loki
     access: proxy
-    url: http://loki.loki.svc.cluster.local:3100
-    isDefault: true
+    url: {{ .Values.integration.loki.url }}
+    isDefault: false
+{{- end }}

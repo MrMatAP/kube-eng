@@ -23,6 +23,13 @@ spec:
           principals:
           - cluster.local/ns/prometheus/sa/prometheus-prometheus
           - cluster.local/ns/prometheus/sa/prometheus-operator
+          # stack.alloy.metrics scrapes kube-state-metrics (port 8080) the
+          # same way Prometheus's own server does when it's disabled and
+          # only the exporters this chart bundles are running (see
+          # docs/adr/0005). node-exporter isn't listed here because its
+          # chart default runs hostNetwork, which ambient mesh doesn't
+          # intercept, so no policy is needed for it.
+          - cluster.local/ns/alloy/sa/sa-alloy
     to:
       - operation:
           ports:

@@ -23,7 +23,14 @@
       msg: "Could not determine the external IP address of the Edge Gateway. Have you started cloud-provider-kind?"
 
   - name: Deploy Prometheus
-    when: "stack.prometheus.enabled | bool == true"
+    # This chart also carries the ServiceMonitor/PodMonitor CRDs and the
+    # kube-state-metrics/node-exporter exporters stack.alloy.metrics needs to
+    # do anything -- so it deploys whenever either wants it, with the
+    # Prometheus server component itself switched by stack.prometheus.enabled
+    # specifically (see docs/adr/0005). The DNS record and edge exposure
+    # below are gated on stack.prometheus.enabled alone: there is nothing to
+    # reach at that hostname when only the exporters are running.
+    when: "stack.prometheus.chart_enabled | bool == true"
     block:
     - name: Create and label the Prometheus namespace
       ansible.builtin.import_role:
@@ -52,11 +59,16 @@
                 ns: "{{ cluster.edge.ns }}"
           prometheus:
             prometheus:
+              # Explicit, not left to the chart's own default, so it can be
+              # switched off while the rest of the release (CRDs,
+              # kube-state-metrics, node-exporter) stays installed.
+              enabled: "{{ stack.prometheus.enabled }}"
               prometheusSpec:
                 externalLabels:
                   origin_prometheus: "{{ cluster.name }}"
-                remoteWrite: "{{ [{'url': 'http://mimir-gateway.' ~ stack.mimir.ns ~ '.svc.cluster.local/api/v1/push'}] if stack.mimir.enabled else [] }}"
+                remoteWrite: "{{ [{'url': stack.prometheus.mimir.push_url}] if stack.prometheus.mimir.enabled else [] }}"
     - name: Update DNS with a record for Prometheus
+      when: "stack.prometheus.enabled | bool == true"
       dns_record:
         dns_ip: "{{ infra.dns.ip }}"
         dns_admin_key_name: "{{ infra.dns.admin_key_name }}"
@@ -207,7 +219,29 @@
               password: "{{ stack.grafana.db_password }}"
               ssl_mode: "{{ stack.grafana.db_ssl_mode }}"
             prometheus:
-              url: "http://prometheus-operated.{{ stack.prometheus.ns }}.svc.cluster.local:9090/"
+              enabled: "{{ stack.prometheus.enabled }}"
+              url: "{{ stack.prometheus.query_url }}"
+              isDefault: "{{ stack.prometheus.enabled }}"
+            mimir:
+              # Mimir is only worth showing as a datasource once something
+              # actually writes into it -- otherwise it's a datasource
+              # pointed at an empty store, which is worse than not declaring
+              # one at all.
+              enabled: "{{ stack.mimir.enabled and (stack.prometheus.mimir.enabled or stack.alloy.metrics.enabled) }}"
+              url: "{{ stack.mimir.query_url }}"
+              isDefault: "{{ (not stack.prometheus.enabled) and stack.mimir.enabled }}"
+            loki:
+              enabled: "{{ stack.loki.enabled }}"
+              url: "{{ stack.loki.query_url }}"
+            tempo:
+              enabled: "{{ stack.tempo.enabled }}"
+              url: "{{ stack.tempo.query_url }}"
+          operator:
+            # Renders a ServiceMonitor CR, which needs the monitoring.coreos.com
+            # CRDs the kube-eng-prometheus chart carries -- only ask for it
+            # when that chart is actually installed.
+            serviceMonitor:
+              enabled: "{{ stack.prometheus.chart_enabled }}"
     - name: Update DNS with a record for Grafana
       dns_record:
         dns_ip: "{{ infra.dns.ip }}"
@@ -260,8 +294,20 @@
                 app: alloy
                 version: "{{ (alloy_chart_info.stdout | from_yaml).appVersion }}"
           logging:
-            enabled: "{{ stack.loki.enabled }}"
-            lokiUrl: "http://loki.{{ stack.loki.ns }}.svc.cluster.local:3100/loki/api/v1/push"
+            enabled: "{{ stack.alloy.logs.enabled }}"
+            lokiUrl: "{{ stack.alloy.logs.push_url }}"
+          metrics:
+            enabled: "{{ stack.alloy.metrics.enabled }}"
+            remoteWriteUrl: "{{ stack.alloy.metrics.push_url }}"
+            targets:
+              prometheusNs: "{{ stack.prometheus.ns }}"
+              certManagerNs: "{{ cluster.pki.ns }}"
+              edgeNs: "{{ cluster.edge.ns }}"
+              edgeGatewayName: "{{ cluster.edge.name }}"
+              kialiNs: "{{ stack.kiali.ns }}"
+              lokiNs: "{{ stack.loki.ns }}"
+              tempoNs: "{{ stack.tempo.ns }}"
+              grafanaNs: "{{ stack.grafana.ns }}"
     - name: Update DNS with a record for Alloy
       dns_record:
         dns_ip: "{{ infra.dns.ip }}"
@@ -329,6 +375,8 @@
             podLabels:
               app: loki
               version: "{{ (loki_chart_info.stdout | from_yaml).appVersion }}"
+          serviceMonitor:
+            enabled: "{{ stack.prometheus.chart_enabled }}"
     - name: Update DNS with a record for Loki
       dns_record:
         dns_ip: "{{ infra.dns.ip }}"
@@ -388,6 +436,8 @@
                     region: us-east-1
                     insecure: false
                     tls_insecure_skip_verify: true
+            serviceMonitor:
+              enabled: "{{ stack.prometheus.chart_enabled }}"
     - name: Update DNS with a record for Tempo
       dns_record:
         dns_ip: "{{ infra.dns.ip }}"
@@ -490,6 +540,8 @@
               internal_url: "http://tempo.{{ stack.tempo.ns }}.svc.cluster.local:3200/"
               external_url: "https://{{ stack.tempo.hostname }}.{{ infra.dns.domain }}/"
               collector_url: "tempo.{{ stack.tempo.ns }}.svc.cluster.local:4317"
+          serviceMonitor:
+            enabled: "{{ stack.prometheus.chart_enabled }}"
     - name: Update DNS with a record for Kiali
       dns_record:
         dns_ip: "{{ infra.dns.ip }}"

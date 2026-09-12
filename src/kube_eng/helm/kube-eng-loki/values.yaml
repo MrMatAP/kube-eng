@@ -3,6 +3,14 @@
 cluster:
   name: cluster
 
+# Renders a ServiceMonitor CR (templates/sm-loki.yaml), which requires the
+# monitoring.coreos.com CRDs to already exist -- install fails outright
+# otherwise. Off by default so the chart renders standalone without
+# assuming they're present; stack_apply.yml switches this on only when
+# stack.prometheus.chart_enabled (see docs/adr/0005).
+serviceMonitor:
+  enabled: false
+
 loki:
   # Distributed (microservices) mode -- the modern equivalent of the old,
   # now-archived standalone loki-distributed chart, folded into this chart

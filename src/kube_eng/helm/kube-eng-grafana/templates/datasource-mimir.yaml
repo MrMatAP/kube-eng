@@ -1,0 +1,21 @@
+{{- if .Values.integration.mimir.enabled }}
+apiVersion: grafana.integreatly.org/v1beta1
+kind: GrafanaDatasource
+metadata:
+  name: datasource-mimir
+  labels:
+    {{ include "common.labels" . | nindent 4 }}
+    app.kubernetes.io/name: datasource-mimir
+spec:
+  instanceSelector:
+    matchLabels:
+      dashboards: "grafana"
+  datasource:
+    # Mimir serves the Prometheus-compatible query API, so this is a
+    # "prometheus"-type datasource pointed at Mimir's gateway.
+    name: mimir
+    type: prometheus
+    access: proxy
+    url: {{ .Values.integration.mimir.url }}
+    isDefault: {{ .Values.integration.mimir.isDefault }}
+{{- end }}

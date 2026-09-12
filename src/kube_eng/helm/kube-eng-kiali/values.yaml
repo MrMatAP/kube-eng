@@ -17,6 +17,14 @@ kiali-operator:
   cr:
     create: false
 
+# Renders a ServiceMonitor CR (templates/sm-kiali.yml), which requires the
+# monitoring.coreos.com CRDs to already exist -- install fails outright
+# otherwise. Off by default so the chart renders standalone without
+# assuming they're present; stack_apply.yml switches this on only when
+# stack.prometheus.chart_enabled (see docs/adr/0005).
+serviceMonitor:
+  enabled: false
+
 integration:
   keycloak:
     client_id: null

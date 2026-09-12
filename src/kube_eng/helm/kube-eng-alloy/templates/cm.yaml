@@ -103,3 +103,569 @@ data:
       forward_to = [loki.write.kube_eng_loki.receiver]
     }
     {{- end }}
+
+    {{- if .Values.metrics.enabled }}
+    // -----------------------------------------------------------------------
+    // Metrics scraping. Every job below replicates one of the ServiceMonitors
+    // the kube-eng-prometheus chart (or another chart) declares for
+    // Prometheus, but via native discovery.kubernetes + prometheus.scrape --
+    // Alloy never reads a ServiceMonitor/PodMonitor CR, so none of this
+    // depends on the monitoring.coreos.com CRDs, the Prometheus Operator, or
+    // stack.prometheus being enabled at all. The only real dependency left
+    // per job is that the workload it targets actually exists.
+    //
+    // See docs/adr/0005 for the completeness/sanity review of this set,
+    // including three known caveats:
+    //  - kube-state-metrics, node-exporter, kube-etcd, kube-scheduler,
+    //    kube-controller-manager and kube-proxy are scraped via the Service
+    //    objects the kube-eng-prometheus chart itself creates in kube-system
+    //    (for the latter four, wrapping kubeadm-managed static pods this
+    //    chart doesn't own). These six jobs are therefore *not* independent
+    //    of stack.prometheus the way kubelet/apiserver/coredns and every
+    //    app-level job below are -- they still need
+    //    stack.prometheus.chart_enabled to be true, just not the CRDs.
+    //  - kube-etcd/kube-scheduler/kube-controller-manager/kube-proxy are
+    //    additionally replicated for parity with Prometheus's own
+    //    configuration even though, on an unmodified kind cluster, their
+    //    metrics ports are kubeadm-default bound to the control-plane
+    //    node's loopback interface only -- these jobs, and Prometheus's
+    //    equivalent ServiceMonitors, are expected to find no reachable
+    //    targets today regardless of chart_enabled.
+    //  - istiod's ServiceMonitor is gated on kube-eng-istio's
+    //    monitoring.enabled, which nothing currently turns on, so it isn't
+    //    part of "currently deployed" and has no equivalent job here.
+
+    discovery.kubernetes "endpoints" {
+      role = "endpoints"
+    }
+
+    discovery.kubernetes "nodes" {
+      role = "node"
+    }
+
+    // --- kubelet, cAdvisor, probes: metrics-server-style direct node scrape
+    // (mirrors kube-eng-prometheus's kubelet.serviceMonitor: https,
+    // insecureSkipVerify, cAdvisor, probes all true).
+    discovery.relabel "kubelet" {
+      targets = discovery.kubernetes.nodes.targets
+      rule {
+        source_labels = ["__meta_kubernetes_node_address_InternalIP"]
+        action        = "replace"
+        target_label  = "__address__"
+        replacement   = "${1}:10250"
+      }
+      rule {
+        source_labels = ["__meta_kubernetes_node_name"]
+        action        = "replace"
+        target_label  = "node"
+      }
+    }
+
+    prometheus.scrape "kubelet" {
+      targets            = discovery.relabel.kubelet.output
+      forward_to         = [prometheus.remote_write.kube_eng_metrics.receiver]
+      job_name           = "kubelet"
+      scrape_interval    = "30s"
+      scheme             = "https"
+      bearer_token_file  = "/var/run/secrets/kubernetes.io/serviceaccount/token"
+      tls_config {
+        ca_file              = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
+        insecure_skip_verify = true
+      }
+    }
+
+    prometheus.scrape "kubelet_cadvisor" {
+      targets            = discovery.relabel.kubelet.output
+      forward_to         = [prometheus.remote_write.kube_eng_metrics.receiver]
+      job_name           = "kubelet"
+      metrics_path       = "/metrics/cadvisor"
+      scrape_interval    = "30s"
+      scheme             = "https"
+      bearer_token_file  = "/var/run/secrets/kubernetes.io/serviceaccount/token"
+      tls_config {
+        ca_file              = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
+        insecure_skip_verify = true
+      }
+    }
+
+    prometheus.scrape "kubelet_probes" {
+      targets            = discovery.relabel.kubelet.output
+      forward_to         = [prometheus.remote_write.kube_eng_metrics.receiver]
+      job_name           = "kubelet"
+      metrics_path       = "/metrics/probes"
+      scrape_interval    = "30s"
+      scheme             = "https"
+      bearer_token_file  = "/var/run/secrets/kubernetes.io/serviceaccount/token"
+      tls_config {
+        ca_file              = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
+        insecure_skip_verify = true
+      }
+    }
+
+    // --- kube-apiserver: the built-in "kubernetes" Service in "default".
+    discovery.relabel "apiserver" {
+      targets = discovery.kubernetes.endpoints.targets
+      rule {
+        source_labels = ["__meta_kubernetes_namespace"]
+        regex         = "default"
+        action        = "keep"
+      }
+      rule {
+        source_labels = ["__meta_kubernetes_service_label_component"]
+        regex         = "apiserver"
+        action        = "keep"
+      }
+      rule {
+        source_labels = ["__meta_kubernetes_service_label_provider"]
+        regex         = "kubernetes"
+        action        = "keep"
+      }
+      rule {
+        source_labels = ["__meta_kubernetes_endpoint_port_name"]
+        regex         = "https"
+        action        = "keep"
+      }
+    }
+
+    prometheus.scrape "apiserver" {
+      targets           = discovery.relabel.apiserver.output
+      forward_to        = [prometheus.remote_write.kube_eng_metrics.receiver]
+      job_name          = "apiserver"
+      scheme            = "https"
+      bearer_token_file = "/var/run/secrets/kubernetes.io/serviceaccount/token"
+      tls_config {
+        ca_file     = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
+        server_name = "kubernetes"
+      }
+    }
+
+    // --- CoreDNS: the built-in "kube-dns" Service in kube-system.
+    discovery.relabel "coredns" {
+      targets = discovery.kubernetes.endpoints.targets
+      rule {
+        source_labels = ["__meta_kubernetes_namespace"]
+        regex         = "kube-system"
+        action        = "keep"
+      }
+      rule {
+        source_labels = ["__meta_kubernetes_service_label_k8s_app"]
+        regex         = "kube-dns"
+        action        = "keep"
+      }
+      rule {
+        source_labels = ["__meta_kubernetes_endpoint_port_name"]
+        regex         = "metrics"
+        action        = "keep"
+      }
+    }
+
+    prometheus.scrape "coredns" {
+      targets    = discovery.relabel.coredns.output
+      forward_to = [prometheus.remote_write.kube_eng_metrics.receiver]
+      job_name   = "coredns"
+    }
+
+    // --- kube-etcd/kube-scheduler/kube-controller-manager/kube-proxy: the
+    // Services kube-eng-prometheus's chart creates in kube-system for each,
+    // pointed at the matching static-pod/component labels. See the caveat
+    // above the top of this block -- likely unreachable on a stock kind
+    // cluster today, replicated anyway for parity with what Prometheus is
+    // configured (if not able) to scrape.
+    discovery.relabel "kube_etcd" {
+      targets = discovery.kubernetes.endpoints.targets
+      rule {
+        source_labels = ["__meta_kubernetes_namespace"]
+        regex         = "kube-system"
+        action        = "keep"
+      }
+      rule {
+        source_labels = ["__meta_kubernetes_pod_label_component"]
+        regex         = "etcd"
+        action        = "keep"
+      }
+    }
+
+    prometheus.scrape "kube_etcd" {
+      targets      = discovery.relabel.kube_etcd.output
+      forward_to   = [prometheus.remote_write.kube_eng_metrics.receiver]
+      job_name     = "kube-etcd"
+      metrics_path = "/metrics"
+      scheme       = "http"
+    }
+
+    discovery.relabel "kube_scheduler" {
+      targets = discovery.kubernetes.endpoints.targets
+      rule {
+        source_labels = ["__meta_kubernetes_namespace"]
+        regex         = "kube-system"
+        action        = "keep"
+      }
+      rule {
+        source_labels = ["__meta_kubernetes_pod_label_component"]
+        regex         = "kube-scheduler"
+        action        = "keep"
+      }
+    }
+
+    prometheus.scrape "kube_scheduler" {
+      targets           = discovery.relabel.kube_scheduler.output
+      forward_to        = [prometheus.remote_write.kube_eng_metrics.receiver]
+      job_name          = "kube-scheduler"
+      scheme            = "https"
+      bearer_token_file = "/var/run/secrets/kubernetes.io/serviceaccount/token"
+      tls_config {
+        insecure_skip_verify = true
+      }
+    }
+
+    discovery.relabel "kube_controller_manager" {
+      targets = discovery.kubernetes.endpoints.targets
+      rule {
+        source_labels = ["__meta_kubernetes_namespace"]
+        regex         = "kube-system"
+        action        = "keep"
+      }
+      rule {
+        source_labels = ["__meta_kubernetes_pod_label_component"]
+        regex         = "kube-controller-manager"
+        action        = "keep"
+      }
+    }
+
+    prometheus.scrape "kube_controller_manager" {
+      targets           = discovery.relabel.kube_controller_manager.output
+      forward_to        = [prometheus.remote_write.kube_eng_metrics.receiver]
+      job_name          = "kube-controller-manager"
+      scheme            = "https"
+      bearer_token_file = "/var/run/secrets/kubernetes.io/serviceaccount/token"
+      tls_config {
+        insecure_skip_verify = true
+      }
+    }
+
+    discovery.relabel "kube_proxy" {
+      targets = discovery.kubernetes.endpoints.targets
+      rule {
+        source_labels = ["__meta_kubernetes_namespace"]
+        regex         = "kube-system"
+        action        = "keep"
+      }
+      rule {
+        source_labels = ["__meta_kubernetes_pod_label_k8s_app"]
+        regex         = "kube-proxy"
+        action        = "keep"
+      }
+    }
+
+    prometheus.scrape "kube_proxy" {
+      targets    = discovery.relabel.kube_proxy.output
+      forward_to = [prometheus.remote_write.kube_eng_metrics.receiver]
+      job_name   = "kube-proxy"
+    }
+
+    // --- kube-state-metrics / node-exporter: only real if stack.prometheus
+    // is enabled -- that's the only thing in this stack that deploys them.
+    discovery.relabel "kube_state_metrics" {
+      targets = discovery.kubernetes.endpoints.targets
+      rule {
+        source_labels = ["__meta_kubernetes_namespace"]
+        regex         = "{{ .Values.metrics.targets.prometheusNs }}"
+        action        = "keep"
+      }
+      rule {
+        source_labels = ["__meta_kubernetes_service_label_app_kubernetes_io_name"]
+        regex         = "kube-state-metrics"
+        action        = "keep"
+      }
+      rule {
+        source_labels = ["__meta_kubernetes_endpoint_port_name"]
+        regex         = "http"
+        action        = "keep"
+      }
+    }
+
+    prometheus.scrape "kube_state_metrics" {
+      targets    = discovery.relabel.kube_state_metrics.output
+      forward_to = [prometheus.remote_write.kube_eng_metrics.receiver]
+      job_name   = "kube-state-metrics"
+    }
+
+    discovery.relabel "node_exporter" {
+      targets = discovery.kubernetes.endpoints.targets
+      rule {
+        source_labels = ["__meta_kubernetes_namespace"]
+        regex         = "{{ .Values.metrics.targets.prometheusNs }}"
+        action        = "keep"
+      }
+      rule {
+        source_labels = ["__meta_kubernetes_service_label_app_kubernetes_io_name"]
+        regex         = "prometheus-node-exporter"
+        action        = "keep"
+      }
+      rule {
+        source_labels = ["__meta_kubernetes_endpoint_port_name"]
+        regex         = "metrics"
+        action        = "keep"
+      }
+    }
+
+    prometheus.scrape "node_exporter" {
+      targets    = discovery.relabel.node_exporter.output
+      forward_to = [prometheus.remote_write.kube_eng_metrics.receiver]
+      job_name   = "node-exporter"
+    }
+
+    // --- cert-manager controller + webhook (sm-cert-manager*.yaml).
+    discovery.relabel "cert_manager" {
+      targets = discovery.kubernetes.endpoints.targets
+      rule {
+        source_labels = ["__meta_kubernetes_namespace"]
+        regex         = "{{ .Values.metrics.targets.certManagerNs }}"
+        action        = "keep"
+      }
+      rule {
+        source_labels = ["__meta_kubernetes_service_label_app_kubernetes_io_component"]
+        regex         = "controller"
+        action        = "keep"
+      }
+      rule {
+        source_labels = ["__meta_kubernetes_service_label_app_kubernetes_io_instance"]
+        regex         = "cert-manager"
+        action        = "keep"
+      }
+      rule {
+        source_labels = ["__meta_kubernetes_endpoint_port_name"]
+        regex         = "tcp-prometheus-servicemonitor"
+        action        = "keep"
+      }
+    }
+
+    prometheus.scrape "cert_manager" {
+      targets         = discovery.relabel.cert_manager.output
+      forward_to      = [prometheus.remote_write.kube_eng_metrics.receiver]
+      job_name        = "cert-manager"
+      scrape_interval = "10s"
+    }
+
+    discovery.relabel "cert_manager_webhook" {
+      targets = discovery.kubernetes.endpoints.targets
+      rule {
+        source_labels = ["__meta_kubernetes_namespace"]
+        regex         = "{{ .Values.metrics.targets.certManagerNs }}"
+        action        = "keep"
+      }
+      rule {
+        source_labels = ["__meta_kubernetes_service_label_app_kubernetes_io_component"]
+        regex         = "webhook"
+        action        = "keep"
+      }
+      rule {
+        source_labels = ["__meta_kubernetes_service_label_app_kubernetes_io_instance"]
+        regex         = "cert-manager"
+        action        = "keep"
+      }
+      rule {
+        source_labels = ["__meta_kubernetes_endpoint_port_name"]
+        regex         = "metrics"
+        action        = "keep"
+      }
+    }
+
+    prometheus.scrape "cert_manager_webhook" {
+      targets         = discovery.relabel.cert_manager_webhook.output
+      forward_to      = [prometheus.remote_write.kube_eng_metrics.receiver]
+      job_name        = "cert-manager-webhook"
+      scrape_interval = "10s"
+    }
+
+    // --- Edge gateway (sm-edge-gw.yaml) -- only matches when the gateway is
+    // an Istio Gateway API resource, same as the ServiceMonitor it replicates.
+    discovery.relabel "edge_gateway" {
+      targets = discovery.kubernetes.endpoints.targets
+      rule {
+        source_labels = ["__meta_kubernetes_namespace"]
+        regex         = "{{ .Values.metrics.targets.edgeNs }}"
+        action        = "keep"
+      }
+      rule {
+        source_labels = ["__meta_kubernetes_service_label_app_kubernetes_io_name"]
+        regex         = "{{ .Values.metrics.targets.edgeGatewayName }}"
+        action        = "keep"
+      }
+      rule {
+        source_labels = ["__meta_kubernetes_service_label_gateway_networking_k8s_io_gateway_class_name"]
+        regex         = "istio"
+        action        = "keep"
+      }
+      rule {
+        source_labels = ["__meta_kubernetes_endpoint_port_name"]
+        regex         = "http-monitoring"
+        action        = "keep"
+      }
+    }
+
+    prometheus.scrape "edge_gateway" {
+      targets         = discovery.relabel.edge_gateway.output
+      forward_to      = [prometheus.remote_write.kube_eng_metrics.receiver]
+      job_name        = "edge-gateway"
+      scrape_interval = "10s"
+    }
+
+    // --- Kiali (sm-kiali.yml).
+    discovery.relabel "kiali" {
+      targets = discovery.kubernetes.endpoints.targets
+      rule {
+        source_labels = ["__meta_kubernetes_namespace"]
+        regex         = "{{ .Values.metrics.targets.kialiNs }}"
+        action        = "keep"
+      }
+      rule {
+        source_labels = ["__meta_kubernetes_service_label_app_kubernetes_io_part_of"]
+        regex         = "kiali"
+        action        = "keep"
+      }
+      rule {
+        source_labels = ["__meta_kubernetes_endpoint_port_name"]
+        regex         = "http-metrics"
+        action        = "keep"
+      }
+    }
+
+    prometheus.scrape "kiali" {
+      targets         = discovery.relabel.kiali.output
+      forward_to      = [prometheus.remote_write.kube_eng_metrics.receiver]
+      job_name        = "kiali"
+      scrape_interval = "10s"
+    }
+
+    // --- Loki (sm-loki.yaml) -- deliberately excludes the canary, which has
+    // its own job below (sm-loki.yaml's own selector excludes it the same
+    // way, via app.kubernetes.io/component absent vs. =canary).
+    discovery.relabel "loki" {
+      targets = discovery.kubernetes.endpoints.targets
+      rule {
+        source_labels = ["__meta_kubernetes_namespace"]
+        regex         = "{{ .Values.metrics.targets.lokiNs }}"
+        action        = "keep"
+      }
+      rule {
+        source_labels = ["__meta_kubernetes_service_label_app_kubernetes_io_name"]
+        regex         = "loki"
+        action        = "keep"
+      }
+      rule {
+        source_labels = ["__meta_kubernetes_service_label_app_kubernetes_io_component"]
+        regex         = "canary"
+        action        = "drop"
+      }
+      rule {
+        source_labels = ["__meta_kubernetes_endpoint_port_name"]
+        regex         = "http-metrics"
+        action        = "keep"
+      }
+    }
+
+    prometheus.scrape "loki" {
+      targets         = discovery.relabel.loki.output
+      forward_to      = [prometheus.remote_write.kube_eng_metrics.receiver]
+      job_name        = "loki"
+      scrape_interval = "10s"
+    }
+
+    // --- Loki canary (sm-loki-canary.yaml) -- off unless loki.lokiCanary is
+    // itself enabled, in which case this just finds no targets.
+    discovery.relabel "loki_canary" {
+      targets = discovery.kubernetes.endpoints.targets
+      rule {
+        source_labels = ["__meta_kubernetes_namespace"]
+        regex         = "{{ .Values.metrics.targets.lokiNs }}"
+        action        = "keep"
+      }
+      rule {
+        source_labels = ["__meta_kubernetes_service_label_app_kubernetes_io_name"]
+        regex         = "loki"
+        action        = "keep"
+      }
+      rule {
+        source_labels = ["__meta_kubernetes_service_label_app_kubernetes_io_component"]
+        regex         = "canary"
+        action        = "keep"
+      }
+      rule {
+        source_labels = ["__meta_kubernetes_endpoint_port_name"]
+        regex         = "http-metrics"
+        action        = "keep"
+      }
+    }
+
+    prometheus.scrape "loki_canary" {
+      targets         = discovery.relabel.loki_canary.output
+      forward_to      = [prometheus.remote_write.kube_eng_metrics.receiver]
+      job_name        = "loki-canary"
+      scrape_interval = "10s"
+    }
+
+    // --- Tempo (templates/servicemonitor.yaml in the vendored tempo
+    // subchart) -- two named ports, tempo's own Prometheus metrics and its
+    // embedded Jaeger receiver's metrics.
+    discovery.relabel "tempo" {
+      targets = discovery.kubernetes.endpoints.targets
+      rule {
+        source_labels = ["__meta_kubernetes_namespace"]
+        regex         = "{{ .Values.metrics.targets.tempoNs }}"
+        action        = "keep"
+      }
+      rule {
+        source_labels = ["__meta_kubernetes_service_label_app_kubernetes_io_name"]
+        regex         = "tempo"
+        action        = "keep"
+      }
+      rule {
+        source_labels = ["__meta_kubernetes_endpoint_port_name"]
+        regex         = "tempo-prom-metrics|jaeger-metrics"
+        action        = "keep"
+      }
+    }
+
+    prometheus.scrape "tempo" {
+      targets    = discovery.relabel.tempo.output
+      forward_to = [prometheus.remote_write.kube_eng_metrics.receiver]
+      job_name   = "tempo"
+    }
+
+    // --- grafana-operator (vendored grafana-operator subchart's own
+    // templates/servicemonitor.yaml).
+    discovery.relabel "grafana_operator" {
+      targets = discovery.kubernetes.endpoints.targets
+      rule {
+        source_labels = ["__meta_kubernetes_namespace"]
+        regex         = "{{ .Values.metrics.targets.grafanaNs }}"
+        action        = "keep"
+      }
+      rule {
+        source_labels = ["__meta_kubernetes_service_label_app_kubernetes_io_name"]
+        regex         = "grafana-operator"
+        action        = "keep"
+      }
+      rule {
+        source_labels = ["__meta_kubernetes_endpoint_port_name"]
+        regex         = "metrics"
+        action        = "keep"
+      }
+    }
+
+    prometheus.scrape "grafana_operator" {
+      targets    = discovery.relabel.grafana_operator.output
+      forward_to = [prometheus.remote_write.kube_eng_metrics.receiver]
+      job_name   = "grafana-operator"
+    }
+
+    prometheus.remote_write "kube_eng_metrics" {
+      endpoint {
+        url = "{{ .Values.metrics.remoteWriteUrl }}"
+      }
+      external_labels = {
+        cluster = "{{ .Values.cluster.name }}",
+      }
+    }
+    {{- end }}

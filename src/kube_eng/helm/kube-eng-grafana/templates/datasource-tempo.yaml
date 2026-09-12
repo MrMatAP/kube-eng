@@ -1,10 +1,11 @@
+{{- if .Values.integration.tempo.enabled }}
 apiVersion: grafana.integreatly.org/v1beta1
 kind: GrafanaDatasource
 metadata:
   name: datasource-tempo
   labels:
     {{ include "common.labels" . | nindent 4 }}
-    app.kubernetes.io/name: datasource-loki
+    app.kubernetes.io/name: datasource-tempo
 spec:
   instanceSelector:
     matchLabels:
@@ -13,5 +14,6 @@ spec:
     name: tempo
     type: tempo
     access: proxy
-    url: http://tempo.tempo.svc.cluster.local:3200
-    isDefault: true
+    url: {{ .Values.integration.tempo.url }}
+    isDefault: false
+{{- end }}

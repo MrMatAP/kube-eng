@@ -1,4 +1,4 @@
-{{- if ne .Values.cluster.edge.kind "istio" }}
+{{- if and (ne .Values.cluster.edge.kind "istio") .Values.prometheus.prometheus.enabled }}
 ---
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
