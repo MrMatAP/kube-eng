@@ -353,9 +353,6 @@ class ConfigTab(TabPane):
             '#stack_grafana_hostname'
         ).value = self._config.stack.grafana.hostname
         self.query_one(
-            '#stack_grafana_client_id'
-        ).value = self._config.stack.grafana.client_id
-        self.query_one(
             '#stack_grafana_admin_user'
         ).value = self._config.stack.grafana.admin_user
         self._toggle_fields(
@@ -363,7 +360,6 @@ class ConfigTab(TabPane):
             [
                 '#stack_grafana_ns',
                 '#stack_grafana_hostname',
-                '#stack_grafana_client_id',
                 '#stack_grafana_admin_user',
             ],
         )
@@ -667,9 +663,6 @@ class ConfigTab(TabPane):
         self._config.stack.grafana.hostname = self.query_one(
             '#stack_grafana_hostname', Input
         ).value
-        self._config.stack.grafana.client_id = self.query_one(
-            '#stack_grafana_client_id', Input
-        ).value
         self._config.stack.grafana.admin_user = self.query_one(
             '#stack_grafana_admin_user', Input
         ).value
@@ -818,7 +811,6 @@ class ConfigTab(TabPane):
             [
                 '#stack_grafana_ns',
                 '#stack_grafana_hostname',
-                '#stack_grafana_client_id',
                 '#stack_grafana_admin_user',
             ],
         )
@@ -1253,9 +1245,6 @@ class ConfigTab(TabPane):
                     with FormLine():
                         yield Label('Hostname:')
                         yield Input(id='stack_grafana_hostname')
-                    with FormLine():
-                        yield Label('Client ID:')
-                        yield Input(id='stack_grafana_client_id')
                     with FormLine():
                         yield Label('Admin User:')
                         yield Input(id='stack_grafana_admin_user')

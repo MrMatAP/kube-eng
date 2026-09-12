@@ -99,6 +99,14 @@ class StackMimirConfig(RootConfigAware):
     def push_url(self) -> str:
         return f'http://mimir-gateway.{self.ns}.svc.cluster.local/api/v1/push'
 
+    @computed_field(description="Mimir's Kafka-backed ingest storage topic")
+    @property
+    def kafka_topic(self) -> str:
+        # infra.kafka may be a central broker shared across clusters
+        # (infra.kafka.provider == 'remote'); cluster.name keeps each
+        # cluster's ingest topic distinct on that broker.
+        return f'mimir-ingest-{self._root_config.cluster.name}'
+
     @computed_field(description='PromQL query endpoint used by Grafana')
     @property
     def query_url(self) -> str:
@@ -214,7 +222,6 @@ class StackGrafanaConfig(RootConfigAware):
     enabled: bool = Field(default=True)
     ns: str = Field(default='grafana')
     hostname: str = Field(default='grafana')
-    client_id: str = Field(default='kube-eng-grafana')
     admin_user: str = Field(default='admin')
     admin_password: str = Field(default_factory=lambda: secrets.token_urlsafe(16),
                                 description='Grafana admin password')
@@ -225,6 +232,14 @@ class StackGrafanaConfig(RootConfigAware):
     db_user: str = Field(default='grafana')
     db_password: str = Field(default='grafana')
     db_ssl_mode: StackGrafanaDBSSL = Field(default=StackGrafanaDBSSL.require)
+
+    @computed_field(description='Grafana client Id')
+    @property
+    def client_id(self) -> str:
+        # infra.idp may be a central IdP shared across clusters
+        # (infra.idp.provider == 'remote'); cluster.name keeps each
+        # cluster's Grafana OIDC client registration distinct there.
+        return f'grafana-{self._root_config.cluster.name}'
 
     @computed_field(description='Grafana roles')
     @property
@@ -258,7 +273,14 @@ class StackKialiConfig(RootConfigAware):
     ns: str = Field(default='kiali')
     hostname: str = Field(default='kiali')
     version: str = Field(default='v2.18.0')
-    client_id: str = Field(default='kube-eng-kiali')
+
+    @computed_field(description='Kiali client Id')
+    @property
+    def client_id(self) -> str:
+        # infra.idp may be a central IdP shared across clusters
+        # (infra.idp.provider == 'remote'); cluster.name keeps each
+        # cluster's Kiali OIDC client registration distinct there.
+        return f'kiali-{self._root_config.cluster.name}'
 
 
 class StackConfig(RootConfigAware):

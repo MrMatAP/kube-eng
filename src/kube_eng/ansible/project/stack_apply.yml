@@ -103,7 +103,7 @@
           mimir_ingest_storage: "{{ {
             'ingest_storage': {'enabled': true, 'kafka': {
               'address': infra.kafka.client_fqdn ~ ':' ~ (infra.kafka.port | string),
-              'topic': 'mimir-ingest',
+              'topic': stack.mimir.kafka_topic,
               'auto_create_topic_default_partitions': 4}},
             'ingester': {'push_grpc_method_enabled': false}
             } if infra.kafka.enabled else {} }}"
