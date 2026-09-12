@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class RootConfigAware(BaseModel):
@@ -10,7 +10,15 @@ class RootConfigAware(BaseModel):
 
     We accept the slight uglyness for this to be a dunder attribute we set from
     outside __init__. This is required for pydantic to not complain about it.
+
+    `validate_assignment` re-runs field validation/coercion on every attribute
+    set, not just on initial construction -- e.g. `config set` assigning a raw
+    CLI string straight onto a model attribute. Without it an invalid or
+    wrongly-typed value is accepted in memory, then written to disk as-is by
+    `RootConfig.save()`, producing a config file that fails to load back.
     """
+
+    model_config = ConfigDict(validate_assignment=True)
 
     _root_config: RootConfig = None  # noqa: F821
 

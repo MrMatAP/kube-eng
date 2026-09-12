@@ -256,19 +256,28 @@ async def config_get(config: RootConfig, args: argparse.Namespace) -> int:
     return 0
 
 
-def _placeholder_value(annotation: typing.Any) -> str:
+def _placeholder_value(field_info: pydantic.fields.FieldInfo) -> str:
     """
     An obviously-fake but type-valid value for a required field we have no
     real data for, e.g. when switching a discriminated union's provider
     introduces fields the previous provider never needed.
     Args:
-        annotation (): The field's type annotation
+        field_info (): The target field's FieldInfo
 
     Returns:
-        A placeholder string that satisfies the annotation
+        A placeholder string that satisfies the field
     """
+    annotation = field_info.annotation
     if isinstance(annotation, type) and issubclass(annotation, pydantic.AnyUrl):
-        return 'https://change-me.example.com'
+        scheme = 'https'
+        for constraint in field_info.metadata:
+            if (
+                isinstance(constraint, pydantic.UrlConstraints)
+                and constraint.allowed_schemes
+            ):
+                scheme = constraint.allowed_schemes[0]
+                break
+        return f'{scheme}://change-me.example.com'
     return 'change-me.example.com'
 
 
@@ -326,6 +335,15 @@ async def config_set(config: RootConfig, args: argparse.Namespace) -> int:
                 **parent.model_dump(mode='json', exclude_computed_fields=True),
                 leaf: args.value,
             }
+            # An actual provider change invalidates any carried-over
+            # admin_password: it was generated for (or supplied out of band
+            # for) the old provider, not the new one. Let the target class's
+            # own default apply instead -- a fresh secrets.token_urlsafe()
+            # for a local provider, or '' pending out-of-band setup for a
+            # remote one. A no-op re-set of the same provider leaves it
+            # alone.
+            if args.value != current_value and 'admin_password' in merged:
+                del merged['admin_password']
             # The target provider may require fields the current one never
             # had (e.g. a remote fqdn/URL) and that only the user can supply
             # a real value for. Rather than blocking the switch entirely,
@@ -343,7 +361,7 @@ async def config_set(config: RootConfig, args: argparse.Namespace) -> int:
             if target_cls is not None:
                 for name, target_field in target_cls.model_fields.items():
                     if name not in merged and target_field.is_required():
-                        merged[name] = _placeholder_value(target_field.annotation)
+                        merged[name] = _placeholder_value(target_field)
                         defaulted.append(name)
             adapter = pydantic.TypeAdapter(field_info.rebuild_annotation())
             try:

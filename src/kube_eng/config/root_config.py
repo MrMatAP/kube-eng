@@ -3,7 +3,7 @@ import pathlib
 from typing import Any
 
 import yaml
-from pydantic import BaseModel, Field, computed_field
+from pydantic import BaseModel, ConfigDict, Field, computed_field
 
 from kube_eng import __version__
 
@@ -18,6 +18,11 @@ class RootConfig(BaseModel):
     """
     Configuration of the kube-eng cluster
     """
+
+    # See RootConfigAware.model_config -- RootConfig sits above that base
+    # class, so it needs its own validate_assignment for leaves that hang
+    # directly off the root (e.g. `config set user_id ...`).
+    model_config = ConfigDict(validate_assignment=True)
 
     config_path: pathlib.Path = Field(description='Path to the configuration directory')
     user_id: str = Field(
