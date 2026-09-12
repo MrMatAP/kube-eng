@@ -1,3 +1,4 @@
+import typing
 from dataclasses import dataclass
 
 import pydantic
@@ -71,6 +72,14 @@ class UnionResourceSpec:
 # supply the *real* credential for a central resource -- there is no
 # equivalent local/remote split for the stack components, so those stay
 # auto-generated and unexposed.
+#
+# These are `common` fields, so they carry across a provider switch in this
+# form as-is (whatever the field currently shows). That is a deliberate
+# difference from `kube-eng config set infra.<x>.provider ...`, which drops
+# them on an actual provider change (see cli/main.py's config_set): the CLI
+# has no way to supply a replacement in the same command, so dropping is the
+# only safe option there, whereas the TUI shows the user exactly what will
+# be submitted and lets them edit or clear it before pressing Apply.
 _DNS_SPEC = UnionResourceSpec(
     key='dns',
     title='DNS',
@@ -249,6 +258,38 @@ _CHECKBOX_TOGGLES: dict[str, list[str]] = {
     ],
 }
 
+# Sidebar option id -> the header/Collapsible id it should reveal. A typo
+# here used to fail silently (on_section_selected swallowed exceptions);
+# it now crashes the app instead, so this is covered by a test that walks
+# every entry rather than spot-checking one.
+_SECTION_TARGETS: dict[str, str] = {
+    'host-config': 'header-host-config',
+    'host-tools': 'section-host-tools',
+    'infra-config': 'header-infra-config',
+    'infra-net': 'section-infra-net',
+    'infra-pki': 'section-infra-pki',
+    'infra-dns': 'section-infra-dns',
+    'infra-pg': 'section-infra-pg',
+    'infra-idp': 'section-infra-idp',
+    'infra-s3': 'section-infra-s3',
+    'infra-registry': 'section-infra-registry',
+    'infra-kafka': 'section-infra-kafka',
+    'cluster-config': 'header-cluster-config',
+    'cluster-basic': 'section-cluster-basic',
+    'cluster-cni': 'section-cluster-cni',
+    'cluster-mesh': 'section-cluster-mesh',
+    'cluster-pki': 'section-cluster-pki',
+    'cluster-edge': 'section-cluster-edge',
+    'stack-config': 'header-stack-config',
+    'stack-prometheus': 'section-stack-prometheus',
+    'stack-mimir': 'section-stack-mimir',
+    'stack-alloy': 'section-stack-alloy',
+    'stack-loki': 'section-stack-loki',
+    'stack-grafana': 'section-stack-grafana',
+    'stack-tempo': 'section-stack-tempo',
+    'stack-kiali': 'section-stack-kiali',
+}
+
 
 class ConfigTab(TabPane):
     DEFAULT_CLASSES = 'form'
@@ -297,6 +338,40 @@ class ConfigTab(TabPane):
             'remote',
             [f'infra_{spec.key}_{f.name}' for f in spec.remote_only],
         )
+
+    def _resolve_provider_class(
+        self, key: str, provider: str
+    ) -> type[RootConfigAware] | None:
+        field_info = type(self._config.infra).model_fields[key]
+        for cls in typing.get_args(field_info.annotation):
+            if cls.model_fields['provider'].default == provider:
+                return cls
+        return None
+
+    def _fill_provider_defaults(self, spec: UnionResourceSpec, provider: str) -> None:
+        """
+        When the provider Select changes, the fields exclusive to the
+        newly-selected provider go from disabled to editable. A field that
+        has never had a value to show (e.g. a local-only `ip` on what was
+        previously a remote config, or vice versa) is blank -- prefill it
+        with that class's own default rather than leaving '' for the user
+        to hit as a validation error on Apply (IPvAnyAddress/int reject an
+        empty string). A required field with no default (a remote's
+        url/fqdn/endpoint) is left blank -- that one must be genuinely
+        supplied, there is no sensible default to guess.
+        """
+        target_cls = self._resolve_provider_class(spec.key, provider)
+        if target_cls is None:
+            return
+        fields = spec.local_only if provider == 'local' else spec.remote_only
+        for f in fields:
+            widget = self.query_one(f'#infra_{spec.key}_{f.name}')
+            if f.kind == 'checkbox' or widget.value:
+                continue
+            field_info = target_cls.model_fields.get(f.name)
+            if field_info is None or field_info.is_required():
+                continue
+            widget.value = str(field_info.get_default(call_default_factory=True))
 
     def _rebuild(self, model: RootConfigAware, edits: dict) -> RootConfigAware:
         """Validate `model`'s current values merged with `edits` as a fresh
@@ -373,10 +448,20 @@ class ConfigTab(TabPane):
         self._toggle_union_fields(spec)
 
     def _collect_union_section(self, spec: UnionResourceSpec) -> dict:
-        values: dict = {
-            'provider': self.query_one(f'#infra_{spec.key}_provider', Select).value
-        }
-        for f in spec.all_fields:
+        provider = self.query_one(f'#infra_{spec.key}_provider', Select).value
+        # Only ever collect the fields that belong to the *selected*
+        # provider. The other provider's fields are shown disabled with
+        # whatever placeholder _mount_union_section gave them (often '' --
+        # e.g. a remote config has no local `ip`/`port` to display) and
+        # sending those through would fail validation on the target class
+        # (IPvAnyAddress/int rejecting '') instead of letting it fall back
+        # to its own defaults, which is what should happen for fields the
+        # user was never shown as editable.
+        fields = spec.common + (
+            spec.local_only if provider == 'local' else spec.remote_only
+        )
+        values: dict = {'provider': provider}
+        for f in fields:
             widget = self.query_one(f'#infra_{spec.key}_{f.name}')
             values[f.name] = widget.value
         return values
@@ -845,39 +930,12 @@ class ConfigTab(TabPane):
         spec = next((s for s in _UNION_SPECS if s.key == key), None)
         if spec is not None:
             self._toggle_union_fields(spec)
+            self._fill_provider_defaults(spec, event.value)
 
     @on(ConfigSidebar.SectionSelected)
     async def on_section_selected(self, event: ConfigSidebar.SectionSelected) -> None:
         """Handle sidebar navigation to specific subsections"""
-        section_targets = {
-            'host-config': 'header-host-config',
-            'host-tools': 'section-host-tools',
-            'infra-config': 'header-infra-config',
-            'infra-net': 'section-infra-net',
-            'infra-pki': 'section-infra-pki',
-            'infra-dns': 'section-infra-dns',
-            'infra-pg': 'section-infra-pg',
-            'infra-idp': 'section-infra-idp',
-            'infra-s3': 'section-infra-s3',
-            'infra-registry': 'section-infra-registry',
-            'infra-kafka': 'section-infra-kafka',
-            'cluster-config': 'header-cluster-config',
-            'cluster-basic': 'section-cluster-basic',
-            'cluster-cni': 'section-cluster-cni',
-            'cluster-mesh': 'section-cluster-mesh',
-            'cluster-pki': 'section-cluster-pki',
-            'cluster-edge': 'section-cluster-edge',
-            'stack-config': 'header-stack-config',
-            'stack-prometheus': 'section-stack-prometheus',
-            'stack-mimir': 'section-stack-mimir',
-            'stack-alloy': 'section-stack-alloy',
-            'stack-loki': 'section-stack-loki',
-            'stack-grafana': 'section-stack-grafana',
-            'stack-tempo': 'section-stack-tempo',
-            'stack-kiali': 'section-stack-kiali',
-        }
-
-        target_id = section_targets.get(event.section_id)
+        target_id = _SECTION_TARGETS.get(event.section_id)
         if not target_id:
             return
 

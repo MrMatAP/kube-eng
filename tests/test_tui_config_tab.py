@@ -13,8 +13,9 @@ import pathlib
 
 import pytest
 from kube_eng.config import RootConfig
+from kube_eng.tui.config_tab import _SECTION_TARGETS, ConfigTab
 from kube_eng.tui.main import KubeEngApp
-from textual.widgets import Button
+from textual.widgets import Button, Collapsible, Select
 
 
 @pytest.fixture
@@ -45,8 +46,6 @@ async def test_mount_and_apply_round_trips_defaults(tmp_path: pathlib.Path):
 async def test_switch_registry_provider_to_remote(tmp_path: pathlib.Path):
     """Flipping a provider Select to 'remote' and filling in the
     newly-required field must produce a config that round-trips."""
-    from textual.widgets import Select
-
     config = RootConfig(config_path=tmp_path)
     app = KubeEngApp(config)
     async with app.run_test() as pilot:
@@ -60,6 +59,47 @@ async def test_switch_registry_provider_to_remote(tmp_path: pathlib.Path):
     reloaded = RootConfig.load(config_path=tmp_path)
     assert reloaded.infra.registry.provider == 'remote'
     assert str(reloaded.infra.registry.url) == 'oci://harbor.example.com/kube-eng'
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize(
+    ('key', 'remote_seed', 'local_default_name'),
+    [
+        ('dns', {}, 'dns'),
+        ('pg', {'fqdn': 'pg.central.example.com'}, 'pg'),
+        ('idp', {'url': 'https://idp.central.example.com/'}, 'idp'),
+        ('s3', {'url': 'https://s3.central.example.com/'}, 's3'),
+        ('registry', {'url': 'oci://harbor.example.com/kube-eng'}, 'registry'),
+        ('kafka', {'endpoint': 'https://kafka.central.example.com/'}, 'kafka'),
+    ],
+)
+async def test_switch_infra_provider_back_to_local(
+    tmp_path: pathlib.Path, key: str, remote_seed: dict, local_default_name: str
+):
+    """The reverse switch (remote -> local) must also work for every
+    resource: the remote variant has no ip/port/name/etc to show, so
+    mounting fills those fields with '' -- collecting them anyway (without
+    filling anything in) would send an empty string into IPvAnyAddress/int
+    fields on the local variant and fail. _fill_provider_defaults exists
+    to prefill those with the local class's own defaults instead."""
+    config = RootConfig(
+        config_path=tmp_path,
+        infra={key: {'provider': 'remote', **remote_seed}},
+    )
+    config.save()
+
+    app = KubeEngApp(RootConfig.load(config_path=tmp_path))
+    async with app.run_test() as pilot:
+        await pilot.pause()
+        app.query_one(f'#infra_{key}_provider', Select).value = 'local'
+        await pilot.pause()
+        app.query_one('#apply_configuration', Button).press()
+        await pilot.pause()
+
+    reloaded = RootConfig.load(config_path=tmp_path)
+    switched = getattr(reloaded.infra, key)
+    assert switched.provider == 'local'
+    assert switched.name == local_default_name
 
 
 @pytest.mark.anyio
@@ -78,8 +118,6 @@ async def test_switch_infra_provider_to_remote(
 ):
     """Every infra.<key> discriminated union must switch cleanly, not just
     registry -- this is the exact family of bug the rewrite targets."""
-    from textual.widgets import Select
-
     config = RootConfig(config_path=tmp_path)
     app = KubeEngApp(config)
     async with app.run_test() as pilot:
@@ -96,37 +134,77 @@ async def test_switch_infra_provider_to_remote(
 
 
 @pytest.mark.anyio
-async def test_sidebar_navigation_reveals_section(tmp_path: pathlib.Path):
-    """Selecting a sidebar entry must expand its Collapsible without error."""
-    from textual.widgets import Collapsible
+@pytest.mark.parametrize('section_id', sorted(_SECTION_TARGETS))
+async def test_sidebar_navigation_reveals_section(
+    tmp_path: pathlib.Path, section_id: str
+):
+    """Every sidebar entry must resolve to a real widget id and, for a
+    Collapsible target, expand it -- on_section_selected no longer
+    swallows a bad id into a silent print(), so a typo in _SECTION_TARGETS
+    now crashes the app instead."""
+    from kube_eng.tui.widgets import ConfigSidebar
 
     config = RootConfig(config_path=tmp_path)
     app = KubeEngApp(config)
     async with app.run_test() as pilot:
         await pilot.pause()
-        collapsible = app.query_one('#section-infra-registry', Collapsible)
-        assert collapsible.collapsed
+        target_id = _SECTION_TARGETS[section_id]
+        target = app.query_one(f'#{target_id}')
+        was_collapsed = isinstance(target, Collapsible) and target.collapsed
+
         app.query_one('#sidebar-nav').post_message(
-            app.query_one('ConfigSidebar').SectionSelected('infra-registry')
+            ConfigSidebar.SectionSelected(section_id)
         )
         await pilot.pause()
-        assert not collapsible.collapsed
+
+        if was_collapsed:
+            assert not target.collapsed
 
 
 @pytest.mark.anyio
 async def test_apply_with_invalid_value_leaves_config_untouched(
     tmp_path: pathlib.Path,
 ):
-    """A bad value must notify, not crash, and must not corrupt the saved
-    config -- validate_assignment turned this from a silent write into a
-    raise, so Apply must catch it."""
+    """A bad value must notify, not crash, and must leave self._config
+    exactly as it was -- validate_assignment turned this from a silent
+    write into a raise, so Apply must catch it before committing anything,
+    including sections that validated fine before the bad one."""
     config = RootConfig(config_path=tmp_path)
     app = KubeEngApp(config)
     async with app.run_test() as pilot:
         await pilot.pause()
+        tab = app.query_one(ConfigTab)
         app.query_one('#cluster_worker_nodes').value = 'not-a-number'
         app.query_one('#apply_configuration', Button).press()
         await pilot.pause()
 
-    # No config.yaml should have been written by the failed apply.
+        # Not just "no file was written" (true even if Apply did nothing) --
+        # the in-memory config, including sections validated before the bad
+        # one, must be untouched by the failed, aborted commit.
+        assert tab._config.cluster.worker_nodes == 3
+        assert tab._config.infra.net.name == 'kind'
+
     assert not (tmp_path / 'config.yaml').exists()
+
+
+@pytest.mark.anyio
+async def test_apply_commits_top_level_and_nested_cluster_edits_together(
+    tmp_path: pathlib.Path,
+):
+    """cluster (top-level scalars) is committed before cluster.cni/mesh/
+    pki/edge specifically so a nested edit in the same Apply isn't
+    clobbered by the stale cni/mesh/pki/edge snapshot carried inside the
+    top-level rebuild. Edit one of each in a single Apply and check both
+    land."""
+    config = RootConfig(config_path=tmp_path)
+    app = KubeEngApp(config)
+    async with app.run_test() as pilot:
+        await pilot.pause()
+        app.query_one('#cluster_name').value = 'renamed-cluster'
+        app.query_one('#cluster_cni_hostname').value = 'renamed-cni'
+        app.query_one('#apply_configuration', Button).press()
+        await pilot.pause()
+
+    reloaded = RootConfig.load(config_path=tmp_path)
+    assert reloaded.cluster.name == 'renamed-cluster'
+    assert reloaded.cluster.cni.hostname == 'renamed-cni'
