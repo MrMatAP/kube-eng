@@ -1,16 +1,13 @@
-/* Custom Purple Theme Colors */
-$primary-purple: #a78bfa;
-$secondary-purple: #8b5cf6;
-$dark-purple: #6d28d9;
-$accent-purple: #c084fc;
-$bg-dark: #1e1b29;
-$bg-surface: #2d2a3d;
-$text-muted: #6b7280;
+/* Colours come from the registered "kube-eng" theme (main.py), sourced
+   from var/mrmat.css's dark palette -- $primary/$secondary/$accent/
+   $background/$surface/$panel/$success/$warning/$error/$text-muted are
+   Textual's own theme tokens, not locally-defined variables, so a redeploy
+   of the theme's colours needs no changes here. */
 
 KubeEngApp {
 
     AppHeader {
-        background: $secondary-purple;
+        background: $secondary;
         color: white;
         padding: 0 2;
         height: 1;
@@ -49,15 +46,15 @@ KubeEngApp {
         }
 
         #ansible-title.ansible-title--running {
-            background: $primary-purple;
+            background: $primary;
         }
 
         #ansible-title.ansible-title--success {
-            background: green;
+            background: $success;
         }
 
         #ansible-title.ansible-title--failure {
-            background: red;
+            background: $error;
         }
 
         #ansible-log {
@@ -80,19 +77,19 @@ KubeEngApp {
             text-align: center;
             color: $text-muted;
             padding: 2;
-            border: round $primary-purple;
+            border: round $primary;
             background: $surface;
         }
     }
 
     .bordered {
-        border: round $primary-purple;
+        border: round $primary;
     }
 
     ConfigSidebar {
         width: 20;
         height: 100%;
-        border-right: solid $primary-purple;
+        border-right: solid $primary;
         background: $surface;
 
         #sidebar-nav {
@@ -111,7 +108,7 @@ KubeEngApp {
         }
 
         OptionList > .option-list--option-highlighted {
-            background: $primary-purple;
+            background: $primary;
         }
     }
 
@@ -124,7 +121,7 @@ KubeEngApp {
         layout: vertical;
 
         .section-header {
-            background: $dark-purple;
+            background: $primary-darken-2;
             color: white;
             text-style: bold;
             padding: 0 1;
@@ -134,13 +131,13 @@ KubeEngApp {
 
         .form-group {
             layout: vertical;
-            border: round $primary-purple;
+            border: round $primary;
             background: $background;
             margin: 0 0 1 0;
             padding: 1;
 
             .form-group {
-                border: round $accent-purple;
+                border: round $accent;
                 margin: 1 0;
                 padding: 1;
             }
@@ -172,7 +169,7 @@ KubeEngApp {
             margin: 1 0 0 0;
             padding: 1;
             align: right middle;
-            border-top: solid $accent-purple;
+            border-top: solid $accent;
         }
 
     }
@@ -191,59 +188,3 @@ KubeEngApp {
     }
 
 }
-
-/*
-Screen {
-    layout: grid;
-    grid-size: 2 3;
-    grid-columns: 1fr 2fr;
-    grid-gutter: 1 2;
-}
-
-#host {
-}
-
-#cluster {
-}
-
-#stack {
-}
-
-#main {
-    row-span: 3;
-    height: 100%;
-}
-
-.box {
-    height: 100%;
-    border: round purple;
-}
-
-#main Markdown {
-    background: transparent;
-}
-
-#main Grid {
-    background: $boost;
-    padding: 1;
-    height: auto;
-    grid-size: 2;
-    grid-gutter: 0;
-    grid-columns: auto 1fr;
-    border: round purple;
-    &:focus-within {
-        border: tall $accent;
-    }
-}
-
-#main Grid Checkbox {
-    column-span: 2;
-}
-
-#main Label {
-    width: 100%;
-    padding: 1;
-    text-align: right;
-}
-
-*/

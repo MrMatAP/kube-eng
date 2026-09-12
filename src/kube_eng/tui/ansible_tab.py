@@ -26,11 +26,16 @@ class AnsibleTab(TabPane):
     class NavigateToStatus(Message):
         """Posted when the user presses Ok after execution completes."""
 
+    # Colours from var/mrmat.css's dark palette. Rich Text styles are plain
+    # strings independent of Textual's theme CSS, so these are hardcoded
+    # rather than $-variable references -- kept in sync with main.py's
+    # KUBE_ENG_THEME by hand.
     _status_colors: dict[AnsibleStatusEnum, str] = {  # noqa: RUF012
-        AnsibleStatusEnum.ok: 'green',
-        AnsibleStatusEnum.empty: 'dim green',
-        AnsibleStatusEnum.running: 'orange',
-        AnsibleStatusEnum.failed: 'red',
+        AnsibleStatusEnum.ok: '#93C787',  # green-lt
+        AnsibleStatusEnum.empty: 'dim #93C787',
+        AnsibleStatusEnum.running: '#88AECB',  # blue-lt -- 'orange' isn't a
+        # valid Rich colour name, so this previously failed at render time
+        AnsibleStatusEnum.failed: '#E5745A',  # red-lt
     }
 
     def __init__(self, title: str, **kwargs) -> None:
@@ -68,11 +73,11 @@ class AnsibleTab(TabPane):
             log.write(Text('  Stdout:', style='dim white'))
             log.write(Text(f'    {event.stdout}', style='dim white'))
         if event.stderr:
-            log.write(Text('  Stderr:', style='dim yellow'))
-            log.write(Text(f'    {event.stderr}', style='dim yellow'))
+            log.write(Text('  Stderr:', style='dim #E6B58F'))
+            log.write(Text(f'    {event.stderr}', style='dim #E6B58F'))
         for warning in event.warnings:
-            log.write(Text('  Warnings:', style='yellow'))
-            log.write(Text(f'    {warning}', style='yellow'))
+            log.write(Text('  Warnings:', style='#E6B58F'))
+            log.write(Text(f'    {warning}', style='#E6B58F'))
 
     def on_execution_complete(self, success: bool) -> None:
         """Update the title bar and button to reflect the final execution state."""

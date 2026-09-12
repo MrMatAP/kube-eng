@@ -16,8 +16,6 @@ class ActionsModal(ModalScreen[str]):
     """
 
     DEFAULT_CSS = """
-    $primary: #a78bfa;
-
     ActionsModal {
         align: center middle;
     }

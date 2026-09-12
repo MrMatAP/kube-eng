@@ -3,6 +3,7 @@ import pathlib
 import sys
 
 from textual.app import App, ComposeResult
+from textual.theme import Theme
 from textual.widgets import (
     Footer,
     Tab,
@@ -20,6 +21,24 @@ from kube_eng.tui.status_tab import StatusTab
 from kube_eng.tui.widgets import ActionsModal, AppBody, AppHeader
 
 _NON_ANSIBLE_TABS = ('config-tab', 'status-tab')
+
+# Dark palette from var/mrmat.css -- this is a terminal app, so there is no
+# light/dark toggle to support, just the one dark surface the CSS calls
+# ink/ink-raised/parchment/copper.
+KUBE_ENG_THEME = Theme(
+    name='kube-eng',
+    primary='#C49070',  # copper-lt -- accent on dark surfaces
+    secondary='#9AC7C4',  # teal-lt -- secondary info, tags
+    accent='#7A5538',  # copper-dim -- pressed/active state
+    warning='#E6B58F',  # amber-lt
+    error='#E5745A',  # red-lt
+    success='#93C787',  # green-lt
+    foreground='#F4F2EE',  # parchment -- text-primary on dark
+    background='#1A1F2E',  # ink -- page background
+    surface='#21283A',  # ink-raised -- cards on dark bg
+    panel='#283042',  # bg-elevated (dark mode)
+    dark=True,
+)
 
 
 class KubeEngApp(App[None]):
@@ -39,7 +58,8 @@ class KubeEngApp(App[None]):
         self._current_worker: Worker | None = None
 
     def on_mount(self) -> None:
-        self.theme = 'dracula'
+        self.register_theme(KUBE_ENG_THEME)
+        self.theme = KUBE_ENG_THEME.name
         self.query_one('#tabs', TabbedContent).hide_tab('ansible-tab')
 
     def _set_nav_disabled(self, disabled: bool) -> None:

@@ -30,6 +30,7 @@ async def test_mount_and_apply_round_trips_defaults(tmp_path: pathlib.Path):
     app = KubeEngApp(config)
     async with app.run_test() as pilot:
         await pilot.pause()
+        assert app.theme == 'kube-eng'
         app.query_one('#apply_configuration', Button).press()
         await pilot.pause()
 
