@@ -93,6 +93,20 @@ class StackMimirConfig(RootConfigAware):
     enabled: bool = Field(default=True)
     ns: str = Field(default='mimir')
     hostname: str = Field(default='mimir')
+    # Dedicated S3 IAM account (ADR-0003) rather than the RustFS root key --
+    # generated once and persisted, same pattern as
+    # stack.grafana.admin_password. Not exposed in the TUI: unlike
+    # infra.s3.secret_key there is no remote counterpart a user would ever
+    # need to supply this out of band.
+    secret_key: str = Field(
+        default_factory=lambda: secrets.token_urlsafe(16),
+        description="Secret key for Mimir's dedicated S3 service account",
+    )
+
+    @computed_field(description="Access key for Mimir's dedicated S3 service account")
+    @property
+    def access_key(self) -> str:
+        return 'svc-mimir'
 
     @computed_field(description='Remote-write ingestion endpoint')
     @property
@@ -194,6 +208,20 @@ class StackLokiConfig(RootConfigAware):
     enabled: bool = Field(default=True)
     ns: str = Field(default='loki')
     hostname: str = Field(default='loki')
+    # Dedicated S3 IAM account (ADR-0003) rather than the RustFS root key --
+    # generated once and persisted, same pattern as
+    # stack.grafana.admin_password. Not exposed in the TUI: unlike
+    # infra.s3.secret_key there is no remote counterpart a user would ever
+    # need to supply this out of band.
+    secret_key: str = Field(
+        default_factory=lambda: secrets.token_urlsafe(16),
+        description="Secret key for Loki's dedicated S3 service account",
+    )
+
+    @computed_field(description="Access key for Loki's dedicated S3 service account")
+    @property
+    def access_key(self) -> str:
+        return 'svc-loki'
 
     @computed_field(description='Log push endpoint')
     @property
@@ -261,6 +289,20 @@ class StackTempoConfig(RootConfigAware):
     enabled: bool = Field(default=True)
     ns: str = Field(default='tempo')
     hostname: str = Field(default='tempo')
+    # Dedicated S3 IAM account (ADR-0003) rather than the RustFS root key --
+    # generated once and persisted, same pattern as
+    # stack.grafana.admin_password. Not exposed in the TUI: unlike
+    # infra.s3.secret_key there is no remote counterpart a user would ever
+    # need to supply this out of band.
+    secret_key: str = Field(
+        default_factory=lambda: secrets.token_urlsafe(16),
+        description="Secret key for Tempo's dedicated S3 service account",
+    )
+
+    @computed_field(description="Access key for Tempo's dedicated S3 service account")
+    @property
+    def access_key(self) -> str:
+        return 'svc-tempo'
 
     @computed_field(description='Trace query endpoint used by Grafana')
     @property

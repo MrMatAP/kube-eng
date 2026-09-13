@@ -91,6 +91,33 @@
           s3_ca_path: "{{ infra.pki.ca_truststore_path }}"
           bucket_name: mimir-blocks
           state: present
+      # Dedicated least-privilege IAM account, scoped to mimir-* buckets by
+      # the <service>-<purpose> bucket naming convention (ADR-0003) --
+      # Mimir stops authenticating with the RustFS root key.
+      - name: Provision the Mimir S3 service account
+        s3_client:
+          s3_endpoint: "{{ infra.s3.api_endpoint }}"
+          s3_access_key: "{{ infra.s3.access_key }}"
+          s3_secret_key: "{{ infra.s3.secret_key }}"
+          s3_region: "{{ infra.s3.region }}"
+          s3_ca_path: "{{ infra.pki.ca_truststore_path }}"
+          access_key: "{{ stack.mimir.access_key }}"
+          secret_key: "{{ stack.mimir.secret_key }}"
+          policy:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:ListBucket
+                  - s3:GetObject
+                  - s3:PutObject
+                  - s3:DeleteObject
+                  - s3:AbortMultipartUpload
+                  - s3:ListMultipartUploadParts
+                Resource:
+                  - arn:aws:s3:::mimir-*
+                  - arn:aws:s3:::mimir-*/*
+          state: present
       - name: Create and label the Mimir namespace
         ansible.builtin.import_role:
           name: create_namespace
@@ -130,8 +157,8 @@
                 structuredConfig: "{{ {
                   'common': {'storage': {'s3': {
                     'endpoint': infra.s3.client_fqdn ~ ':' ~ (infra.s3.port | string),
-                    'access_key_id': infra.s3.access_key,
-                    'secret_access_key': infra.s3.secret_key
+                    'access_key_id': stack.mimir.access_key,
+                    'secret_access_key': stack.mimir.secret_key
                   }}}
                   } | combine(mimir_ingest_storage, recursive=true) }}"
       - name: Update DNS with a record for Mimir
@@ -335,6 +362,33 @@
       - loki-admin
       - loki-ruler
       - loki-chunks
+    # Dedicated least-privilege IAM account, scoped to loki-* buckets by the
+    # <service>-<purpose> bucket naming convention (ADR-0003) -- Loki stops
+    # authenticating with the RustFS root key.
+    - name: Provision the Loki S3 service account
+      s3_client:
+        s3_endpoint: "{{ infra.s3.api_endpoint }}"
+        s3_access_key: "{{ infra.s3.access_key }}"
+        s3_secret_key: "{{ infra.s3.secret_key }}"
+        s3_region: "{{ infra.s3.region }}"
+        s3_ca_path: "{{ infra.pki.ca_truststore_path }}"
+        access_key: "{{ stack.loki.access_key }}"
+        secret_key: "{{ stack.loki.secret_key }}"
+        policy:
+          Version: "2012-10-17"
+          Statement:
+            - Effect: Allow
+              Action:
+                - s3:ListBucket
+                - s3:GetObject
+                - s3:PutObject
+                - s3:DeleteObject
+                - s3:AbortMultipartUpload
+                - s3:ListMultipartUploadParts
+              Resource:
+                - arn:aws:s3:::loki-*
+                - arn:aws:s3:::loki-*/*
+        state: present
     - name: Create and label the Loki namespace
       ansible.builtin.import_role:
         name: create_namespace
@@ -369,8 +423,8 @@
               storage:
                 s3:
                   endpoint: "https://{{ infra.s3.client_fqdn }}:{{ infra.s3.port }}"
-                  accessKeyId: "{{ infra.s3.access_key }}"
-                  secretAccessKey: "{{ infra.s3.secret_key }}"
+                  accessKeyId: "{{ stack.loki.access_key }}"
+                  secretAccessKey: "{{ stack.loki.secret_key }}"
           lokiCanary:
             podLabels:
               app: loki
@@ -399,6 +453,33 @@
         s3_region: "{{ infra.s3.region }}"
         s3_ca_path: "{{ infra.pki.ca_truststore_path }}"
         bucket_name: tempo-traces
+        state: present
+    # Dedicated least-privilege IAM account, scoped to tempo-* buckets by
+    # the <service>-<purpose> bucket naming convention (ADR-0003) -- Tempo
+    # stops authenticating with the RustFS root key.
+    - name: Provision the Tempo S3 service account
+      s3_client:
+        s3_endpoint: "{{ infra.s3.api_endpoint }}"
+        s3_access_key: "{{ infra.s3.access_key }}"
+        s3_secret_key: "{{ infra.s3.secret_key }}"
+        s3_region: "{{ infra.s3.region }}"
+        s3_ca_path: "{{ infra.pki.ca_truststore_path }}"
+        access_key: "{{ stack.tempo.access_key }}"
+        secret_key: "{{ stack.tempo.secret_key }}"
+        policy:
+          Version: "2012-10-17"
+          Statement:
+            - Effect: Allow
+              Action:
+                - s3:ListBucket
+                - s3:GetObject
+                - s3:PutObject
+                - s3:DeleteObject
+                - s3:AbortMultipartUpload
+                - s3:ListMultipartUploadParts
+              Resource:
+                - arn:aws:s3:::tempo-*
+                - arn:aws:s3:::tempo-*/*
         state: present
     - name: Create and label the Tempo namespace
       ansible.builtin.import_role:
@@ -431,8 +512,8 @@
                   backend: s3
                   s3:
                     endpoint: "{{ infra.s3.client_fqdn }}:{{ infra.s3.port }}"
-                    access_key: "{{ infra.s3.access_key }}"
-                    secret_key: "{{ infra.s3.secret_key }}"
+                    access_key: "{{ stack.tempo.access_key }}"
+                    secret_key: "{{ stack.tempo.secret_key }}"
                     region: us-east-1
                     insecure: false
                     tls_insecure_skip_verify: true

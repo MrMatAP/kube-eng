@@ -60,14 +60,12 @@ Each service's access key is `svc-<service>`; its secret is **generated once and
 
 ## Implementation status
 
-The console OIDC path is wired, and the module layer for the authorization model is built. What remains is the **playbook wiring**:
+The console OIDC path is wired, the module layer for the authorization model is built, and the playbook wiring is complete:
 
 - `s3_utils.S3Admin` authors custom policies (`policy_ensure` / `policy_remove` via `add-canned-policy`) and reconciles an arbitrary attached-policy set (`account_policy_set(access_key, [names])`). RustFS reports a missing policy as `500 'InternalError: policy does not exist'`, which `policy_get` treats as absent.
 - `library/s3_client.py` takes a `policy` arg (inline document, authored under `access_key` — the `svc-<service>` 1:1 name) plus `policies` (pre-existing names to also attach); the old `role: admin|contributor|viewer` is gone. `state: absent` removes the `access_key`-named policy only when `policy` is passed.
 - The `s3-*` human policies are created in `infra_apply.yml` (the "Provision the human-tier S3 console policies" task, local S3 only). ✔
-- `stack_apply.yml` provisions each service's policy + IAM user and stops passing the root key to Loki/Tempo. *(pending — that file is still largely pre-`infra.*`-refactor: `host.s3`, `cluster.registry.url`, bare `admin_password`, and needs that rewrite first.)*
-
-Until then, Loki and Tempo authenticate with the RustFS root credentials.
+- `stack_apply.yml` provisions Mimir's, Loki's, and Tempo's `svc-<service>` policy + IAM user ("Provision the Mimir/Loki/Tempo S3 service account" tasks) and no longer passes the root key to them; `stack.mimir`/`stack.loki`/`stack.tempo` each carry the `access_key` (computed, `svc-<service>`) and `secret_key` (generated once, persisted) fields. ✔
 
 ## Naming
 
