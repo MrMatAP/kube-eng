@@ -71,9 +71,15 @@ class TestIdp:
         assert _url(idp.issuer_url) == 'https://idp.testcluster.k8s:8443/realms/master'
         assert idp.admin_user == 'admin'
         assert idp.admin_password is not None
-        assert idp.db_name == 'idp'
+        assert idp.db_name == 'idp-testcluster'
         assert idp.db_user == 'idp'
         assert idp.db_password is not None
+
+    def test_local_db_name_overridable(self, tmp_path: pathlib.Path):
+        idp = make_config(
+            tmp_path, idp={'provider': 'local', 'db_name': 'custom-idp-db'}
+        ).infra.idp
+        assert idp.db_name == 'custom-idp-db'
 
     def test_remote(self, tmp_path: pathlib.Path):
         idp = make_config(

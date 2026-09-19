@@ -69,7 +69,12 @@ class LocalIdPConfig(IdPConfig):
     port: int = Field(default=8443, description='Exposed port of the local IdP')
     db_host: str = Field(default='pg', description='Host of the IdP database')
     db_port: int = Field(default=5432, description='Port of the IdP database')
-    db_name: str = Field(default='idp', description='Name of the IdP database')
+    db_name: str | None = Field(
+        default=None,
+        description=(
+            "Name of the IdP database. Defaults to 'idp-<cluster.name>' if not set"
+        ),
+    )
     db_user: str = Field(default='idp', description='User for the IdP database')
     db_password: str = Field(
         default_factory=lambda: secrets.token_urlsafe(16),

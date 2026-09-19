@@ -11,6 +11,7 @@ from .base import RootConfigAware
 from .cluster_config import ClusterConfig
 from .host_config import HostConfig
 from .infra_config import InfraConfig
+from .infra_idp_config import LocalIdPConfig
 from .stack_config import StackConfig
 
 
@@ -125,6 +126,9 @@ class RootConfig(BaseModel):
             context (): Undocumented parameter, appears to always be None
         """
         super().model_post_init(context)
+        idp = self.infra.idp
+        if isinstance(idp, LocalIdPConfig) and idp.db_name is None:
+            idp.db_name = f'idp-{self.cluster.name}'
         for field in dict(self).values():
             if issubclass(type(field), RootConfigAware):
                 field.propagate_root_config(self)
