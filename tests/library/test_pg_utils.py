@@ -125,6 +125,14 @@ def test_database_create_creates_role_and_database_when_both_are_absent(monkeypa
     assert conn.autocommit is True
     # 2 existence checks (role, database) + 2 DDL statements (role, database)
     assert cursor.execute.call_count == 4
+    # The DDL connection must be opened plainly and closed explicitly, not
+    # via `with psycopg2.connect(...) as conn:` -- that leaves the
+    # connection in a transaction after the first statement even with
+    # autocommit set, and CREATE DATABASE cannot run inside one. Only the
+    # 2 existence checks (role_exists/database_exists) go through
+    # __enter__/__exit__; the DDL step calls close() instead.
+    assert conn.__enter__.call_count == 2
+    assert conn.close.call_count == 1
 
 
 def test_database_create_is_unchanged_when_both_already_exist(monkeypatch):
@@ -182,7 +190,7 @@ def test_database_create_wraps_psycopg2_errors(monkeypatch):
 
 
 def test_database_remove_removes_both_when_present(monkeypatch):
-    _, cursor = _mock_connect_sequence(monkeypatch, fetchone_side_effect=[(1,), (1,)])
+    conn, cursor = _mock_connect_sequence(monkeypatch, fetchone_side_effect=[(1,), (1,)])
 
     result = PGAdmin(admin_dsn='postgresql://x').database_remove(
         db_name='grafana', db_user='grafana'
@@ -192,6 +200,10 @@ def test_database_remove_removes_both_when_present(monkeypatch):
     assert result.msg == 'Database removed'
     # 2 existence checks + 2 DDL statements (database, role).
     assert cursor.execute.call_count == 4
+    # Same DROP-cannot-run-in-a-transaction constraint as database_create()
+    # -- see the assertions there.
+    assert conn.__enter__.call_count == 2
+    assert conn.close.call_count == 1
 
 
 def test_database_remove_is_unchanged_when_already_absent(monkeypatch):

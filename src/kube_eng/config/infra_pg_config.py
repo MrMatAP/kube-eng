@@ -53,7 +53,7 @@ class LocalPGConfig(PGConfig):
     provider: typing.Literal['local'] = 'local'
     name: str = Field(default='pg', description='Name of the PostgreSQL container')
     image: str = Field(
-        default='postgres:18-alpine', description='PostgreSQL container image'
+        default='postgres:18', description='PostgreSQL container image'
     )
     volume_name: str = Field(
         default='pg-volume', description='Name of the PostgreSQL volume'

@@ -113,8 +113,15 @@ class PGAdmin:
         try:
             role_created = not self.role_exists(db_user)
             db_created = not self.database_exists(db_name)
-            with psycopg2.connect(dsn=self._admin_dsn) as conn:
-                # CREATE DATABASE cannot run inside a transaction block.
+            # CREATE DATABASE cannot run inside a transaction block. Using
+            # the connection as a context manager (`with psycopg2.connect(
+            # ...) as conn:`) leaves it in one after the first statement
+            # even with autocommit set -- psycopg2's __enter__/__exit__
+            # wrap the block in transaction bookkeeping of their own,
+            # independent of the autocommit flag. Connect and close it
+            # explicitly instead.
+            conn = psycopg2.connect(dsn=self._admin_dsn)
+            try:
                 conn.autocommit = True
                 with conn.cursor() as cur:
                     if role_created:
@@ -130,6 +137,8 @@ class PGAdmin:
                                 sql.Identifier(db_name), sql.Identifier(db_user)
                             )
                         )
+            finally:
+                conn.close()
             return PGDatabaseResult(
                 changed=role_created or db_created,
                 msg='Database created' if db_created else 'Database is present',
@@ -155,8 +164,11 @@ class PGAdmin:
         try:
             db_removed = self.database_exists(db_name)
             role_removed = self.role_exists(db_user)
-            with psycopg2.connect(dsn=self._admin_dsn) as conn:
-                # DROP DATABASE cannot run inside a transaction block.
+            # DROP DATABASE cannot run inside a transaction block either --
+            # see the comment in database_create() for why this connects
+            # and closes explicitly rather than via `with conn:`.
+            conn = psycopg2.connect(dsn=self._admin_dsn)
+            try:
                 conn.autocommit = True
                 with conn.cursor() as cur:
                     if db_removed:
@@ -167,6 +179,8 @@ class PGAdmin:
                         cur.execute(
                             sql.SQL('DROP ROLE {}').format(sql.Identifier(db_user))
                         )
+            finally:
+                conn.close()
             return PGDatabaseResult(
                 changed=db_removed or role_removed,
                 msg='Database removed' if db_removed else 'Database is absent',

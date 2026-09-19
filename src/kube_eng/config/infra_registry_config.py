@@ -192,12 +192,19 @@ class RemoteRegistryConfig(RegistryConfig):
             raise ValueError('Missing host in URL')
         # AnyUrl.build() inserts its own separator before path, so a path
         # that already carries its own leading slash (as .path always does)
-        # would otherwise produce a double slash after the host.
+        # would otherwise produce a double slash after the host -- stripped
+        # here. 'path' is omitted entirely (not passed as '') when the
+        # configured url has no path at all (e.g. a bare
+        # oci://registry.example.com), since build() still inserts a
+        # trailing '/' for an empty string, which stack_apply.yml/
+        # cluster_apply.yml then double up with their own leading '/' when
+        # they append 'kube-eng/kube-eng-<chart>'.
+        path = self.url.path.lstrip('/') if self.url.path else None
         return AnyUrl.build(
             scheme='oci',
             host=self.url.host or '',
             port=self.url.port,
-            path=(self.url.path or '').lstrip('/'),
+            **({'path': path} if path else {}),
             query=self.url.query,
             fragment=self.url.fragment,
         )
@@ -207,11 +214,13 @@ class RemoteRegistryConfig(RegistryConfig):
     def http_endpoint(self) -> AnyHttpUrl:
         if self.url.host is None:
             raise ValueError('Missing host in URL')
+        # See oci_endpoint for why 'path' is only passed when non-empty.
+        path = self.url.path.lstrip('/') if self.url.path else None
         return AnyHttpUrl.build(
             scheme='https',
             host=self.url.host or '',
             port=self.url.port,
-            path=(self.url.path or '').lstrip('/'),
+            **({'path': path} if path else {}),
             query=self.url.query,
             fragment=self.url.fragment,
         )

@@ -170,6 +170,25 @@ class TestRegistry:
         # A remote registry is off-host; every consumer uses the same URL.
         assert _url(registry.cluster_endpoint) == 'https://harbor.example.com/kube-eng'
 
+    def test_remote_with_no_path(self, tmp_path: pathlib.Path):
+        # AnyUrl.build() inserts a '/' before path even when path is ''  --
+        # a bare host (no path segment at all) must skip the path kwarg
+        # entirely, or oci_endpoint gains a trailing slash that doubles up
+        # with the leading '/' the playbooks add themselves when appending
+        # 'kube-eng/kube-eng-<chart>' (producing an invalid
+        # 'registry.example.com//kube-eng/...' reference). Deliberately not
+        # using _url() here, since it would mask exactly this trailing
+        # slash by stripping it before comparing.
+        registry = make_config(
+            tmp_path,
+            registry={'provider': 'remote', 'url': 'oci://registry.example.com'},
+        ).infra.registry
+        assert str(registry.oci_endpoint) == 'oci://registry.example.com'
+        # http_endpoint's trailing slash is harmless (nothing appends
+        # further path segments to it) and unavoidable -- https URLs
+        # normalise to a root path -- so this one does use _url().
+        assert _url(registry.http_endpoint) == 'https://registry.example.com'
+
     def test_remote_rejects_non_oci_url(self, tmp_path: pathlib.Path):
         with pytest.raises(ValidationError):
             make_config(
