@@ -73,6 +73,16 @@ class RegistryConfig(RootConfigAware, abc.ABC):
         Returns:
             An HTTP URL
         """
+        
+    @property
+    @abc.abstractmethod
+    def registry_host(self) -> str:
+        """
+        The registry host, as a simple FQDN the way Helm and docker/podman login require it
+
+        Returns: 
+            str: The host address of the registry.
+        """
 
 
 class LocalRegistryConfig(RegistryConfig):
@@ -139,6 +149,11 @@ class LocalRegistryConfig(RegistryConfig):
         # in-container port, not the host-published one.
         domain = self._root_config.infra.dns.domain
         return AnyHttpUrl(f'https://{self.name}.{domain}:{self.container_port}')
+
+    @computed_field(description='Registry host')
+    @property
+    def registry_host(self) -> str:
+        return f'{self.name}.{self._root_config.infra.dns.domain}:{self.port}'
 
     @computed_field(description='Registry client Id')
     @property
@@ -233,6 +248,15 @@ class RemoteRegistryConfig(RegistryConfig):
     def cluster_endpoint(self) -> AnyHttpUrl:
         # A remote registry is off-host; everyone reaches it the same way.
         return self.http_endpoint
+
+    @computed_field(description='Registry host')
+    @property
+    def registry_host(self) -> str:
+        if self.url.host is None:
+            raise ValueError('Missing host in URL')
+        if self.url.port is None:
+            return self.url.host
+        return f'{self.url.host}:{self.url.port}'
 
 
 InfraRegistryConfig = typing.Annotated[

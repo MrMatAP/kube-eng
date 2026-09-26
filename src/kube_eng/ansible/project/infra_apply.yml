@@ -1,10 +1,6 @@
 ---
 - name: Apply the host infrastructure configuration
   hosts: localhost
-  vars:
-    # host:port of the registry, stripped of the oci:// scheme and any path --
-    # the form `docker login` / `helm registry login` expect.
-    registry_host: "{{ infra.registry.oci_endpoint | string | regex_replace('^oci://', '') | regex_replace('/.*$', '') }}"
   tasks:
 
   - name: Create a dedicated Docker network
@@ -673,7 +669,7 @@
       # -- `kube-eng infra-apply` reports the remaining manual steps when it
       # finishes rather than treating this as fatal.
       community.docker.docker_login:
-        registry_url: "{{ registry_host }}"
+        registry_url: "{{ infra.registry.registry_host }}"
         username: "{{ infra.registry.admin_username }}"
         password: "{{ infra.registry.admin_password }}"
       ignore_errors: true
@@ -742,7 +738,7 @@
       chart_src_path: "{{ host.tool.helm.chart_path }}/{{ item }}"
       chart_pkg_path: "{{ host.tool.helm.packaged_chart_path }}"
       chart_registry_url: "{{ infra.registry.oci_endpoint }}/kube-eng"
-      registry_url: "{{ infra.registry.oci_endpoint | regex_replace('^oci://', '') | regex_replace('/.*$', '') }}"
+      registry_host: "{{ infra.registry.registry_host }}"
       registry_ca_path: "{{ infra.pki.ca_truststore_path }}"
       # A remote registry with no password set is authenticated out of band;
       # helm_publish then skips `helm registry login` (see the role).
