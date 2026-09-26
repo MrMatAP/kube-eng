@@ -1,10 +1,6 @@
 ---
 - name: Apply the host infrastructure configuration
   hosts: localhost
-  vars:
-    # host:port of the registry, stripped of the oci:// scheme and any path --
-    # the form `docker login` / `helm registry login` expect.
-    registry_host: "{{ infra.registry.oci_endpoint | string | regex_replace('^oci://', '') | regex_replace('/.*$', '') }}"
   tasks:
 
   - name: Create a dedicated Docker network
@@ -673,7 +669,7 @@
       # -- `kube-eng infra-apply` reports the remaining manual steps when it
       # finishes rather than treating this as fatal.
       community.docker.docker_login:
-        registry_url: "{{ registry_host }}"
+        registry_url: "{{ infra.registry.registry_host }}"
         username: "{{ infra.registry.admin_username }}"
         password: "{{ infra.registry.admin_password }}"
       ignore_errors: true

@@ -30,7 +30,7 @@ argument_specs:
         description: URL of the Helm chart registry
         type: str
         required: true
-      registry_url:
+      registry_host:
         description: >
           Host[:port] of the registry to authenticate against with
           `helm registry login`. Leave empty to skip authentication (e.g. a

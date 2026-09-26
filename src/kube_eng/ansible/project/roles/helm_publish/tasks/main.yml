@@ -18,7 +18,7 @@
       --username "{{ username }}"
       --password-stdin
       {% if registry_ca_path | length > 0 %}--ca-file "{{ registry_ca_path }}"{% endif %}
-      {{ registry_url }}
+      {{ registry_host }}
     stdin: "{{ password }}"
   when: username | length > 0 and password | length > 0
   no_log: true
