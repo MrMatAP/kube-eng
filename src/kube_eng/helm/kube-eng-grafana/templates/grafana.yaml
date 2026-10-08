@@ -28,7 +28,7 @@ spec:
               name: dashboard-provisioning-config
           - name: ca-trust
             configMap:
-              name: ca-trust
+              name: mrmat-ca-trust
           containers:
             - name: grafana
               volumeMounts:

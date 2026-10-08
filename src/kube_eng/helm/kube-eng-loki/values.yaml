@@ -2,6 +2,13 @@
 
 cluster:
   name: cluster
+  edge:
+    kind: traefik
+    fqdn: loki.cluster.k8s
+    gateway:
+      name: edge
+      ns: edge
+      section: loki
 
 # Renders a ServiceMonitor CR (templates/sm-loki.yaml), which requires the
 # monitoring.coreos.com CRDs to already exist -- install fails outright

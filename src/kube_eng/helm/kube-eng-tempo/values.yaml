@@ -15,7 +15,7 @@ tempo:
   extraVolumes:
   - name: truststore
     configMap:
-      name: ca-trust
+      name: mrmat-ca-trust
   tempo:
     reportingEnabled: false
     metricsGenerator:

@@ -17,6 +17,12 @@ stack:
   alloy:
     enabled: false
     fqdn: alloy.cluster.k8s
+  loki:
+    enabled: false
+    fqdn: loki.cluster.k8s
+  mimir:
+    enabled: false
+    fqdn: mimir.cluster.k8s
   tempo:
     enabled: false
     fqdn: tempo.cluster.k8s
