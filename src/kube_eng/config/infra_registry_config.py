@@ -93,7 +93,7 @@ class LocalRegistryConfig(RegistryConfig):
         default='registry', description='Name of the OCI registry container'
     )
     image: str = Field(
-        default='ghcr.io/project-zot/zot-linux-arm64:v2.1.20',
+        default='ghcr.io/project-zot/zot-linux-arm64:v2.1.22',
         description='OCI registry container image',
     )
     volume_name: str = Field(
