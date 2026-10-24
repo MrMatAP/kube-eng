@@ -12,6 +12,19 @@ cluster:
       section: mimir
 
 mimir:
+  global:
+    # The cluster CA trust bundle, expected as a ConfigMap in the release
+    # namespace with the PEM-encoded CA certificates under truststore.pem.
+    # Override configMap.name here to use a differently named ConfigMap.
+    extraVolumes:
+    - name: ca-trust
+      configMap:
+        name: mrmat-ca-trust
+    extraVolumeMounts:
+    - name: ca-trust
+      mountPath: /opt/mrmat/ca
+      readOnly: true
+
   # Smallest viable footprint for a local cluster: a single, non-zone-aware
   # replica of every component, the bundled MinIO and Kafka subcharts
   # switched off in favour of the shared infra S3/Kafka services, and the
@@ -84,16 +97,17 @@ mimir:
       ingest_storage:
         enabled: false
 
+      # Keep at most ~3 months of metrics; the compactor deletes older blocks
+      # from object storage. Mimir has no size-based retention limit.
+      limits:
+        compactor_blocks_retention_period: 90d
+
       common:
         storage:
           backend: s3
           s3:
             http:
-              # TODO: Inject the cluster CA (see kube-eng-pki-trust's
-              # ca-trust ConfigMap) once the correct s3.http CA field is
-              # confirmed for this Mimir version, same as Loki's
-              # http_config.insecure_skip_verify.
-              insecure_skip_verify: true
+              tls_ca_path: /opt/mrmat/ca/truststore.pem
       blocks_storage:
         s3:
           bucket_name: mimir-blocks
@@ -102,4 +116,4 @@ mimir:
           # redeclare this too rather than rely on it being inherited from
           # common.storage.s3.http.
           http:
-            insecure_skip_verify: true
+            tls_ca_path: /opt/mrmat/ca/truststore.pem

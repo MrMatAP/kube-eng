@@ -15,5 +15,4 @@ spec:
     type: loki
     access: proxy
     url: {{ .Values.integration.loki.url }}
-    isDefault: false
 {{- end }}

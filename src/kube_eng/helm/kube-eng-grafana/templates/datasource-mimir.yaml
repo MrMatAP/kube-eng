@@ -11,8 +11,6 @@ spec:
     matchLabels:
       dashboards: "grafana"
   datasource:
-    # Mimir serves the Prometheus-compatible query API, so this is a
-    # "prometheus"-type datasource pointed at Mimir's gateway.
     name: mimir
     type: prometheus
     access: proxy

@@ -19,6 +19,19 @@ serviceMonitor:
   enabled: false
 
 loki:
+  global:
+    # The cluster CA trust bundle, expected as a ConfigMap in the release
+    # namespace with the PEM-encoded CA certificates under truststore.pem.
+    # Override configMap.name here to use a differently named ConfigMap.
+    extraVolumes:
+    - name: ca-trust
+      configMap:
+        name: mrmat-ca-trust
+    extraVolumeMounts:
+    - name: ca-trust
+      mountPath: /opt/mrmat/ca
+      readOnly: true
+
   # Distributed (microservices) mode -- the modern equivalent of the old,
   # now-archived standalone loki-distributed chart, folded into this chart
   # as one of its deployment modes. See the "Distributed Mode" replicas
@@ -42,11 +55,8 @@ loki:
         # at deploy time from infra.s3, the same as Mimir's
         # common.storage.s3 -- baking placeholder values in here is
         # pointless, they're always overridden.
-        # TODO: Inject the cluster CA (see kube-eng-pki-trust's ca-trust
-        # ConfigMap) once the correct field for this Loki version is
-        # confirmed, same as Mimir's common.storage.s3.http.insecure_skip_verify.
         http_config:
-          insecure_skip_verify: true
+          ca_file: /opt/mrmat/ca/truststore.pem
     schemaConfig:
       configs:
       - from: 2024-04-01
@@ -61,6 +71,13 @@ loki:
     limits_config:
       allow_structured_metadata: true
       volume_enabled: true
+      # Keep at most ~3 months of logs, enforced by the compactor below.
+      # Loki has no size-based retention limit.
+      retention_period: 90d
+    compactor:
+      retention_enabled: true
+      # Required once retention is enabled.
+      delete_request_store: s3
     ruler:
       enable_api: true
     minio:

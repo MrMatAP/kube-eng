@@ -36,16 +36,16 @@ integration:
   # it points at is actually installed. Standalone (no stack_apply.yml)
   # renders here default to the component's own local install.
   prometheus:
-    enabled: true
+    enabled: false
     url: http://prometheus-operated.prometheus.svc.cluster.local:9090/
-    isDefault: true
+    isDefault: false
   mimir:
     enabled: false
     url: http://mimir-gateway.mimir.svc.cluster.local/prometheus
-    isDefault: false
+    isDefault: true
   loki:
     enabled: false
-    url: http://loki.loki.svc.cluster.local:3100
+    url: http://loki-query-frontend.loki.svc.cluster.local:3100
   tempo:
     enabled: false
     url: http://tempo.tempo.svc.cluster.local:3200

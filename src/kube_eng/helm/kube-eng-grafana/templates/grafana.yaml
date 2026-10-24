@@ -97,7 +97,7 @@ spec:
       ssl_mode: {{ .Values.integration.database.ssl_mode }}
       {{- end }}
     auth:
-      disable_login_form: "false"
+      disable_login_form: "true"
     auth.generic_oauth:
       enabled: "true"
       tls_client_ca: /opt/mrmat/truststore.pem

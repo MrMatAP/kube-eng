@@ -15,5 +15,4 @@ spec:
     type: tempo
     access: proxy
     url: {{ .Values.integration.tempo.url }}
-    isDefault: false
 {{- end }}

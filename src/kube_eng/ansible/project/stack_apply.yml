@@ -250,11 +250,7 @@
               url: "{{ stack.prometheus.query_url }}"
               isDefault: "{{ stack.prometheus.enabled }}"
             mimir:
-              # Mimir is only worth showing as a datasource once something
-              # actually writes into it -- otherwise it's a datasource
-              # pointed at an empty store, which is worse than not declaring
-              # one at all.
-              enabled: "{{ stack.mimir.enabled and (stack.prometheus.mimir.enabled or stack.alloy.metrics.enabled) }}"
+              enabled: "{{ stack.mimir.enabled }}"
               url: "{{ stack.mimir.query_url }}"
               isDefault: "{{ (not stack.prometheus.enabled) and stack.mimir.enabled }}"
             loki:
@@ -516,7 +512,6 @@
                     secret_key: "{{ stack.tempo.secret_key }}"
                     region: us-east-1
                     insecure: false
-                    tls_insecure_skip_verify: true
             serviceMonitor:
               enabled: "{{ stack.prometheus.chart_enabled }}"
     - name: Update DNS with a record for Tempo

@@ -13,7 +13,7 @@ cluster:
 
 tempo:
   extraVolumes:
-  - name: truststore
+  - name: ca-trust
     configMap:
       name: mrmat-ca-trust
   tempo:
@@ -22,8 +22,8 @@ tempo:
       enabled: true
       remoteWriteUrl: "http://prometheus.prometheus.svc.cluster.local:9090/api/v1/write"
     extraVolumeMounts:
-    - name: truststore
-      mountPath: /opt/truststore
+    - name: ca-trust
+      mountPath: /opt/mrmat/ca
       readOnly: true
     storage:
       trace:
@@ -37,7 +37,7 @@ tempo:
           region: us-east-1
           insecure: false
           tls_insecure_skip_verify: false
-          tls_ca_path: /opt/truststore/truststore.pem
+          tls_ca_path: /opt/mrmat/ca/truststore.pem
   # Renders a ServiceMonitor CR, which requires the monitoring.coreos.com
   # CRDs to already exist -- install fails outright otherwise. Off by
   # default so the chart renders standalone without assuming they're
